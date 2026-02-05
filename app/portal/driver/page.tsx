@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mockOrders, Order, orderTypeLabels, mockDrivers, Driver } from '@/lib/mock-data'
-import { Truck, Clock, Calendar, MapPin, Phone, CheckCircle, Navigation, Package } from 'lucide-react'
+import { Truck, Clock, Calendar, MapPin, Phone, CheckCircle, Navigation, Package, Bell, User } from 'lucide-react'
 
 export default function DriverPortalPage() {
   const [orders, setOrders] = useState<Order[]>(
@@ -14,6 +14,15 @@ export default function DriverPortalPage() {
   )
   const [drivers] = useState<Driver[]>(mockDrivers)
   const [showCompleted, setShowCompleted] = useState(false)
+  const [newDeliveryAlert, setNewDeliveryAlert] = useState(true)
+
+  // Simulate receiving a new delivery notification
+  useEffect(() => {
+    if (newDeliveryAlert) {
+      const timer = setTimeout(() => setNewDeliveryAlert(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [newDeliveryAlert])
 
   const availableDrivers = drivers.filter(d => d.status === 'available')
   const deliveryOrders = orders.filter(o => o.status === 'ready' && o.isDelivery)
@@ -29,10 +38,41 @@ export default function DriverPortalPage() {
     setTimeout(() => setShowCompleted(false), 2000)
   }
 
+  const handleAcceptDelivery = (orderId: string) => {
+    // In a real app, this would assign the driver and update the order status
+    setOrders(
+      orders.map((order) =>
+        order.id === orderId ? { ...order, assignedTo: 'You' } : order
+      )
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
       <main className="ml-64 p-6">
+        {/* New Delivery Alert Banner */}
+        {newDeliveryAlert && deliveryOrders.length > 0 && (
+          <div className="mb-6 rounded-lg bg-primary p-4 flex items-center gap-4 animate-pulse">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/20">
+              <Bell className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-primary-foreground">New Delivery Request!</p>
+              <p className="text-sm text-primary-foreground/80">
+                You have {deliveryOrders.length} delivery order(s) waiting for pickup
+              </p>
+            </div>
+            <Button 
+              variant="secondary" 
+              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              onClick={() => setNewDeliveryAlert(false)}
+            >
+              View Orders
+            </Button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
@@ -48,14 +88,14 @@ export default function DriverPortalPage() {
 
         {/* Driver Status */}
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Available Drivers</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Driver Status</h2>
           <div className="flex gap-4 flex-wrap">
             {drivers.map((driver) => (
               <Card key={driver.id} className="w-64 border border-border bg-card">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
-                      <Truck className="h-5 w-5 text-accent-foreground" />
+                      <User className="h-5 w-5 text-accent-foreground" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-foreground">{driver.name}</p>
@@ -87,10 +127,23 @@ export default function DriverPortalPage() {
               {deliveryOrders.length}
             </span>
             Pending Deliveries
+            {deliveryOrders.length > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <Bell className="h-3 w-3" />
+                New
+              </span>
+            )}
           </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {deliveryOrders.map((order) => (
-              <Card key={order.id} className="border-2 border-secondary bg-card shadow-sm">
+              <Card key={order.id} className="border-2 border-secondary bg-card shadow-sm overflow-hidden">
+                {/* Notification Banner */}
+                <div className="bg-primary px-4 py-2 flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary-foreground" />
+                  <span className="text-sm font-medium text-primary-foreground">
+                    Dispatched from Packing
+                  </span>
+                </div>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div>
@@ -120,14 +173,18 @@ export default function DriverPortalPage() {
                     ))}
                   </div>
 
-                  <div className="rounded-lg bg-accent p-3 space-y-2">
+                  {/* Delivery Location - Highlighted */}
+                  <div className="rounded-lg bg-secondary/10 border-2 border-secondary/40 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-secondary" />
+                      <span className="text-xs font-bold uppercase tracking-wide text-secondary">Delivery Location</span>
+                    </div>
+                    <p className="font-semibold text-foreground text-base">
+                      {order.deliveryAddress}
+                    </p>
                     <div className="flex items-center gap-2 text-sm text-foreground">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       {order.customerPhone}
-                    </div>
-                    <div className="flex items-start gap-2 text-sm text-secondary font-medium">
-                      <MapPin className="h-4 w-4 mt-0.5" />
-                      {order.deliveryAddress}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -164,7 +221,9 @@ export default function DriverPortalPage() {
           </div>
           {deliveryOrders.length === 0 && (
             <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
+              <Truck className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground">No pending deliveries</p>
+              <p className="text-sm text-muted-foreground/70">Orders will appear here when dispatched from packing</p>
             </div>
           )}
         </section>
