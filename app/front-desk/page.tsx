@@ -1,11 +1,14 @@
 'use client'
 
+import React from "react"
+
 import { useState } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -13,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { OrderForm, NewOrderData } from '@/components/front-desk/order-form'
 import { OrderDetail } from '@/components/front-desk/order-detail'
 import {
@@ -23,7 +33,7 @@ import {
   statusColors,
   orderTypeLabels,
 } from '@/lib/mock-data'
-import { Plus, Search, Clock, MapPin } from 'lucide-react'
+import { Plus, Search, Clock, MapPin, MessageSquare, Send, ChefHat, CheckCircle } from 'lucide-react'
 
 export default function FrontDeskPage() {
   const [orders, setOrders] = useState<Order[]>(mockOrders)
@@ -31,6 +41,11 @@ export default function FrontDeskPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
+  const [showMessageDialog, setShowMessageDialog] = useState(false)
+  const [messageOrder, setMessageOrder] = useState<Order | null>(null)
+  const [messageText, setMessageText] = useState('')
+  const [showSentConfirm, setShowSentConfirm] = useState(false)
+  const [showPostedConfirm, setShowPostedConfirm] = useState(false)
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -63,6 +78,31 @@ export default function FrontDeskPage() {
       )
     )
     setSelectedOrder(null)
+  }
+
+  const handlePostToBaker = (orderId: string) => {
+    setOrders(
+      orders.map((order) =>
+        order.id === orderId ? { ...order, status: 'baker' as OrderStatus } : order
+      )
+    )
+    setSelectedOrder(null)
+    setShowPostedConfirm(true)
+    setTimeout(() => setShowPostedConfirm(false), 2000)
+  }
+
+  const handleOpenMessage = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setMessageOrder(order)
+    setMessageText('')
+    setShowMessageDialog(true)
+  }
+
+  const handleSendMessage = () => {
+    // In a real app, this would send an SMS/WhatsApp message
+    setShowMessageDialog(false)
+    setShowSentConfirm(true)
+    setTimeout(() => setShowSentConfirm(false), 2000)
   }
 
   return (
@@ -121,7 +161,7 @@ export default function FrontDeskPage() {
           {filteredOrders.map((order) => (
             <Card
               key={order.id}
-              className="cursor-pointer border-0 shadow-sm transition-shadow hover:shadow-md"
+              className="cursor-pointer border-0 shadow-sm transition-shadow hover:shadow-md bg-card"
               onClick={() => setSelectedOrder(order)}
             >
               <CardContent className="p-4">
@@ -156,13 +196,23 @@ export default function FrontDeskPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t pt-3">
+                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="text-sm text-muted-foreground">
                     {order.pickupDate}
                   </span>
-                  <span className="font-semibold text-primary">
-                    ${order.totalPrice.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+                      onClick={(e) => handleOpenMessage(order, e)}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                    <span className="font-semibold text-secondary">
+                      ${order.totalPrice.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -195,8 +245,91 @@ export default function FrontDeskPage() {
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
                 onUpdateStatus={handleUpdateStatus}
+                onPostToBaker={handlePostToBaker}
+                onMessage={(order) => {
+                  setMessageOrder(order)
+                  setMessageText('')
+                  setShowMessageDialog(true)
+                }}
               />
             </div>
+          </div>
+        )}
+
+        {/* Message Dialog */}
+        <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Send Message to Customer</DialogTitle>
+            </DialogHeader>
+            {messageOrder && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-accent p-3">
+                  <p className="font-medium text-foreground">{messageOrder.customerName}</p>
+                  <p className="text-sm text-muted-foreground">{messageOrder.customerPhone}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Message</label>
+                  <Textarea
+                    placeholder="Type your message here..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    className="min-h-[120px]"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs bg-transparent"
+                    onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup!`)}
+                  >
+                    Ready for Pickup
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs bg-transparent"
+                    onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery!`)}
+                  >
+                    Out for Delivery
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs bg-transparent"
+                    onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we need to confirm some details about your order ${messageOrder.id}. Please call us at your earliest convenience.`)}
+                  >
+                    Need Confirmation
+                  </Button>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowMessageDialog(false)} className="bg-transparent">
+                Cancel
+              </Button>
+              <Button onClick={handleSendMessage} disabled={!messageText.trim()} className="bg-primary hover:bg-primary/90">
+                <Send className="mr-2 h-4 w-4" />
+                Send Message
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sent Confirmation Toast */}
+        {showSentConfirm && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
+            <CheckCircle className="h-5 w-5" />
+            <span>Message sent successfully!</span>
+          </div>
+        )}
+
+        {/* Posted to Baker Confirmation Toast */}
+        {showPostedConfirm && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-primary px-4 py-3 text-primary-foreground shadow-lg">
+            <ChefHat className="h-5 w-5" />
+            <span>Order posted to Baker Portal!</span>
           </div>
         )}
       </main>

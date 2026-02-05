@@ -9,7 +9,7 @@ export function QuickActions() {
   const actions = [
     { name: 'New Order', icon: Plus, href: '/front-desk', color: 'bg-primary hover:bg-primary/90 text-primary-foreground' },
     { name: 'Send Campaign', icon: Send, href: '/messaging', color: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground' },
-    { name: 'View Deliveries', icon: Truck, href: '/drivers', color: 'bg-foreground hover:bg-foreground/90 text-background' },
+    { name: 'Driver Portal', icon: Truck, href: '/portal/driver', color: 'bg-foreground hover:bg-foreground/90 text-background' },
     { name: 'Check Inventory', icon: Package, href: '/inventory', color: 'bg-muted hover:bg-muted/80 text-foreground' },
   ]
 

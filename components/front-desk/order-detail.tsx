@@ -12,35 +12,27 @@ import {
   Clock,
   Calendar,
   FileText,
-  ChevronRight,
+  ChefHat,
+  MessageSquare,
 } from 'lucide-react'
 
 interface OrderDetailProps {
   order: Order
   onClose: () => void
   onUpdateStatus: (orderId: string, newStatus: Order['status']) => void
+  onPostToBaker?: (orderId: string) => void
+  onMessage?: (order: Order) => void
 }
 
-const statusFlow: Order['status'][] = [
-  'pending',
-  'baker',
-  'decorator',
-  'quality',
-  'packing',
-  'ready',
-  'delivered',
-]
-
-export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps) {
-  const currentIndex = statusFlow.indexOf(order.status)
-  const nextStatus = currentIndex < statusFlow.length - 1 ? statusFlow[currentIndex + 1] : null
+export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onMessage }: OrderDetailProps) {
+  const isPending = order.status === 'pending'
 
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="flex flex-row items-start justify-between border-b pb-4">
+    <Card className="border-0 shadow-lg bg-card">
+      <CardHeader className="flex flex-row items-start justify-between border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-3">
-            <CardTitle className="text-xl font-semibold">{order.id}</CardTitle>
+            <CardTitle className="text-xl font-semibold text-foreground">{order.id}</CardTitle>
             <Badge className={`${statusColors[order.status]} border-0`}>
               {statusLabels[order.status]}
             </Badge>
@@ -57,7 +49,7 @@ export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps
         {/* Customer Info */}
         <div className="space-y-3">
           <h3 className="font-medium text-foreground">Customer</h3>
-          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+          <div className="rounded-lg bg-accent p-4 space-y-2">
             <p className="font-semibold text-foreground">{order.customerName}</p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
@@ -79,7 +71,7 @@ export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps
             {order.items.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+                className="flex items-center justify-between rounded-lg bg-accent p-3"
               >
                 <div>
                   <p className="font-medium text-foreground">{item.name}</p>
@@ -100,9 +92,9 @@ export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between border-t pt-3">
+          <div className="flex items-center justify-between border-t border-border pt-3">
             <span className="font-medium text-foreground">Total</span>
-            <span className="text-xl font-bold text-primary">
+            <span className="text-xl font-bold text-secondary">
               ${order.totalPrice.toFixed(2)}
             </span>
           </div>
@@ -113,7 +105,7 @@ export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps
           <h3 className="font-medium text-foreground">
             {order.isDelivery ? 'Delivery' : 'Pickup'} Details
           </h3>
-          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+          <div className="rounded-lg bg-accent p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-foreground">{order.pickupDate}</span>
@@ -142,18 +134,31 @@ export function OrderDetail({ order, onClose, onUpdateStatus }: OrderDetailProps
           </div>
         )}
 
-        {/* Status Update */}
-        {nextStatus && (
-          <div className="border-t pt-4">
+        {/* Action Buttons */}
+        <div className="border-t border-border pt-4 space-y-3">
+          {/* Message Customer Button */}
+          {onMessage && (
             <Button
-              className="w-full bg-primary hover:bg-primary/90"
-              onClick={() => onUpdateStatus(order.id, nextStatus)}
+              variant="outline"
+              className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+              onClick={() => onMessage(order)}
             >
-              Move to {statusLabels[nextStatus]}
-              <ChevronRight className="ml-2 h-4 w-4" />
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Message Customer
             </Button>
-          </div>
-        )}
+          )}
+
+          {/* Post to Baker Button - only for pending orders */}
+          {isPending && onPostToBaker && (
+            <Button
+              className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+              onClick={() => onPostToBaker(order.id)}
+            >
+              <ChefHat className="mr-2 h-4 w-4" />
+              Post to Baker Portal
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
