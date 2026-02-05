@@ -280,23 +280,41 @@ export default function FrontDeskPage() {
                           <Clock className="h-4 w-4" />
                           {order.pickupTime}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
-                            onClick={() => handleOpenMessage(order)}
+                            className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                            onClick={() => {
+                              if (order.customerPhone) {
+                                window.open(`tel:${order.customerPhone}`, '_self')
+                              }
+                              setToastMessage(`Calling ${order.customerName}...`)
+                              setShowPostedConfirm(true)
+                              setTimeout(() => setShowPostedConfirm(false), 2000)
+                            }}
                           >
-                            <MessageSquare className="h-4 w-4" />
+                            <User className="mr-1 h-4 w-4" />
+                            Call Customer
                           </Button>
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => handleMarkPickedUp(order.id)}
-                          >
-                            <CheckCircle className="mr-1 h-4 w-4" />
-                            Picked Up
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+                              onClick={() => handleOpenMessage(order)}
+                            >
+                              <MessageSquare className="mr-1 h-4 w-4" />
+                              Message
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => handleMarkPickedUp(order.id)}
+                            >
+                              <CheckCircle className="mr-1 h-4 w-4" />
+                              Picked Up
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
