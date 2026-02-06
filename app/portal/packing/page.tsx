@@ -77,7 +77,7 @@ export default function PackingPortalPage() {
                       <Badge className="bg-indigo-100 text-indigo-800 border-0">
                         Packing
                       </Badge>
-                      {order.isDelivery ? (
+                      {order.deliveryType === 'delivery' ? (
                         <Badge variant="outline" className="border-secondary text-secondary bg-transparent">
                           <Truck className="mr-1 h-3 w-3" />
                           Delivery
@@ -116,7 +116,7 @@ export default function PackingPortalPage() {
                         {order.pickupTime}
                       </span>
                     </div>
-                    {order.isDelivery && order.deliveryAddress && (
+                    {order.deliveryType === 'delivery' && order.deliveryAddress && (
                       <div className="flex items-start gap-1 text-sm text-secondary">
                         <MapPin className="h-4 w-4 mt-0.5" />
                         <span>{order.deliveryAddress}</span>

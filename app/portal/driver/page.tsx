@@ -10,7 +10,7 @@ import { Truck, Clock, Calendar, MapPin, Phone, CheckCircle, Navigation, Package
 
 export default function DriverPortalPage() {
   const [orders, setOrders] = useState<Order[]>(
-    mockOrders.filter((o) => o.status === 'ready' && o.isDelivery)
+    mockOrders.filter((o) => (o.status === 'ready' || o.status === 'dispatched') && o.deliveryType === 'delivery')
   )
   const [drivers] = useState<Driver[]>(mockDrivers)
   const [showCompleted, setShowCompleted] = useState(false)
@@ -25,8 +25,8 @@ export default function DriverPortalPage() {
   }, [newDeliveryAlert])
 
   const availableDrivers = drivers.filter(d => d.status === 'available')
-  const deliveryOrders = orders.filter(o => o.status === 'ready' && o.isDelivery)
-  const pickupOrders = mockOrders.filter(o => o.status === 'ready' && !o.isDelivery)
+  const deliveryOrders = orders.filter(o => (o.status === 'ready' || o.status === 'dispatched') && o.deliveryType === 'delivery')
+  const pickupOrders = mockOrders.filter(o => o.status === 'ready' && o.deliveryType === 'pickup')
 
   const handleMarkDelivered = (orderId: string) => {
     setOrders(

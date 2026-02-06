@@ -43,7 +43,7 @@ export function OrdersTable({ orders, title = "Today's Orders" }: OrdersTablePro
                     <Clock className="h-3.5 w-3.5" />
                     <span>{order.pickupTime}</span>
                   </div>
-                  {order.isDelivery && (
+                  {order.deliveryType === 'delivery' && (
                     <div className="flex items-center gap-1 text-xs text-secondary">
                       <MapPin className="h-3 w-3" />
                       <span>Delivery</span>

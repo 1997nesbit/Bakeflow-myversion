@@ -14,6 +14,9 @@ import {
   FileText,
   ChefHat,
   MessageSquare,
+  CreditCard,
+  Truck,
+  AlertTriangle,
 } from 'lucide-react'
 
 interface OrderDetailProps {
@@ -24,8 +27,9 @@ interface OrderDetailProps {
   onMessage?: (order: Order) => void
 }
 
-export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onMessage }: OrderDetailProps) {
-  const isPending = order.status === 'pending'
+export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderDetailProps) {
+  const canPostToBaker = order.status === 'paid'
+  const balanceDue = order.totalPrice - order.amountPaid
 
   return (
     <Card className="border-0 shadow-lg bg-card">
@@ -45,10 +49,10 @@ export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onM
           <X className="h-5 w-5" />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-6 pt-6">
+      <CardContent className="space-y-5 pt-5">
         {/* Customer Info */}
-        <div className="space-y-3">
-          <h3 className="font-medium text-foreground">Customer</h3>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Customer</h3>
           <div className="rounded-lg bg-accent p-4 space-y-2">
             <p className="font-semibold text-foreground">{order.customerName}</p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -65,8 +69,8 @@ export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onM
         </div>
 
         {/* Order Items */}
-        <div className="space-y-3">
-          <h3 className="font-medium text-foreground">Items</h3>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Items</h3>
           <div className="space-y-2">
             {order.items.map((item, index) => (
               <div
@@ -74,36 +78,63 @@ export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onM
                 className="flex items-center justify-between rounded-lg bg-accent p-3"
               >
                 <div>
-                  <p className="font-medium text-foreground">{item.name}</p>
-                  {item.customization && (
-                    <p className="text-sm text-muted-foreground">
-                      {item.customization}
+                  <p className="font-medium text-foreground text-sm">{item.name}</p>
+                  {item.isCustom && item.customCake && (
+                    <p className="text-xs text-muted-foreground">
+                      {item.customCake.flavour} / {item.customCake.icingType} / {item.customCake.kilogram}kg
+                      {item.customCake.description && ` - ${item.customCake.description}`}
                     </p>
+                  )}
+                  {item.customization && (
+                    <p className="text-xs text-muted-foreground">{item.customization}</p>
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-foreground">
+                  <p className="font-medium text-foreground text-sm">
                     ${(item.price * item.quantity).toFixed(2)}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {item.quantity} x ${item.price.toFixed(2)}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between border-t border-border pt-3">
-            <span className="font-medium text-foreground">Total</span>
-            <span className="text-xl font-bold text-secondary">
-              ${order.totalPrice.toFixed(2)}
-            </span>
+        </div>
+
+        {/* Payment */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment</h3>
+          <div className="rounded-lg bg-accent p-4 space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Total</span>
+              <span className="font-bold text-foreground">${order.totalPrice.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Paid</span>
+              <span className="font-bold text-green-600">${order.amountPaid.toFixed(2)}</span>
+            </div>
+            {balanceDue > 0 && (
+              <div className="flex justify-between border-t border-border pt-2">
+                <span className="text-sm font-medium text-secondary">Balance Due</span>
+                <span className="font-bold text-secondary">${balanceDue.toFixed(2)}</span>
+              </div>
+            )}
+            <Badge className={`${
+              order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+              order.paymentStatus === 'deposit' ? 'bg-amber-100 text-amber-800' :
+              'bg-red-100 text-red-800'
+            } border-0`}>
+              <CreditCard className="mr-1 h-3 w-3" />
+              {order.paymentStatus === 'paid' ? 'Fully Paid' : order.paymentStatus === 'deposit' ? '50% Deposit Paid' : 'Unpaid'}
+            </Badge>
           </div>
         </div>
 
-        {/* Pickup / Delivery */}
-        <div className="space-y-3">
-          <h3 className="font-medium text-foreground">
-            {order.isDelivery ? 'Delivery' : 'Pickup'} Details
+        {/* Schedule & Delivery */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'} Details
           </h3>
           <div className="rounded-lg bg-accent p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm">
@@ -114,29 +145,41 @@ export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onM
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-foreground">{order.pickupTime}</span>
             </div>
-            {order.isDelivery && order.deliveryAddress && (
-              <div className="flex items-start gap-2 text-sm">
-                <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div className="flex items-center gap-2 text-sm">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              <span className="text-foreground">{order.deliveryType === 'delivery' ? 'Delivery' : 'Customer Pickup'}</span>
+            </div>
+            {order.deliveryType === 'delivery' && order.deliveryAddress && (
+              <div className="flex items-start gap-2 text-sm pt-1 border-t border-border">
+                <MapPin className="h-4 w-4 mt-0.5 text-secondary" />
                 <span className="text-foreground">{order.deliveryAddress}</span>
               </div>
+            )}
+            {order.isAdvanceOrder && (
+              <Badge className="bg-amber-100 text-amber-800 border-0">
+                <AlertTriangle className="mr-1 h-3 w-3" />
+                Advance Order
+              </Badge>
             )}
           </div>
         </div>
 
+        {/* Time estimate */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          Estimated production: ~{order.estimatedMinutes} minutes
+        </div>
+
         {/* Special Notes */}
         {order.specialNotes && (
-          <div className="space-y-3">
-            <h3 className="font-medium text-foreground">Special Notes</h3>
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-4">
-              <FileText className="h-4 w-4 mt-0.5 text-amber-600" />
-              <p className="text-sm text-amber-800">{order.specialNotes}</p>
-            </div>
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3">
+            <FileText className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800">{order.specialNotes}</p>
           </div>
         )}
 
         {/* Action Buttons */}
         <div className="border-t border-border pt-4 space-y-3">
-          {/* Message Customer Button */}
           {onMessage && (
             <Button
               variant="outline"
@@ -148,8 +191,7 @@ export function OrderDetail({ order, onClose, onUpdateStatus, onPostToBaker, onM
             </Button>
           )}
 
-          {/* Post to Baker Button - only for pending orders */}
-          {isPending && onPostToBaker && (
+          {canPostToBaker && onPostToBaker && (
             <Button
               className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
               onClick={() => onPostToBaker(order.id)}
