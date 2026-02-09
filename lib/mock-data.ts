@@ -59,6 +59,9 @@ export interface Order {
   createdAt: string
   postedToBakerAt?: string
   assignedTo?: string
+  dispatchedAt?: string
+  driverAccepted?: boolean
+  driverDelivered?: boolean
 }
 
 export interface InventoryItem {
