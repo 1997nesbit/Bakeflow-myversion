@@ -1,352 +1,307 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import Link from 'next/link'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  mockInventory,
+  mockStockEntries,
+  mockDailyRollouts,
+  mockSuppliers,
+  type InventoryItem,
+} from '@/lib/mock-data'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { mockInventory, InventoryItem } from '@/lib/mock-data'
-import {
-  Search,
-  Plus,
   Package,
   AlertTriangle,
-  TrendingUp,
   TrendingDown,
-  Edit,
+  TrendingUp,
+  PackagePlus,
+  ScrollText,
+  ArrowRight,
+  DollarSign,
+  BarChart3,
+  Truck,
 } from 'lucide-react'
 
-type CategoryFilter = 'all' | 'ingredient' | 'packaging' | 'finished'
+export default function InventoryDashboard() {
+  const [inventory] = useState<InventoryItem[]>(mockInventory)
+  const [mounted, setMounted] = useState(false)
 
-export default function InventoryPage() {
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
-  const [showRestockModal, setShowRestockModal] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
-  const [restockAmount, setRestockAmount] = useState('')
+  useEffect(() => { setMounted(true) }, [])
 
-  const filteredInventory = inventory.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-    const matchesCategory =
-      categoryFilter === 'all' || item.category === categoryFilter
-    return matchesSearch && matchesCategory
-  })
-
-  const lowStockItems = inventory.filter((item) => item.quantity < item.minStock)
-  const healthyStockItems = inventory.filter(
-    (item) => item.quantity >= item.minStock
-  )
-
-  const handleRestock = () => {
-    if (!selectedItem || !restockAmount) return
-
-    setInventory(
-      inventory.map((item) =>
-        item.id === selectedItem.id
-          ? {
-              ...item,
-              quantity: item.quantity + parseInt(restockAmount),
-              lastRestocked: new Date().toISOString().split('T')[0],
-            }
-          : item
-      )
-    )
-    setShowRestockModal(false)
-    setSelectedItem(null)
-    setRestockAmount('')
-  }
-
-  const openRestockModal = (item: InventoryItem) => {
-    setSelectedItem(item)
-    setRestockAmount('')
-    setShowRestockModal(true)
-  }
-
-  const getStockStatus = (item: InventoryItem) => {
-    const ratio = item.quantity / item.minStock
-    if (ratio < 0.5) return { label: 'Critical', color: 'bg-red-100 text-red-800' }
-    if (ratio < 1) return { label: 'Low', color: 'bg-amber-100 text-amber-800' }
-    return { label: 'Healthy', color: 'bg-green-100 text-green-800' }
-  }
-
-  const categoryLabels: Record<InventoryItem['category'], string> = {
-    ingredient: 'Ingredients',
-    packaging: 'Packaging',
-    finished: 'Finished Products',
-  }
+  const lowStock = inventory.filter(i => i.quantity <= i.minStock)
+  const criticalStock = inventory.filter(i => i.quantity < i.minStock * 0.5)
+  const healthyStock = inventory.filter(i => i.quantity > i.minStock)
+  const totalValue = inventory.reduce((sum, i) => sum + i.quantity * i.costPerUnit, 0)
+  const todayRollouts = mockDailyRollouts.filter(r => r.date === '2026-02-06')
+  const todayRolloutValue = todayRollouts.reduce((sum, r) => {
+    const item = inventory.find(i => i.id === r.inventoryItemId)
+    return sum + r.quantity * (item?.costPerUnit || 0)
+  }, 0)
+  const recentEntries = mockStockEntries.slice(-3).reverse()
 
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
-      <main className="ml-64 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-            <p className="text-muted-foreground">
-              Track ingredients, packaging, and finished products
-            </p>
+      <main className="ml-64">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Inventory Dashboard</h1>
+              <p className="text-xs text-muted-foreground">
+                {mounted ? new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '\u00A0'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/inventory/stock-in">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <PackagePlus className="mr-1.5 h-4 w-4" />
+                  Add Stock
+                </Button>
+              </Link>
+              <Link href="/inventory/rollout">
+                <Button size="sm" variant="outline" className="bg-transparent">
+                  <ScrollText className="mr-1.5 h-4 w-4" />
+                  Rollout
+                </Button>
+              </Link>
+            </div>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
-            <Plus className="mr-2 h-5 w-5" />
-            Add Item
-          </Button>
         </div>
 
-        {/* Stats */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Items</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {inventory.length}
+        <div className="p-6 space-y-6">
+          {/* Critical alerts */}
+          {criticalStock.length > 0 && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <p className="font-semibold text-red-800">
+                  {criticalStock.length} item{criticalStock.length > 1 ? 's' : ''} critically low
                 </p>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100">
-                <TrendingDown className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Low Stock</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {lowStockItems.length}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Healthy Stock</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {healthyStockItems.length}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6 flex gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search inventory..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select
-            value={categoryFilter}
-            onValueChange={(value) => setCategoryFilter(value as CategoryFilter)}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="ingredient">Ingredients</SelectItem>
-              <SelectItem value="packaging">Packaging</SelectItem>
-              <SelectItem value="finished">Finished Products</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Low Stock Alerts */}
-        {lowStockItems.length > 0 && (
-          <Card className="mb-6 border-0 border-l-4 border-l-red-500 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-                Low Stock Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
               <div className="flex flex-wrap gap-2">
-                {lowStockItems.map((item) => (
-                  <Badge
-                    key={item.id}
-                    variant="outline"
-                    className="cursor-pointer border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                    onClick={() => openRestockModal(item)}
-                  >
-                    {item.name}: {item.quantity} {item.unit}
+                {criticalStock.map(item => (
+                  <Badge key={item.id} className="bg-red-100 text-red-800 border-0">
+                    {item.name}: {item.quantity} {item.unit} (min {item.minStock})
                   </Badge>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Inventory Table */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Item
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Category
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Quantity
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Min Stock
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Last Restocked
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredInventory.map((item) => {
-                    const status = getStockStatus(item)
-                    return (
-                      <tr
-                        key={item.id}
-                        className="transition-colors hover:bg-muted/50"
-                      >
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-foreground">
-                            {item.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.id}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className="text-xs">
-                            {categoryLabels[item.category]}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 font-medium text-foreground">
-                          {item.quantity} {item.unit}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {item.minStock} {item.unit}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge className={`${status.color} border-0`}>
-                            {status.label}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {item.lastRestocked}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openRestockModal(item)}
-                            >
-                              <Plus className="mr-1 h-4 w-4" />
-                              Restock
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <Link href="/inventory/alerts" className="inline-block mt-2">
+                <Button size="sm" variant="link" className="text-red-700 p-0 h-auto">
+                  View alerts & reorder <ArrowRight className="ml-1 h-3 w-3" />
+                </Button>
+              </Link>
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {/* Restock Modal */}
-        <Dialog open={showRestockModal} onOpenChange={setShowRestockModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Restock {selectedItem?.name}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Current Stock</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {selectedItem?.quantity} {selectedItem?.unit}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="restockAmount">Add Quantity</Label>
-                <Input
-                  id="restockAmount"
-                  type="number"
-                  min="1"
-                  value={restockAmount}
-                  onChange={(e) => setRestockAmount(e.target.value)}
-                  placeholder={`Enter amount in ${selectedItem?.unit}`}
-                />
-              </div>
-              {restockAmount && (
-                <div className="rounded-lg bg-green-50 p-4">
-                  <p className="text-sm text-green-700">New Stock Level</p>
-                  <p className="text-2xl font-bold text-green-800">
-                    {(selectedItem?.quantity || 0) + parseInt(restockAmount || '0')}{' '}
-                    {selectedItem?.unit}
-                  </p>
+          {/* Metric Cards */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Items</p>
                 </div>
-              )}
+                <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {healthyStock.length} healthy, {lowStock.length} low
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
+                    <TrendingDown className="h-5 w-5 text-red-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Low Stock</p>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{lowStock.length}</p>
+                <p className="text-xs text-red-600 mt-1">
+                  {criticalStock.length} critical
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                    <DollarSign className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Stock Value</p>
+                </div>
+                <p className="text-2xl font-bold text-foreground">${totalValue.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total inventory value
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Today Rollout</p>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{todayRollouts.length} items</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${todayRolloutValue.toFixed(2)} value used
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Two column layout */}
+          <div className="grid gap-6 lg:grid-cols-5">
+            {/* Stock levels - wider column */}
+            <Card className="border-0 shadow-sm lg:col-span-3">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Stock Levels</CardTitle>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-red-500" /> Critical
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" /> Low
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> Healthy
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {inventory.map(item => {
+                  const pct = Math.min((item.quantity / (item.minStock * 2)) * 100, 100)
+                  const ratio = item.quantity / item.minStock
+                  const color = ratio < 0.5 ? 'bg-red-500' : ratio < 1 ? 'bg-amber-500' : 'bg-emerald-500'
+                  return (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <p className="w-36 text-sm font-medium text-foreground truncate">{item.name}</p>
+                      <div className="flex-1 relative">
+                        <Progress value={pct} className="h-2.5 [&>div]:transition-all" />
+                        <div
+                          className={`absolute top-0 left-0 h-2.5 rounded-full ${color} transition-all`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="w-20 text-right text-xs text-muted-foreground">
+                        {item.quantity} / {item.minStock * 2} {item.unit}
+                      </p>
+                      {ratio < 1 && (
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                      )}
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Right column */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Today's rollout */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Today&apos;s Rollout</CardTitle>
+                    <Link href="/inventory/rollout">
+                      <Button size="sm" variant="ghost" className="text-xs h-7">
+                        View all <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {todayRollouts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No rollouts today</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {todayRollouts.map(r => (
+                        <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{r.itemName}</p>
+                            <p className="text-xs text-muted-foreground">{r.purpose}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-secondary">{r.quantity} {r.unit}</p>
+                            <p className="text-xs text-muted-foreground">{r.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent stock-in */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Recent Stock-In</CardTitle>
+                    <Link href="/inventory/stock-in">
+                      <Button size="sm" variant="ghost" className="text-xs h-7">
+                        View all <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2.5">
+                    {recentEntries.map(entry => (
+                      <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{entry.itemName}</p>
+                          <p className="text-xs text-muted-foreground">{entry.supplierName}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-emerald-600">+{entry.quantity} {entry.unit}</p>
+                          <p className="text-xs text-muted-foreground">${entry.totalCost.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Suppliers */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Suppliers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2.5">
+                    {mockSuppliers.map(s => (
+                      <div key={s.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">{s.products.length} products</p>
+                        </div>
+                        <a href={`tel:${s.phone}`}>
+                          <Button size="sm" variant="outline" className="text-xs h-7 bg-transparent">
+                            <Truck className="mr-1 h-3 w-3" />
+                            Call
+                          </Button>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowRestockModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="bg-primary hover:bg-primary/90"
-                onClick={handleRestock}
-                disabled={!restockAmount}
-              >
-                Confirm Restock
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       </main>
     </div>
   )
