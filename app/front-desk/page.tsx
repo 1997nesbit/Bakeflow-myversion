@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AppSidebar } from '@/components/app-sidebar'
+import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -90,7 +90,7 @@ export default function FrontDeskDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar />
+      <FrontDeskSidebar />
       <main className="ml-64">
         {/* ===== TOP BAR ===== */}
         <div className="sticky top-0 z-30 border-b border-border bg-card px-6 py-4">

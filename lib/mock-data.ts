@@ -412,6 +412,62 @@ export const orderTypeLabels: Record<OrderType, string> = {
   custom: 'Custom Order',
 }
 
+// ---- EXPENSES ----
+export type ExpenseCategory =
+  | 'utilities'
+  | 'rent'
+  | 'salaries'
+  | 'equipment'
+  | 'maintenance'
+  | 'transport'
+  | 'marketing'
+  | 'licenses'
+  | 'cleaning'
+  | 'miscellaneous'
+
+export const expenseCategories: { value: ExpenseCategory; label: string }[] = [
+  { value: 'utilities', label: 'Utilities (Water, Electric, Gas)' },
+  { value: 'rent', label: 'Rent & Lease' },
+  { value: 'salaries', label: 'Salaries & Wages' },
+  { value: 'equipment', label: 'Equipment & Tools' },
+  { value: 'maintenance', label: 'Repairs & Maintenance' },
+  { value: 'transport', label: 'Transport & Fuel' },
+  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'licenses', label: 'Licenses & Permits' },
+  { value: 'cleaning', label: 'Cleaning & Sanitation' },
+  { value: 'miscellaneous', label: 'Miscellaneous' },
+]
+
+export interface Expense {
+  id: string
+  title: string
+  category: ExpenseCategory
+  amount: number
+  date: string
+  paidTo: string
+  paymentMethod: 'cash' | 'bank_transfer' | 'mobile_money' | 'cheque'
+  receiptRef?: string
+  notes?: string
+  recurring: boolean
+  recurringPeriod?: 'weekly' | 'monthly' | 'yearly'
+  addedBy: string
+}
+
+export const mockExpenses: Expense[] = [
+  { id: 'EXP-001', title: 'Electricity Bill - January', category: 'utilities', amount: 280, date: '2026-01-31', paidTo: 'City Power Co.', paymentMethod: 'bank_transfer', receiptRef: 'CP-2026-0131', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+  { id: 'EXP-002', title: 'Water Bill - January', category: 'utilities', amount: 85, date: '2026-01-31', paidTo: 'Municipal Water', paymentMethod: 'bank_transfer', receiptRef: 'MW-2026-0131', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+  { id: 'EXP-003', title: 'Shop Rent - February', category: 'rent', amount: 2500, date: '2026-02-01', paidTo: 'Greenfield Properties', paymentMethod: 'bank_transfer', receiptRef: 'GFP-2026-0201', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+  { id: 'EXP-004', title: 'Baker John - February Salary', category: 'salaries', amount: 1800, date: '2026-02-01', paidTo: 'Baker John', paymentMethod: 'bank_transfer', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+  { id: 'EXP-005', title: 'Front Desk Sarah - February Salary', category: 'salaries', amount: 1200, date: '2026-02-01', paidTo: 'Front Desk Sarah', paymentMethod: 'bank_transfer', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+  { id: 'EXP-006', title: 'Oven Repair', category: 'maintenance', amount: 350, date: '2026-02-03', paidTo: 'QuickFix Appliances', paymentMethod: 'cash', receiptRef: 'QFA-0203', notes: 'Replaced heating element in oven #2', recurring: false, addedBy: 'Manager Admin' },
+  { id: 'EXP-007', title: 'Delivery Fuel - Week 5', category: 'transport', amount: 120, date: '2026-02-04', paidTo: 'Shell Station', paymentMethod: 'cash', recurring: false, addedBy: 'Store Clerk Mary' },
+  { id: 'EXP-008', title: 'Instagram Ad Campaign', category: 'marketing', amount: 200, date: '2026-02-05', paidTo: 'Meta Ads', paymentMethod: 'bank_transfer', receiptRef: 'META-0205', notes: 'Valentine promo campaign', recurring: false, addedBy: 'Manager Admin' },
+  { id: 'EXP-009', title: 'Health Inspection License Renewal', category: 'licenses', amount: 150, date: '2026-01-15', paidTo: 'City Health Dept', paymentMethod: 'bank_transfer', receiptRef: 'CHD-2026-0115', recurring: true, recurringPeriod: 'yearly', addedBy: 'Manager Admin' },
+  { id: 'EXP-010', title: 'Deep Cleaning Service', category: 'cleaning', amount: 180, date: '2026-02-02', paidTo: 'SparkClean Services', paymentMethod: 'mobile_money', receiptRef: 'SC-0202', recurring: true, recurringPeriod: 'weekly', addedBy: 'Store Clerk Mary' },
+  { id: 'EXP-011', title: 'New Cake Stand Display', category: 'equipment', amount: 75, date: '2026-02-06', paidTo: 'Baker Supply Store', paymentMethod: 'cash', notes: '3-tier acrylic display', recurring: false, addedBy: 'Manager Admin' },
+  { id: 'EXP-012', title: 'Gas Bill - January', category: 'utilities', amount: 190, date: '2026-01-31', paidTo: 'National Gas', paymentMethod: 'bank_transfer', receiptRef: 'NG-2026-0131', recurring: true, recurringPeriod: 'monthly', addedBy: 'Manager Admin' },
+]
+
 // Helper: days until order is due
 export function daysUntilDue(pickupDate: string): number {
   const today = new Date()

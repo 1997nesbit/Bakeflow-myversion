@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AppSidebar } from '@/components/app-sidebar'
+import { InventorySidebar } from '@/components/inventory/inventory-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -93,7 +93,7 @@ export default function DailyRolloutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar />
+      <InventorySidebar />
       <main className="ml-64">
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">

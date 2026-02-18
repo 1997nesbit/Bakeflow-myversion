@@ -1,6 +1,6 @@
 'use client'
 
-import { AppSidebar } from '@/components/app-sidebar'
+import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,7 @@ import {
 export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar />
+      <FrontDeskSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { AppSidebar } from '@/components/app-sidebar'
+import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -101,7 +101,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar />
+      <FrontDeskSidebar />
       <main className="ml-64 p-6">
         {/* Header */}
         <div className="mb-6">

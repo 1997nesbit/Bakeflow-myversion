@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AppSidebar } from '@/components/app-sidebar'
+import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -127,7 +127,7 @@ export default function MessagingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar />
+      <FrontDeskSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
