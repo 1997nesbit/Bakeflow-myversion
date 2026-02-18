@@ -9,7 +9,6 @@ import {
   Settings,
   ChefHat,
   Palette,
-  ClipboardCheck,
   PackageCheck,
   Search,
   PlusCircle,
@@ -44,7 +43,6 @@ const inventorySubNav = [
 const portalNavigation = [
   { name: 'Baker Portal', href: '/portal/baker', icon: ChefHat },
   { name: 'Decorator Portal', href: '/portal/decorator', icon: Palette },
-  { name: 'Quality Check', href: '/portal/quality', icon: ClipboardCheck },
   { name: 'Packing Portal', href: '/portal/packing', icon: PackageCheck },
   { name: 'Driver Portal', href: '/portal/driver', icon: Truck },
 ]
