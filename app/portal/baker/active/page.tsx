@@ -38,7 +38,8 @@ export default function BakerActivePage() {
     mockOrders.filter((o) => ['baker', 'quality'].includes(o.status))
   )
   const [timers, setTimers] = useState<Record<string, TimerState>>({})
-  const [now, setNow] = useState<number>(Date.now())
+  const [now, setNow] = useState<number>(0)
+  const [mounted, setMounted] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectNote, setRejectNote] = useState('')
@@ -46,12 +47,14 @@ export default function BakerActivePage() {
   const [activeTab, setActiveTab] = useState('incoming')
 
   useEffect(() => {
+    setMounted(true)
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
-  // Check overdue
   useEffect(() => {
+    if (!mounted) return
     const baking = orders.filter((o) => o.status === 'baker' && o.postedToBakerAt)
     for (const o of baking) {
       const t = timers[o.id]
@@ -62,9 +65,8 @@ export default function BakerActivePage() {
         }
       }
     }
-  }, [now, orders, timers, overduePopup])
+  }, [now, orders, timers, overduePopup, mounted])
 
-  // Auto-switch to relevant tab
   useEffect(() => {
     const incoming = orders.filter((o) => o.status === 'baker' && !o.postedToBakerAt)
     const baking = orders.filter((o) => o.status === 'baker' && o.postedToBakerAt)
@@ -75,7 +77,7 @@ export default function BakerActivePage() {
   const getTimerDisplay = useCallback(
     (orderId: string, estimatedMin: number) => {
       const t = timers[orderId]
-      if (!t) return { min: 0, sec: 0, pct: 0, running: false, overdue: false }
+      if (!t || !mounted) return { min: 0, sec: 0, pct: 0, running: false, overdue: false }
       const totalMs = t.running ? now - t.startedAt + t.elapsed : t.elapsed
       const totalSec = Math.floor(totalMs / 1000)
       const min = Math.floor(totalSec / 60)
@@ -83,7 +85,7 @@ export default function BakerActivePage() {
       const pct = Math.min(100, Math.round((min / estimatedMin) * 100))
       return { min, sec, pct, running: t.running, overdue: min > estimatedMin }
     },
-    [now, timers]
+    [now, timers, mounted]
   )
 
   const showToast = (msg: string) => {
@@ -120,7 +122,6 @@ export default function BakerActivePage() {
     })
   }
 
-  // Baking done -> QA
   const handleSendToQA = (orderId: string) => {
     handlePauseTimer(orderId)
     setOrders((prev) =>
@@ -130,7 +131,6 @@ export default function BakerActivePage() {
     showToast('Baking complete. Moved to QA inspection.')
   }
 
-  // QA pass -> decorator
   const handleQAPass = (orderId: string) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'decorator' as Order['status'] } : o))
@@ -138,7 +138,6 @@ export default function BakerActivePage() {
     showToast('QA Passed! Sent to Decorator.')
   }
 
-  // QA fail -> back to baking
   const handleQAFail = (orderId: string) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'baker' as Order['status'], postedToBakerAt: new Date().toISOString() } : o))
@@ -154,27 +153,27 @@ export default function BakerActivePage() {
   const qaOrders = orders.filter((o) => o.status === 'quality')
 
   return (
-    <div className="min-h-screen bg-amber-50/40">
+    <div className="min-h-screen" style={{ background: '#fdf2f4' }}>
       <BakerSidebar />
       <main className="ml-64">
         {/* Overdue Popup */}
         {overduePopup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <Card className="w-full max-w-md mx-4 border-2 border-red-500 shadow-2xl bg-card">
+            <Card className="w-full max-w-md mx-4 border-2 shadow-2xl bg-card" style={{ borderColor: '#CA0123' }}>
               <CardContent className="p-6 text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 animate-bounce">
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full animate-bounce" style={{ background: '#fce7ea' }}>
+                  <AlertTriangle className="h-8 w-8" style={{ color: '#CA0123' }} />
                 </div>
-                <h2 className="text-xl font-bold text-red-700 text-balance">Order Overdue!</h2>
+                <h2 className="text-xl font-bold text-balance" style={{ color: '#CA0123' }}>Order Overdue!</h2>
                 <p className="text-sm text-muted-foreground">
                   Order <span className="font-bold text-foreground">{overduePopup.id}</span> for{' '}
                   <span className="font-bold text-foreground">{overduePopup.customerName}</span> has exceeded
                   its estimated time of <span className="font-bold">{overduePopup.estimatedMinutes} minutes</span>.
                 </p>
-                <div className="rounded-lg bg-red-50 p-3">
-                  <p className="text-sm text-red-800">Front Desk has been notified automatically.</p>
+                <div className="rounded-lg p-3" style={{ background: '#fce7ea' }}>
+                  <p className="text-sm" style={{ color: '#CA0123' }}>Front Desk has been notified automatically.</p>
                 </div>
-                <Button className="w-full bg-red-600 hover:bg-red-700 text-white border-0" onClick={() => setOverduePopup(null)}>
+                <Button className="w-full text-white border-0" style={{ background: '#CA0123' }} onClick={() => setOverduePopup(null)}>
                   Acknowledged
                 </Button>
               </CardContent>
@@ -185,7 +184,7 @@ export default function BakerActivePage() {
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
               <Flame className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -199,16 +198,21 @@ export default function BakerActivePage() {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
             <TabsList className="bg-card border border-border h-11">
-              <TabsTrigger value="incoming" className="gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+              <TabsTrigger
+                value="incoming"
+                className="gap-2 data-[state=active]:text-white"
+                style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}
+                data-active-bg="#e66386"
+              >
                 <Inbox className="h-4 w-4" />
                 Incoming
                 {incomingOrders.length > 0 && (
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full text-white text-[10px] font-bold px-1" style={{ background: '#CA0123' }}>
                     {incomingOrders.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="baking" className="gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+              <TabsTrigger value="baking" className="gap-2 data-[state=active]:text-white">
                 <Flame className="h-4 w-4" />
                 Baking
                 {bakingOrders.length > 0 && (
@@ -217,7 +221,7 @@ export default function BakerActivePage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="qa" className="gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="qa" className="gap-2 data-[state=active]:text-white">
                 <CheckCircle className="h-4 w-4" />
                 Quality Check
                 {qaOrders.length > 0 && (
@@ -228,7 +232,7 @@ export default function BakerActivePage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* ============ INCOMING TAB ============ */}
+            {/* INCOMING TAB */}
             <TabsContent value="incoming" className="mt-0 space-y-4">
               {incomingOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
@@ -239,8 +243,8 @@ export default function BakerActivePage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {incomingOrders.map((order) => (
-                    <Card key={order.id} className="border-2 border-amber-300 bg-amber-50/50 shadow-sm overflow-hidden">
-                      <div className="bg-amber-500 px-4 py-2 flex items-center gap-2">
+                    <Card key={order.id} className="border-2 shadow-sm overflow-hidden" style={{ borderColor: '#fbd5db', background: '#fdf2f4' }}>
+                      <div className="px-4 py-2 flex items-center gap-2" style={{ background: '#e66386' }}>
                         <Bell className="h-4 w-4 text-white" />
                         <p className="text-xs font-semibold text-white">New Order from Front Desk</p>
                       </div>
@@ -268,8 +272,8 @@ export default function BakerActivePage() {
                               </div>
                               {item.isCustom && item.customCake && (
                                 <div className="flex items-center gap-1.5 mt-1.5">
-                                  <Cake className="h-3 w-3 text-pink-600 shrink-0" />
-                                  <p className="text-xs text-pink-700">
+                                  <Cake className="h-3 w-3 shrink-0" style={{ color: '#e66386' }} />
+                                  <p className="text-xs" style={{ color: '#CA0123' }}>
                                     {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
                                   </p>
                                 </div>
@@ -279,9 +283,9 @@ export default function BakerActivePage() {
                         </div>
 
                         {order.specialNotes && (
-                          <div className="flex items-start gap-2 rounded-lg bg-amber-100/50 border border-amber-200 p-3">
-                            <FileText className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
-                            <p className="text-xs text-amber-800">{order.specialNotes}</p>
+                          <div className="flex items-start gap-2 rounded-lg border p-3" style={{ background: '#fce7ea', borderColor: '#fbd5db' }}>
+                            <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
+                            <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
                           </div>
                         )}
 
@@ -291,7 +295,8 @@ export default function BakerActivePage() {
                         </div>
 
                         <Button
-                          className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0 text-base"
+                          className="w-full h-12 text-white border-0 text-base"
+                          style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
                           onClick={() => handleAcceptOrder(order.id)}
                         >
                           <ThumbsUp className="mr-2 h-5 w-5" />
@@ -304,7 +309,7 @@ export default function BakerActivePage() {
               )}
             </TabsContent>
 
-            {/* ============ BAKING TAB ============ */}
+            {/* BAKING TAB */}
             <TabsContent value="baking" className="mt-0 space-y-4">
               {bakingOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
@@ -320,9 +325,11 @@ export default function BakerActivePage() {
                     return (
                       <Card
                         key={order.id}
-                        className={`border-2 shadow-sm transition-all ${
-                          td.overdue ? 'border-red-400 bg-red-50/50' : td.running ? 'border-orange-300 bg-orange-50/30' : 'border-border bg-card'
-                        }`}
+                        className="border-2 shadow-sm transition-all"
+                        style={{
+                          borderColor: td.overdue ? '#CA0123' : td.running ? '#e66386' : undefined,
+                          background: td.overdue ? '#fdf2f4' : td.running ? '#fdf2f4' : undefined,
+                        }}
                       >
                         <CardContent className="p-5 space-y-4">
                           <div className="flex items-start justify-between">
@@ -334,24 +341,27 @@ export default function BakerActivePage() {
                               <p className="text-sm text-muted-foreground">{order.customerName}</p>
                             </div>
                             {td.overdue ? (
-                              <Badge className="bg-red-600 text-white border-0 animate-pulse text-xs">OVERDUE</Badge>
+                              <Badge className="text-white border-0 animate-pulse text-xs" style={{ background: '#CA0123' }}>OVERDUE</Badge>
                             ) : td.running ? (
-                              <Badge className="bg-orange-500 text-white border-0 text-xs">BAKING</Badge>
+                              <Badge className="text-white border-0 text-xs" style={{ background: '#e66386' }}>BAKING</Badge>
                             ) : (
                               <Badge variant="outline" className="bg-transparent text-xs">READY</Badge>
                             )}
                           </div>
 
                           {/* Timer */}
-                          <div className={`rounded-xl p-5 text-center ${td.overdue ? 'bg-red-100' : 'bg-muted/50'}`}>
-                            <p className={`text-5xl font-mono font-bold tabular-nums ${td.overdue ? 'text-red-700' : 'text-foreground'}`}>
+                          <div className="rounded-xl p-5 text-center" style={{ background: td.overdue ? '#fce7ea' : '#fdf2f4' }}>
+                            <p className="text-5xl font-mono font-bold tabular-nums" style={{ color: td.overdue ? '#CA0123' : undefined }}>
                               {String(td.min).padStart(2, '0')}:{String(td.sec).padStart(2, '0')}
                             </p>
                             <p className="text-xs text-muted-foreground mt-2">Estimated: {order.estimatedMinutes} min</p>
                             <div className="mt-3 h-2 rounded-full bg-border overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-1000 ${td.overdue ? 'bg-red-500' : td.pct > 75 ? 'bg-amber-500' : 'bg-green-500'}`}
-                                style={{ width: `${td.pct}%` }}
+                                className="h-full rounded-full transition-all duration-1000"
+                                style={{
+                                  width: `${td.pct}%`,
+                                  background: td.overdue ? '#CA0123' : td.pct > 75 ? '#e66386' : '#22c55e',
+                                }}
                               />
                             </div>
                           </div>
@@ -378,7 +388,7 @@ export default function BakerActivePage() {
                                   <span className="text-xs text-muted-foreground">x{item.quantity}</span>
                                 </div>
                                 {item.isCustom && item.customCake && (
-                                  <p className="text-xs text-pink-700 mt-1 flex items-center gap-1">
+                                  <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#e66386' }}>
                                     <Cake className="h-3 w-3" />
                                     {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
                                   </p>
@@ -388,19 +398,20 @@ export default function BakerActivePage() {
                           </div>
 
                           {order.specialNotes && (
-                            <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
-                              <FileText className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
-                              <p className="text-xs text-amber-800">{order.specialNotes}</p>
+                            <div className="flex items-start gap-2 rounded-lg border p-3" style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}>
+                              <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
+                              <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
                             </div>
                           )}
 
                           {/* Action: Done Baking -> QA */}
                           <Button
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0"
+                            className="w-full text-white border-0"
+                            style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
                             onClick={() => handleSendToQA(order.id)}
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Done Baking &rarr; QA Check
+                            {'Done Baking \u2192 QA Check'}
                           </Button>
                         </CardContent>
                       </Card>
@@ -410,7 +421,7 @@ export default function BakerActivePage() {
               )}
             </TabsContent>
 
-            {/* ============ QA TAB ============ */}
+            {/* QA TAB */}
             <TabsContent value="qa" className="mt-0 space-y-4">
               {qaOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
@@ -421,8 +432,8 @@ export default function BakerActivePage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {qaOrders.map((order) => (
-                    <Card key={order.id} className="border-2 border-blue-300 bg-card shadow-sm overflow-hidden">
-                      <div className="bg-blue-600 px-4 py-2 flex items-center gap-2">
+                    <Card key={order.id} className="border-2 shadow-sm overflow-hidden" style={{ borderColor: '#e66386' }}>
+                      <div className="px-4 py-2 flex items-center gap-2" style={{ background: '#e66386' }}>
                         <CheckCircle className="h-4 w-4 text-white" />
                         <p className="text-xs font-semibold text-white">Quality Assurance Check</p>
                       </div>
@@ -437,13 +448,13 @@ export default function BakerActivePage() {
 
                         <div className="space-y-2">
                           {order.items.map((item, idx) => (
-                            <div key={idx} className="rounded-lg bg-blue-50 border border-blue-100 p-3">
+                            <div key={idx} className="rounded-lg border p-3" style={{ background: '#fdf2f4', borderColor: '#fce7ea' }}>
                               <div className="flex items-start justify-between">
                                 <p className="font-medium text-sm text-foreground">{item.name}</p>
                                 <span className="text-xs text-muted-foreground">x{item.quantity}</span>
                               </div>
                               {item.isCustom && item.customCake && (
-                                <p className="text-xs text-pink-700 mt-1">
+                                <p className="text-xs mt-1" style={{ color: '#e66386' }}>
                                   {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
                                   {item.customCake.description && ` - ${item.customCake.description}`}
                                 </p>
@@ -453,15 +464,15 @@ export default function BakerActivePage() {
                         </div>
 
                         {order.specialNotes && (
-                          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3">
-                            <FileText className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
-                            <p className="text-xs text-amber-800">{order.specialNotes}</p>
+                          <div className="flex items-start gap-2 rounded-lg p-3" style={{ background: '#fdf2f4' }}>
+                            <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
+                            <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
                           </div>
                         )}
 
-                        <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
-                          <p className="text-sm font-medium text-blue-900 mb-2">QA Checklist</p>
-                          <div className="space-y-1.5 text-xs text-blue-800">
+                        <div className="rounded-xl border p-4" style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}>
+                          <p className="text-sm font-medium mb-2" style={{ color: '#CA0123' }}>QA Checklist</p>
+                          <div className="space-y-1.5 text-xs" style={{ color: '#e66386' }}>
                             <p>{'- Correct flavour and icing as per order?'}</p>
                             <p>{'- Proper texture, colour, and consistency?'}</p>
                             <p>{'- Correct weight/size?'}</p>
@@ -483,7 +494,7 @@ export default function BakerActivePage() {
                               </Button>
                               <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleQAFail(order.id)}>
                                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                                Fail &rarr; Re-bake
+                                {'Fail \u2192 Re-bake'}
                               </Button>
                             </div>
                           </div>
@@ -491,18 +502,20 @@ export default function BakerActivePage() {
                           <div className="flex gap-3">
                             <Button
                               variant="outline"
-                              className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 bg-transparent"
+                              className="flex-1 bg-transparent"
+                              style={{ borderColor: '#fbd5db', color: '#CA0123' }}
                               onClick={() => setRejectingId(order.id)}
                             >
                               <XCircle className="mr-1.5 h-4 w-4" />
                               Fail QA
                             </Button>
                             <Button
-                              className="flex-1 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white border-0"
+                              className="flex-1 text-white border-0"
+                              style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
                               onClick={() => handleQAPass(order.id)}
                             >
                               <Palette className="mr-1.5 h-4 w-4" />
-                              Pass &rarr; Decorator
+                              {'Pass \u2192 Decorator'}
                             </Button>
                           </div>
                         )}
@@ -517,7 +530,7 @@ export default function BakerActivePage() {
 
         {/* Toast */}
         {toastMsg && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-foreground px-5 py-3 text-background shadow-lg animate-in slide-in-from-bottom-4">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl px-5 py-3 text-white shadow-lg animate-in slide-in-from-bottom-4" style={{ background: '#CA0123' }}>
             <CheckCircle className="h-5 w-5" />
             <span className="text-sm font-medium">{toastMsg}</span>
           </div>

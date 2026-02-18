@@ -21,7 +21,6 @@ import {
 export default function BakerHistoryPage() {
   const [query, setQuery] = useState('')
 
-  // Orders that have passed through baker (now at decorator or beyond)
   const completedOrders = mockOrders.filter((o) =>
     ['decorator', 'packing', 'ready', 'dispatched', 'delivered'].includes(o.status)
   )
@@ -40,12 +39,12 @@ export default function BakerHistoryPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-amber-50/40">
+    <div className="min-h-screen" style={{ background: '#fdf2f4' }}>
       <BakerSidebar />
       <main className="ml-64 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
             <History className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -60,8 +59,8 @@ export default function BakerHistoryPage() {
         <div className="grid grid-cols-3 gap-4">
           <Card className="border-0 shadow-sm bg-card">
             <CardContent className="p-4 flex items-center gap-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#fce7ea' }}>
+                <CheckCircle className="h-5 w-5" style={{ color: '#CA0123' }} />
               </span>
               <div>
                 <p className="text-2xl font-bold text-foreground">{completedOrders.length}</p>
@@ -71,8 +70,8 @@ export default function BakerHistoryPage() {
           </Card>
           <Card className="border-0 shadow-sm bg-card">
             <CardContent className="p-4 flex items-center gap-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100">
-                <Cake className="h-5 w-5 text-pink-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#fce7ea' }}>
+                <Cake className="h-5 w-5" style={{ color: '#e66386' }} />
               </span>
               <div>
                 <p className="text-2xl font-bold text-foreground">{totalCustom} / {totalMenu}</p>
@@ -82,8 +81,8 @@ export default function BakerHistoryPage() {
           </Card>
           <Card className="border-0 shadow-sm bg-card">
             <CardContent className="p-4 flex items-center gap-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                <TrendingUp className="h-5 w-5 text-amber-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#fce7ea' }}>
+                <TrendingUp className="h-5 w-5" style={{ color: '#CA0123' }} />
               </span>
               <div>
                 <p className="text-2xl font-bold text-foreground">{avgTime}m</p>
@@ -111,11 +110,14 @@ export default function BakerHistoryPage() {
               <Card key={order.id} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 ${order.orderType === 'custom' ? 'bg-pink-100' : 'bg-amber-100'}`}>
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+                      style={{ background: order.orderType === 'custom' ? '#fce7ea' : '#fdf2f4' }}
+                    >
                       {order.orderType === 'custom' ? (
-                        <Cake className="h-5 w-5 text-pink-700" />
+                        <Cake className="h-5 w-5" style={{ color: '#e66386' }} />
                       ) : (
-                        <CheckCircle className="h-5 w-5 text-amber-700" />
+                        <CheckCircle className="h-5 w-5" style={{ color: '#CA0123' }} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -142,7 +144,7 @@ export default function BakerHistoryPage() {
                         <Calendar className="h-3 w-3" />
                         {order.pickupDate}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-pink-600 justify-end">
+                      <div className="flex items-center gap-1 text-xs justify-end" style={{ color: '#e66386' }}>
                         <Palette className="h-3 w-3" />
                         Sent to Decorator
                       </div>
@@ -150,7 +152,7 @@ export default function BakerHistoryPage() {
                   </div>
                   {order.specialNotes && (
                     <div className="flex items-start gap-2 mt-3 pt-3 border-t border-border">
-                      <FileText className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                      <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
                       <p className="text-xs text-muted-foreground">{order.specialNotes}</p>
                     </div>
                   )}

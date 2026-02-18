@@ -4,12 +4,8 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Package,
-  Truck,
   MessageSquare,
   Settings,
-  ChefHat,
-  Palette,
-  PackageCheck,
   Search,
   PlusCircle,
   ChevronDown,
@@ -40,12 +36,7 @@ const inventorySubNav = [
   { name: 'Access & Roles', href: '/inventory/access', icon: Users },
 ]
 
-const portalNavigation = [
-  { name: 'Baker Portal', href: '/portal/baker', icon: ChefHat },
-  { name: 'Decorator Portal', href: '/portal/decorator', icon: Palette },
-  { name: 'Packing Portal', href: '/portal/packing', icon: PackageCheck },
-  { name: 'Driver Portal', href: '/portal/driver', icon: Truck },
-]
+
 
 function SidebarSection({
   label,
@@ -156,29 +147,7 @@ export function AppSidebar() {
             pathname={pathname}
           />
 
-          <div>
-            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-              Portals
-            </p>
-            {portalNavigation.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </div>
+
         </nav>
       </div>
     </aside>

@@ -33,21 +33,19 @@ export default function BakerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
-      <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #CA0123 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fdf2f4 0%, #fce7ea 40%, #fbd5db 100%)' }}>
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #CA0123 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
 
       <Card className="relative w-full max-w-md mx-4 shadow-2xl border-0 bg-card">
         <CardContent className="p-8">
-          {/* Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
               <ChefHat className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Baker Portal</h1>
             <p className="mt-1 text-sm text-muted-foreground">Bbr Bakeflow Kitchen Access</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="username" className="text-sm font-medium text-foreground">Username</Label>
@@ -89,7 +87,8 @@ export default function BakerLoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 text-base bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0"
+              className="w-full h-12 text-base text-white border-0"
+              style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
             >
               {loading ? (
                 <span className="flex items-center gap-2">

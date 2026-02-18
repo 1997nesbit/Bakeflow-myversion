@@ -44,9 +44,8 @@ export function BakerSidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-amber-600 to-orange-700">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64" style={{ background: 'linear-gradient(to bottom, #CA0123, #e66386)' }}>
       <div className="flex h-full flex-col">
-        {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-white/20 px-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
             <ChefHat className="h-6 w-6 text-white" />
@@ -57,18 +56,16 @@ export function BakerSidebar() {
           </div>
         </div>
 
-        {/* Profile */}
         <div className="flex items-center gap-3 border-b border-white/20 px-6 py-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
             <User className="h-5 w-5 text-white" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{bakerName}</p>
-            <p className="text-xs text-white/60">Baker / QA</p>
+            <p className="text-xs text-white/60">{'Baker / QA'}</p>
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {bakerNav.map((item) => {
             const isActive = pathname === item.href
@@ -90,7 +87,6 @@ export function BakerSidebar() {
           })}
         </nav>
 
-        {/* Logout */}
         <div className="border-t border-white/20 p-3">
           <button
             type="button"
