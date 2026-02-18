@@ -40,9 +40,10 @@ import {
 
 export default function FrontDeskDashboard() {
   const [orders] = useState<Order[]>(mockOrders)
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
 
   useEffect(() => {
+    setCurrentTime(new Date())
     const interval = setInterval(() => setCurrentTime(new Date()), 30000)
     return () => clearInterval(interval)
   }, [])
@@ -92,9 +93,9 @@ export default function FrontDeskDashboard() {
             <div>
               <h1 className="text-xl font-bold text-foreground">Front Desk</h1>
               <p className="text-xs text-muted-foreground">
-                {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                {' \u00B7 '}
-                {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                {currentTime
+                  ? `${currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} \u00B7 ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                  : '\u00A0'}
               </p>
             </div>
             <div className="flex items-center gap-3">
