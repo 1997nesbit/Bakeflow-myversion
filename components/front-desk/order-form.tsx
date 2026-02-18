@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, X, ShoppingCart, Cake, CreditCard, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, X, ShoppingCart, Cake, CreditCard, AlertTriangle, Save } from 'lucide-react'
 import {
   OrderType,
   DeliveryType,
@@ -52,7 +52,6 @@ export interface NewOrderData {
 }
 
 export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
-  // Step: 1=items, 2=details, 3=payment
   const [step, setStep] = useState(1)
   const [menuFilter, setMenuFilter] = useState<string>('all')
 
@@ -72,9 +71,6 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
   const [customKg, setCustomKg] = useState(1)
   const [customPrice, setCustomPrice] = useState(0)
   const [customDesc, setCustomDesc] = useState('')
-
-  // Payment
-  const [paymentMethod, setPaymentMethod] = useState<'full' | 'deposit'>('full')
 
   const totalPrice = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.price, 0),
@@ -150,27 +146,34 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
     ? bakeryMenu
     : bakeryMenu.filter((m) => m.category === menuFilter)
 
-  const handleSubmit = () => {
-    const amountPaid = paymentMethod === 'full' ? totalPrice : Math.ceil(totalPrice / 2)
-    const paymentStatus = paymentMethod === 'full' ? 'paid' as const : 'deposit' as const
+  const buildOrderData = (paymentStatus: 'unpaid' | 'deposit' | 'paid', amountPaid: number): NewOrderData => ({
+    customerName,
+    customerPhone,
+    customerEmail: customerEmail || undefined,
+    orderType: items.some((i) => i.isCustom) ? 'custom' : 'menu',
+    items,
+    specialNotes: specialNotes || undefined,
+    pickupDate,
+    pickupTime,
+    deliveryType,
+    deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : undefined,
+    totalPrice,
+    amountPaid,
+    paymentStatus,
+    isAdvanceOrder: isAdvance,
+    estimatedMinutes,
+  })
 
-    onSubmit({
-      customerName,
-      customerPhone,
-      customerEmail: customerEmail || undefined,
-      orderType: items.some((i) => i.isCustom) ? 'custom' : 'menu',
-      items,
-      specialNotes: specialNotes || undefined,
-      pickupDate,
-      pickupTime,
-      deliveryType,
-      deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : undefined,
-      totalPrice,
-      amountPaid,
-      paymentStatus,
-      isAdvanceOrder: isAdvance,
-      estimatedMinutes,
-    })
+  const handleSubmitPaid = () => {
+    onSubmit(buildOrderData('paid', totalPrice))
+  }
+
+  const handleSubmitDeposit = () => {
+    onSubmit(buildOrderData('deposit', Math.ceil(totalPrice / 2)))
+  }
+
+  const handleSaveUnpaid = () => {
+    onSubmit(buildOrderData('unpaid', 0))
   }
 
   const canProceedStep1 = items.length > 0
@@ -182,7 +185,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
         <div>
           <CardTitle className="text-xl font-semibold text-foreground">New Order</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Step {step} of 3 - {step === 1 ? 'Select Items' : step === 2 ? 'Customer & Delivery' : 'Payment'}
+            Step {step} of 3 - {step === 1 ? 'Select Items' : step === 2 ? 'Customer & Delivery' : 'Payment & Save'}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -218,7 +221,6 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 </TabsTrigger>
               </TabsList>
 
-              {/* MENU TAB */}
               <TabsContent value="menu" className="space-y-4 mt-4">
                 <div className="flex flex-wrap gap-2">
                   {['all', 'cake', 'bread', 'pastry', 'snack'].map((cat) => (
@@ -260,7 +262,6 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 </div>
               </TabsContent>
 
-              {/* CUSTOM CAKE TAB */}
               <TabsContent value="custom" className="space-y-4 mt-4">
                 <div className="rounded-lg bg-accent/50 border border-border p-4 space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -517,42 +518,74 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
               </div>
             </div>
 
-            {/* Payment Method */}
+            {/* Payment Options */}
             <div className="space-y-3">
               <h3 className="font-medium text-foreground flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 Payment
               </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+
+              <div className="grid gap-3">
+                {/* Full Payment */}
                 <button
                   type="button"
-                  className={`rounded-lg border-2 p-4 text-left transition-colors ${
-                    paymentMethod === 'full'
-                      ? 'border-primary bg-accent'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => setPaymentMethod('full')}
+                  className="rounded-xl border-2 border-green-300 bg-green-50 p-4 text-left transition-all hover:border-green-500 hover:shadow-sm"
+                  onClick={handleSubmitPaid}
                 >
-                  <p className="font-semibold text-foreground">Full Payment</p>
-                  <p className="text-xl font-bold text-secondary mt-1">${totalPrice.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Pay full amount now</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-green-900">Full Payment</p>
+                      <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to Post to Baker queue.</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-green-800">${totalPrice.toFixed(2)}</p>
+                      <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
+                    </div>
+                  </div>
                 </button>
 
+                {/* Deposit - only for advance orders */}
                 {isAdvance && (
                   <button
                     type="button"
-                    className={`rounded-lg border-2 p-4 text-left transition-colors ${
-                      paymentMethod === 'deposit'
-                        ? 'border-primary bg-accent'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setPaymentMethod('deposit')}
+                    className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
+                    onClick={handleSubmitDeposit}
                   >
-                    <p className="font-semibold text-foreground">50% Deposit</p>
-                    <p className="text-xl font-bold text-secondary mt-1">${(totalPrice / 2).toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-amber-900">50% Deposit</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Customer pays half. Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery day.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-amber-800">${(totalPrice / 2).toFixed(2)}</p>
+                        <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance Order</Badge>
+                      </div>
+                    </div>
                   </button>
                 )}
+
+                {/* Save without payment */}
+                <button
+                  type="button"
+                  className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                  onClick={handleSaveUnpaid}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-foreground flex items-center gap-2">
+                        <Save className="h-4 w-4" />
+                        Save Order - Await Payment
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Customer hasn{"'"}t paid yet. Save order and come back to confirm payment later.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-muted-foreground">${totalPrice.toFixed(2)}</p>
+                      <Badge variant="outline" className="text-xs mt-1 bg-transparent">Unpaid</Badge>
+                    </div>
+                  </div>
+                </button>
               </div>
 
               {!isAdvance && (
@@ -562,17 +595,9 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
               )}
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1 bg-transparent">
-                Back
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                className="flex-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Confirm Payment & Create Order
+            <div className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setStep(2)} className="w-full bg-transparent">
+                Back to Customer Details
               </Button>
             </div>
           </div>
