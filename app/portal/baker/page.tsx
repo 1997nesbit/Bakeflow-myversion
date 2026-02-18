@@ -39,9 +39,9 @@ export default function BakerDashboardPage() {
     (o) => ['decorator', 'packing', 'ready', 'dispatched', 'delivered'].includes(o.status)
   )
 
-  const overdueOrders = bakingOrders.filter(
+  const overdueOrders = now ? bakingOrders.filter(
     (o) => o.postedToBakerAt && minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes
-  )
+  ) : []
   const totalEstMin = bakingOrders.reduce((s, o) => s + o.estimatedMinutes, 0)
 
   const getElapsed = useCallback(

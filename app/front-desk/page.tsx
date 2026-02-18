@@ -40,11 +40,17 @@ import {
 
 export default function FrontDeskDashboard() {
   const [orders] = useState<Order[]>(mockOrders)
+  const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const [, setTick] = useState(0)
 
   useEffect(() => {
+    setMounted(true)
     setCurrentTime(new Date())
-    const interval = setInterval(() => setCurrentTime(new Date()), 30000)
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+      setTick(t => t + 1)
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -60,16 +66,16 @@ export default function FrontDeskDashboard() {
   const completedOrders = orders.filter(o => o.status === 'delivered')
   const lowStockItems = mockInventory.filter(i => i.quantity < i.minStock)
 
-  const overdueOrders = orders.filter(o => {
+  const overdueOrders = mounted ? orders.filter(o => {
     if (!['baker', 'decorator'].includes(o.status) || !o.postedToBakerAt) return false
     return minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes
-  })
+  }) : []
 
-  const advanceDueSoon = orders.filter(o => {
+  const advanceDueSoon = mounted ? orders.filter(o => {
     if (!o.isAdvanceOrder || !['paid', 'pending'].includes(o.status)) return false
     const days = daysUntilDue(o.pickupDate)
     return days <= 2 && days >= 0
-  })
+  }) : []
 
   const actionCount = paidReadyToPost.length + readyOrders.length + pendingPayments.length
 
@@ -132,7 +138,7 @@ export default function FrontDeskDashboard() {
                         Kitchen Overdue: {order.id}
                       </p>
                       <p className="text-xs text-red-600">
-                        {order.customerName} - Est. {order.estimatedMinutes}min, now {minutesSincePosted(order.postedToBakerAt!)}min. Check kitchen.
+                        {order.customerName} - Est. {order.estimatedMinutes}min, now {mounted ? minutesSincePosted(order.postedToBakerAt!) : 0}min. Check kitchen.
                       </p>
                     </div>
                   </div>
@@ -390,7 +396,7 @@ export default function FrontDeskDashboard() {
               <CardContent className="px-5 pb-5">
                 <div className="space-y-3">
                   {inKitchen.length > 0 ? inKitchen.map(order => {
-                    const elapsed = order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
+                    const elapsed = mounted && order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
                     const isOverdue = elapsed > order.estimatedMinutes
                     const progress = Math.min((elapsed / order.estimatedMinutes) * 100, 100)
                     return (

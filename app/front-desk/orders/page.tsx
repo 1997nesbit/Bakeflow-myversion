@@ -67,6 +67,10 @@ export default function OrdersPage() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<Order | null>(null)
 
+  // Mounted guard for time-dependent renders
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   // Toast
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'info' | 'warning' }>({ show: false, message: '', type: 'success' })
 
@@ -617,7 +621,7 @@ export default function OrdersPage() {
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {inKitchenOrders.map(order => {
-                      const elapsed = order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
+                      const elapsed = mounted && order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
                       const isOverdue = elapsed > order.estimatedMinutes
                       const progress = Math.min((elapsed / order.estimatedMinutes) * 100, 100)
                       return (
