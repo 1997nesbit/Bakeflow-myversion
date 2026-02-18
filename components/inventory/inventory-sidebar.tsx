@@ -6,7 +6,6 @@ import {
   PackagePlus,
   ScrollText,
   AlertTriangle,
-  Users,
   Receipt,
   ChefHat,
 } from 'lucide-react'
@@ -20,7 +19,6 @@ const navigation = [
   { name: 'Daily Rollout', href: '/inventory/rollout', icon: ScrollText },
   { name: 'Alerts & Reorder', href: '/inventory/alerts', icon: AlertTriangle },
   { name: 'Expenses', href: '/inventory/expenses', icon: Receipt },
-  { name: 'Access & Roles', href: '/inventory/access', icon: Users },
 ]
 
 export function InventorySidebar() {
