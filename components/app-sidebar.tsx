@@ -6,6 +6,7 @@ import {
   Package,
   MessageSquare,
   Settings,
+  ChefHat,
   Search,
   PlusCircle,
   ChevronDown,
