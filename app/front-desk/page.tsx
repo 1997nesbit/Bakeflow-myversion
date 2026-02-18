@@ -29,7 +29,6 @@ import {
   TrendingUp,
   CheckCircle,
   PlusCircle,
-  Users,
   Timer,
   PackageCheck,
   Activity,
