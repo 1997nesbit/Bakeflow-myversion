@@ -2,14 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import {
-  ChefHat,
-  ShoppingCart,
-  Package,
-  ArrowRight,
-  Clock,
-  Shield,
-} from 'lucide-react'
+import { ChefHat, ShoppingCart, Package, ArrowRight, Clock, Shield } from 'lucide-react'
 
 const portals = [
   {

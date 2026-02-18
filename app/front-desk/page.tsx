@@ -26,12 +26,11 @@ import {
   CreditCard,
   DollarSign,
   ArrowRight,
-  TrendingUp,
   CheckCircle,
   PlusCircle,
   Timer,
   PackageCheck,
-  Activity,
+  Activity as ActivityIcon,
   Wallet,
   CircleDollarSign,
   CalendarClock,
@@ -272,7 +271,7 @@ export default function FrontDeskDashboard() {
               <CardHeader className="pb-3 pt-5 px-5">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-primary" />
+                    <ActivityIcon className="h-4 w-4 text-primary" />
                     Actions Needed
                     {actionCount > 0 && (
                       <Badge className="bg-secondary text-secondary-foreground text-[10px] px-1.5 py-0">{actionCount}</Badge>
