@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import {
   mockOrders,
@@ -32,6 +32,11 @@ import {
   Users,
   Timer,
   PackageCheck,
+  Activity,
+  Wallet,
+  CircleDollarSign,
+  CalendarClock,
+  Phone,
 } from 'lucide-react'
 
 export default function FrontDeskDashboard() {
@@ -39,20 +44,15 @@ export default function FrontDeskDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 60000)
+    const interval = setInterval(() => setCurrentTime(new Date()), 30000)
     return () => clearInterval(interval)
   }, [])
 
   // Metrics
-  const todayOrders = orders.filter(o => {
-    const d = new Date(o.createdAt)
-    const today = new Date()
-    return d.toDateString() === today.toDateString()
-  })
   const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
   const pendingPayments = orders.filter(o => o.paymentStatus === 'unpaid')
   const depositOrders = orders.filter(o => o.paymentStatus === 'deposit')
-  const outstandingBalance = depositOrders.reduce((s, o) => s + (o.totalPrice - o.amountPaid), 0)
+  const outstandingBalance = [...pendingPayments, ...depositOrders].reduce((s, o) => s + (o.totalPrice - o.amountPaid), 0)
   const paidReadyToPost = orders.filter(o => o.status === 'paid')
   const inKitchen = orders.filter(o => ['baker', 'decorator', 'quality', 'packing'].includes(o.status))
   const readyOrders = orders.filter(o => o.status === 'ready')
@@ -60,321 +60,473 @@ export default function FrontDeskDashboard() {
   const completedOrders = orders.filter(o => o.status === 'delivered')
   const lowStockItems = mockInventory.filter(i => i.quantity < i.minStock)
 
-  // Overdue kitchen orders
   const overdueOrders = orders.filter(o => {
     if (!['baker', 'decorator'].includes(o.status) || !o.postedToBakerAt) return false
     return minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes
   })
 
-  // Advance orders due soon
   const advanceDueSoon = orders.filter(o => {
     if (!o.isAdvanceOrder || !['paid', 'pending'].includes(o.status)) return false
     const days = daysUntilDue(o.pickupDate)
     return days <= 2 && days >= 0
   })
 
+  const actionCount = paidReadyToPost.length + readyOrders.length + pendingPayments.length
+
+  // Pipeline stages
+  const pipeline = [
+    { label: 'Awaiting Pay', count: pendingPayments.length, icon: Wallet, bg: 'bg-amber-50', border: 'border-amber-200', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', textColor: 'text-amber-700' },
+    { label: 'Post to Baker', count: paidReadyToPost.length, icon: ChefHat, bg: 'bg-emerald-50', border: 'border-emerald-200', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', textColor: 'text-emerald-700' },
+    { label: 'In Kitchen', count: inKitchen.length, icon: Timer, bg: 'bg-orange-50', border: 'border-orange-200', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', textColor: 'text-orange-700' },
+    { label: 'Ready', count: readyOrders.length, icon: PackageCheck, bg: 'bg-sky-50', border: 'border-sky-200', iconBg: 'bg-sky-100', iconColor: 'text-sky-600', textColor: 'text-sky-700' },
+    { label: 'With Driver', count: dispatchedOrders.length, icon: Truck, bg: 'bg-violet-50', border: 'border-violet-200', iconBg: 'bg-violet-100', iconColor: 'text-violet-600', textColor: 'text-violet-700' },
+    { label: 'Completed', count: completedOrders.length, icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', iconBg: 'bg-green-100', iconColor: 'text-green-600', textColor: 'text-green-700' },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
-      <main className="ml-64 p-6">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Front Desk Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              {' - '}
-              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            </p>
+      <main className="ml-64">
+        {/* ===== TOP BAR ===== */}
+        <div className="sticky top-0 z-30 border-b border-border bg-card px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Front Desk</h1>
+              <p className="text-xs text-muted-foreground">
+                {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                {' \u00B7 '}
+                {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {actionCount > 0 && (
+                <Link href="/front-desk/orders">
+                  <Badge className="bg-secondary text-secondary-foreground px-3 py-1.5 text-xs cursor-pointer hover:bg-secondary/90">
+                    <Bell className="mr-1.5 h-3.5 w-3.5" />
+                    {actionCount} action{actionCount !== 1 ? 's' : ''} needed
+                  </Badge>
+                </Link>
+              )}
+              <Link href="/front-desk/orders">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Order
+                </Button>
+              </Link>
+            </div>
           </div>
-          <Link href="/front-desk/orders">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              New Order
-            </Button>
-          </Link>
         </div>
 
-        {/* ===== URGENT ALERTS ===== */}
-        {(overdueOrders.length > 0 || advanceDueSoon.length > 0) && (
-          <div className="mb-6 space-y-2">
-            {overdueOrders.map(order => (
-              <div key={order.id} className="flex items-center justify-between gap-4 rounded-xl border-2 border-red-300 bg-red-50 p-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500">
-                    <AlertTriangle className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-red-900">Kitchen Overdue: {order.id} - {order.customerName}</p>
-                    <p className="text-sm text-red-700">
-                      Est. {order.estimatedMinutes}min | {minutesSincePosted(order.postedToBakerAt!)}min elapsed. Check on the kitchen!
-                    </p>
-                  </div>
-                </div>
-                <Link href="/front-desk/orders">
-                  <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent shrink-0">
-                    View Orders <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            ))}
-            {advanceDueSoon.map(order => {
-              const days = daysUntilDue(order.pickupDate)
-              return (
-                <div key={order.id} className="flex items-center justify-between gap-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+        <div className="p-6 space-y-6">
+          {/* ===== ALERTS ===== */}
+          {(overdueOrders.length > 0 || advanceDueSoon.length > 0) && (
+            <div className="space-y-2">
+              {overdueOrders.map(order => (
+                <div key={order.id} className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500">
-                      <Bell className="h-5 w-5 text-white" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 animate-pulse">
+                      <AlertTriangle className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold text-amber-900">
-                        Advance Order Due {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `in ${days} days`}: {order.id}
+                      <p className="text-sm font-semibold text-red-900">
+                        Kitchen Overdue: {order.id}
                       </p>
-                      <p className="text-sm text-amber-700">
-                        {order.customerName} - {order.items.map(i => i.name).join(', ')}
-                        {order.paymentStatus === 'deposit' && ` | Balance: $${(order.totalPrice - order.amountPaid).toFixed(2)}`}
+                      <p className="text-xs text-red-600">
+                        {order.customerName} - Est. {order.estimatedMinutes}min, now {minutesSincePosted(order.postedToBakerAt!)}min. Check kitchen.
                       </p>
                     </div>
                   </div>
                   <Link href="/front-desk/orders">
-                    <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shrink-0">
-                      <ChefHat className="mr-1 h-4 w-4" /> Go to Orders
+                    <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent text-xs">
+                      View <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
                   </Link>
                 </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* ===== METRIC CARDS ===== */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <ShoppingCart className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{"Today's Orders"}</p>
-                <p className="text-2xl font-bold text-foreground">{orders.length}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100">
-                <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Revenue Collected</p>
-                <p className="text-2xl font-bold text-foreground">${totalRevenue.toFixed(0)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100">
-                <CreditCard className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Outstanding Balance</p>
-                <p className="text-2xl font-bold text-foreground">${outstandingBalance.toFixed(0)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100">
-                <Package className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Low Stock Items</p>
-                <p className="text-2xl font-bold text-foreground">{lowStockItems.length}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ===== WORKFLOW STATUS PIPELINE ===== */}
-        <div className="mb-6">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Order Pipeline</h2>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {([
-              { label: 'Awaiting Payment', count: pendingPayments.length, icon: CreditCard, color: 'bg-amber-500', textColor: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' },
-              { label: 'Ready to Post', count: paidReadyToPost.length, icon: ChefHat, color: 'bg-emerald-500', textColor: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200' },
-              { label: 'In Kitchen', count: inKitchen.length, icon: Timer, color: 'bg-orange-500', textColor: 'text-orange-700', bgColor: 'bg-orange-50 border-orange-200' },
-              { label: 'Ready', count: readyOrders.length, icon: PackageCheck, color: 'bg-blue-500', textColor: 'text-blue-700', bgColor: 'bg-blue-50 border-blue-200' },
-              { label: 'With Driver', count: dispatchedOrders.length, icon: Truck, color: 'bg-purple-500', textColor: 'text-purple-700', bgColor: 'bg-purple-50 border-purple-200' },
-              { label: 'Completed', count: completedOrders.length, icon: CheckCircle, color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50 border-green-200' },
-            ] as const).map((stage) => (
-              <div key={stage.label} className={`rounded-xl border p-4 ${stage.bgColor}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stage.color}`}>
-                    <stage.icon className="h-4 w-4 text-white" />
-                  </div>
-                  <span className={`text-2xl font-bold ${stage.textColor}`}>{stage.count}</span>
-                </div>
-                <p className={`text-xs font-medium ${stage.textColor}`}>{stage.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ===== TWO COLUMN: ACTIONS NEEDED + RECENT ACTIVITY ===== */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Actions Needed */}
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Actions Needed</h2>
-              <Link href="/front-desk/orders">
-                <Button variant="outline" size="sm" className="bg-transparent">
-                  View All <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {paidReadyToPost.length > 0 && paidReadyToPost.slice(0, 3).map(order => (
-                <Card key={order.id} className="border-l-4 border-l-emerald-500 border-t-0 border-r-0 border-b-0 shadow-sm">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                        <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs">Post to Baker</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{order.customerName} - {order.items.map(i => i.name).join(', ')}</p>
-                    </div>
-                    <Link href="/front-desk/orders">
-                      <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                        <ChefHat className="mr-1 h-4 w-4" /> Post
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
               ))}
-              {readyOrders.filter(o => o.deliveryType === 'delivery').slice(0, 3).map(order => (
-                <Card key={order.id} className="border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 shadow-sm">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                        <Badge className="bg-blue-100 text-blue-800 border-0 text-xs">Dispatch to Driver</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{order.customerName} - {order.deliveryAddress}</p>
-                    </div>
-                    <Link href="/front-desk/orders">
-                      <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                        <Truck className="mr-1 h-4 w-4" /> Dispatch
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
-              {readyOrders.filter(o => o.deliveryType === 'pickup').slice(0, 3).map(order => (
-                <Card key={order.id} className="border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 shadow-sm">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                        <Badge className="bg-green-100 text-green-800 border-0 text-xs">Customer Pickup</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{order.customerName} - Call or Text</p>
-                    </div>
-                    <Link href="/front-desk/orders">
-                      <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                        <Users className="mr-1 h-4 w-4" /> Handle
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
-              {paidReadyToPost.length === 0 && readyOrders.length === 0 && (
-                <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
-                  <CheckCircle className="mx-auto h-8 w-8 text-green-500 mb-2" />
-                  <p className="text-sm text-muted-foreground">All caught up! No actions needed right now.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* In Kitchen Tracker */}
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Kitchen Tracker</h2>
-            <div className="space-y-3">
-              {inKitchen.length > 0 ? inKitchen.map(order => {
-                const elapsed = order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
-                const isOverdue = elapsed > order.estimatedMinutes
-                const progress = Math.min((elapsed / order.estimatedMinutes) * 100, 100)
+              {advanceDueSoon.map(order => {
+                const days = daysUntilDue(order.pickupDate)
                 return (
-                  <Card key={order.id} className={`border-0 shadow-sm ${isOverdue ? 'ring-2 ring-red-300' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-sm text-foreground">{order.id} - {order.customerName}</p>
-                          <p className="text-xs text-muted-foreground">{order.items.map(i => i.name).join(', ')}</p>
-                        </div>
-                        <Badge className={`${statusColors[order.status]} border-0 text-xs`}>
-                          {statusLabels[order.status]}
-                        </Badge>
+                  <div key={order.id} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500">
+                        <CalendarClock className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : progress > 75 ? 'bg-amber-500' : 'bg-green-500'}`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className={`text-xs font-medium shrink-0 ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
-                          {elapsed}m / {order.estimatedMinutes}m
-                        </span>
-                      </div>
-                      {isOverdue && (
-                        <p className="mt-2 text-xs font-medium text-red-600 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" /> Overdue by {elapsed - order.estimatedMinutes} minutes
+                      <div>
+                        <p className="text-sm font-semibold text-amber-900">
+                          Advance Due {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `in ${days} days`}: {order.id}
                         </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                        <p className="text-xs text-amber-700">
+                          {order.customerName} - {order.items.map(i => i.name).join(', ')}
+                          {order.paymentStatus === 'deposit' && ` | Balance due: $${(order.totalPrice - order.amountPaid).toFixed(2)}`}
+                        </p>
+                      </div>
+                    </div>
+                    <Link href="/front-desk/orders">
+                      <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs">
+                        <ChefHat className="mr-1 h-3 w-3" /> Go to Orders
+                      </Button>
+                    </Link>
+                  </div>
                 )
-              }) : (
-                <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
-                  <ChefHat className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No orders in the kitchen</p>
-                </div>
-              )}
+              })}
             </div>
+          )}
+
+          {/* ===== REVENUE ROW ===== */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Orders</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                    <ShoppingCart className="h-4 w-4 text-primary" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-foreground">{orders.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">{completedOrders.length} completed today</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Revenue</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-foreground">${totalRevenue.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">collected from {orders.filter(o => o.amountPaid > 0).length} orders</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Outstanding</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+                    <CircleDollarSign className="h-4 w-4 text-amber-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-foreground">${outstandingBalance.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">{pendingPayments.length} unpaid, {depositOrders.length} deposits</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Low Stock</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100">
+                    <Package className="h-4 w-4 text-red-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-foreground">{lowStockItems.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {lowStockItems.length > 0 ? lowStockItems.slice(0, 2).map(i => i.name).join(', ') : 'All items stocked'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ===== ORDER PIPELINE ===== */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3 pt-5 px-5">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-foreground">Order Pipeline</CardTitle>
+                <Link href="/front-desk/orders">
+                  <Button variant="ghost" size="sm" className="text-xs text-primary hover:text-primary/80 h-auto p-0">
+                    Open Orders <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <div className="grid gap-3 grid-cols-3 lg:grid-cols-6">
+                {pipeline.map((stage) => (
+                  <div key={stage.label} className={`rounded-xl border ${stage.border} ${stage.bg} p-3`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${stage.iconBg}`}>
+                        <stage.icon className={`h-3.5 w-3.5 ${stage.iconColor}`} />
+                      </div>
+                      <span className={`text-xl font-bold ${stage.textColor}`}>{stage.count}</span>
+                    </div>
+                    <p className={`text-[11px] font-medium ${stage.textColor}`}>{stage.label}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ===== TWO COLUMNS: ACTIONS + KITCHEN ===== */}
+          <div className="grid gap-6 lg:grid-cols-5">
+
+            {/* Actions Needed - 3 cols */}
+            <Card className="border-0 shadow-sm lg:col-span-3">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    Actions Needed
+                    {actionCount > 0 && (
+                      <Badge className="bg-secondary text-secondary-foreground text-[10px] px-1.5 py-0">{actionCount}</Badge>
+                    )}
+                  </CardTitle>
+                  <Link href="/front-desk/orders">
+                    <Button variant="ghost" size="sm" className="text-xs text-primary hover:text-primary/80 h-auto p-0">
+                      Go to Orders <ArrowRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="space-y-2">
+                  {/* Paid ready to post */}
+                  {paidReadyToPost.map(order => (
+                    <div key={order.id} className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                        <ChefHat className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">{order.id}</span>
+                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] px-1.5 py-0">Post to Baker</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.items.map(i => i.name).join(', ')}</p>
+                      </div>
+                      <Link href="/front-desk/orders">
+                        <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">
+                          Post
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+
+                  {/* Ready for delivery */}
+                  {readyOrders.filter(o => o.deliveryType === 'delivery').map(order => (
+                    <div key={order.id} className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50/50 p-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100">
+                        <Truck className="h-4 w-4 text-sky-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">{order.id}</span>
+                          <Badge className="bg-sky-100 text-sky-700 border-0 text-[10px] px-1.5 py-0">Send to Driver</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.deliveryAddress}</p>
+                      </div>
+                      <Link href="/front-desk/orders">
+                        <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">
+                          Dispatch
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+
+                  {/* Ready for pickup */}
+                  {readyOrders.filter(o => o.deliveryType === 'pickup').map(order => (
+                    <div key={order.id} className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50/50 p-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100">
+                        <Phone className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">{order.id}</span>
+                          <Badge className="bg-green-100 text-green-700 border-0 text-[10px] px-1.5 py-0">Call / Text</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.customerPhone}</p>
+                      </div>
+                      <Link href="/front-desk/orders">
+                        <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">
+                          Handle
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+
+                  {/* Awaiting payment */}
+                  {pendingPayments.map(order => (
+                    <div key={order.id} className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+                        <CreditCard className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">{order.id}</span>
+                          <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0">Awaiting Payment</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - ${order.totalPrice.toFixed(2)}</p>
+                      </div>
+                      <Link href="/front-desk/orders">
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 bg-transparent text-xs h-8 px-3">
+                          Confirm
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+
+                  {actionCount === 0 && (
+                    <div className="rounded-xl border-2 border-dashed border-border py-10 text-center">
+                      <CheckCircle className="mx-auto h-8 w-8 text-green-400 mb-2" />
+                      <p className="text-sm font-medium text-muted-foreground">All caught up!</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">No actions needed right now.</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Kitchen Tracker - 2 cols */}
+            <Card className="border-0 shadow-sm lg:col-span-2">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-orange-500" />
+                  Kitchen Tracker
+                  {overdueOrders.length > 0 && (
+                    <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0 border-0">{overdueOrders.length} overdue</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="space-y-3">
+                  {inKitchen.length > 0 ? inKitchen.map(order => {
+                    const elapsed = order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
+                    const isOverdue = elapsed > order.estimatedMinutes
+                    const progress = Math.min((elapsed / order.estimatedMinutes) * 100, 100)
+                    return (
+                      <div key={order.id} className={`rounded-lg p-3 ${isOverdue ? 'bg-red-50 border border-red-200' : 'bg-muted/50 border border-border'}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-foreground">{order.id}</span>
+                              <Badge className={`${statusColors[order.status]} border-0 text-[10px] px-1.5 py-0`}>
+                                {statusLabels[order.status]}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{order.customerName}</p>
+                          </div>
+                          {isOverdue && <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : progress > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-semibold shrink-0 tabular-nums ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
+                            {elapsed}m/{order.estimatedMinutes}m
+                          </span>
+                        </div>
+                        {isOverdue && (
+                          <p className="mt-1.5 text-[10px] font-semibold text-red-600">
+                            Overdue by {elapsed - order.estimatedMinutes}min - check kitchen
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }) : (
+                    <div className="rounded-xl border-2 border-dashed border-border py-10 text-center">
+                      <ChefHat className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                      <p className="text-sm font-medium text-muted-foreground">Kitchen is clear</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">No orders in production</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ===== BOTTOM ROW: DEPOSITS + DISPATCHED ===== */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Outstanding Deposits */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-amber-500" />
+                  Outstanding Balances
+                  {depositOrders.length > 0 && (
+                    <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0">{depositOrders.length}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                {depositOrders.length > 0 ? (
+                  <div className="space-y-3">
+                    {depositOrders.map(order => {
+                      const balance = order.totalPrice - order.amountPaid
+                      const paidPercent = (order.amountPaid / order.totalPrice) * 100
+                      return (
+                        <div key={order.id} className="rounded-lg border border-border p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{order.customerName}</p>
+                              <p className="text-[11px] text-muted-foreground">{order.id} - Due: {new Date(order.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            </div>
+                            <span className="text-sm font-bold text-secondary">${balance.toFixed(0)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-primary" style={{ width: `${paidPercent}%` }} />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(paidPercent)}% paid</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
+                    <CheckCircle className="mx-auto h-7 w-7 text-green-400 mb-2" />
+                    <p className="text-xs text-muted-foreground">No outstanding balances</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Out for Delivery */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-violet-500" />
+                  Out for Delivery
+                  {dispatchedOrders.length > 0 && (
+                    <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] px-1.5 py-0">{dispatchedOrders.length}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                {dispatchedOrders.length > 0 ? (
+                  <div className="space-y-3">
+                    {dispatchedOrders.map(order => (
+                      <div key={order.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{order.id} - {order.customerName}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{order.deliveryAddress}</p>
+                          </div>
+                          {order.driverAccepted ? (
+                            <Badge className="bg-green-100 text-green-700 border-0 text-[10px] px-1.5 py-0 shrink-0">Accepted</Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0 shrink-0">Pending</Badge>
+                          )}
+                        </div>
+                        {order.assignedTo && (
+                          <p className="text-[10px] text-muted-foreground mt-1">Driver: {order.assignedTo}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
+                    <Truck className="mx-auto h-7 w-7 text-muted-foreground/40 mb-2" />
+                    <p className="text-xs text-muted-foreground">No active deliveries</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        {/* ===== DEPOSIT / BALANCE TRACKING ===== */}
-        {depositOrders.length > 0 && (
-          <div className="mt-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Outstanding Deposits</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {depositOrders.map(order => (
-                <Card key={order.id} className="border-0 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">{order.customerName}</p>
-                        <p className="text-xs text-muted-foreground">{order.id} - Due: {order.pickupDate}</p>
-                      </div>
-                      <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">
-                        <CreditCard className="mr-1 h-3 w-3" /> Deposit
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Paid: ${order.amountPaid.toFixed(2)}</span>
-                      <span className="font-bold text-secondary">Balance: ${(order.totalPrice - order.amountPaid).toFixed(2)}</span>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${(order.amountPaid / order.totalPrice) * 100}%` }} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
       </main>
     </div>
   )
