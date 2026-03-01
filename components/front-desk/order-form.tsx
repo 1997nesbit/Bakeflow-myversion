@@ -16,16 +16,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, X, ShoppingCart, Cake, CreditCard, AlertTriangle, Save } from 'lucide-react'
+import { Plus, Trash2, X, ShoppingCart, Cake, CreditCard, AlertTriangle, Save, Star, Link2, Edit3 } from 'lucide-react'
 import {
   OrderType,
   DeliveryType,
+  PaymentMethod,
+  PaymentTerms,
   OrderItem,
   bakeryMenu,
   cakeFlavours,
   icingTypes,
   MenuItem,
+  generateTrackingId,
 } from '@/lib/mock-data'
 
 interface OrderFormProps {
@@ -40,6 +42,8 @@ export interface NewOrderData {
   orderType: OrderType
   items: OrderItem[]
   specialNotes?: string
+  cakeDescription?: string
+  noteForCustomer?: string
   pickupDate: string
   pickupTime: string
   deliveryType: DeliveryType
@@ -47,23 +51,45 @@ export interface NewOrderData {
   totalPrice: number
   amountPaid: number
   paymentStatus: 'unpaid' | 'deposit' | 'paid'
+  paymentMethod?: PaymentMethod
+  paymentTerms: PaymentTerms
   isAdvanceOrder: boolean
   estimatedMinutes: number
+  trackingId: string
+  isGoldCustomer?: boolean
 }
 
 export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
   const [step, setStep] = useState(1)
   const [menuFilter, setMenuFilter] = useState<string>('all')
 
+  // Customer
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
+  const [isGoldCustomer, setIsGoldCustomer] = useState(false)
+
+  // Items - unified cart (menu + custom together)
   const [items, setItems] = useState<OrderItem[]>([])
+
+  // Details
   const [specialNotes, setSpecialNotes] = useState('')
-  const [pickupDate, setPickupDate] = useState('')
+  const [cakeDescription, setCakeDescription] = useState('')
+  const [noteForCustomer, setNoteForCustomer] = useState('')
+
+  // Date/Time - default to today
+  const today = new Date().toISOString().split('T')[0]
+  const [pickupDate, setPickupDate] = useState(today)
   const [pickupTime, setPickupTime] = useState('')
+  const [editingDate, setEditingDate] = useState(false)
+
+  // Delivery
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [deliveryAddress, setDeliveryAddress] = useState('')
+
+  // Payment
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>('upfront')
 
   // Custom cake builder
   const [customFlavour, setCustomFlavour] = useState('')
@@ -71,20 +97,25 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
   const [customKg, setCustomKg] = useState(1)
   const [customPrice, setCustomPrice] = useState(0)
   const [customDesc, setCustomDesc] = useState('')
+  const [customNote, setCustomNote] = useState('')
+
+  // Tracking
+  const [trackingId] = useState(() => generateTrackingId())
 
   const totalPrice = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.price, 0),
     [items]
   )
 
+  const hasCakeItems = useMemo(() => items.some(i => i.isCustom), [items])
+
   const isAdvance = useMemo(() => {
     if (!pickupDate) return false
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const t = new Date()
+    t.setHours(0, 0, 0, 0)
     const due = new Date(pickupDate)
     due.setHours(0, 0, 0, 0)
-    const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diff > 0
+    return Math.ceil((due.getTime() - t.getTime()) / (1000 * 60 * 60 * 24)) > 0
   }, [pickupDate])
 
   const estimatedMinutes = useMemo(() => {
@@ -122,6 +153,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
           icingType: customIcing,
           kilogram: customKg,
           description: customDesc,
+          noteForCustomer: customNote,
         },
       },
     ])
@@ -130,21 +162,17 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
     setCustomKg(1)
     setCustomPrice(0)
     setCustomDesc('')
+    setCustomNote('')
   }
 
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
-
+  const removeItem = (index: number) => setItems(items.filter((_, i) => i !== index))
   const updateItemQty = (index: number, qty: number) => {
     const updated = [...items]
     updated[index] = { ...updated[index], quantity: Math.max(1, qty) }
     setItems(updated)
   }
 
-  const filteredMenu = menuFilter === 'all'
-    ? bakeryMenu
-    : bakeryMenu.filter((m) => m.category === menuFilter)
+  const filteredMenu = menuFilter === 'all' ? bakeryMenu : bakeryMenu.filter((m) => m.category === menuFilter)
 
   const buildOrderData = (paymentStatus: 'unpaid' | 'deposit' | 'paid', amountPaid: number): NewOrderData => ({
     customerName,
@@ -153,6 +181,8 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
     orderType: items.some((i) => i.isCustom) ? 'custom' : 'menu',
     items,
     specialNotes: specialNotes || undefined,
+    cakeDescription: cakeDescription || undefined,
+    noteForCustomer: noteForCustomer || undefined,
     pickupDate,
     pickupTime,
     deliveryType,
@@ -160,21 +190,17 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
     totalPrice,
     amountPaid,
     paymentStatus,
+    paymentMethod,
+    paymentTerms,
     isAdvanceOrder: isAdvance,
     estimatedMinutes,
+    trackingId,
+    isGoldCustomer,
   })
 
-  const handleSubmitPaid = () => {
-    onSubmit(buildOrderData('paid', totalPrice))
-  }
-
-  const handleSubmitDeposit = () => {
-    onSubmit(buildOrderData('deposit', Math.ceil(totalPrice / 2)))
-  }
-
-  const handleSaveUnpaid = () => {
-    onSubmit(buildOrderData('unpaid', 0))
-  }
+  const handleSubmitPaid = () => onSubmit(buildOrderData('paid', totalPrice))
+  const handleSubmitDeposit = () => onSubmit(buildOrderData('deposit', Math.ceil(totalPrice / 2)))
+  const handleSaveUnpaid = () => onSubmit(buildOrderData(paymentTerms === 'on_delivery' ? 'unpaid' : 'unpaid', 0))
 
   const canProceedStep1 = items.length > 0
   const canProceedStep2 = customerName && customerPhone && pickupDate && pickupTime && (deliveryType === 'pickup' || deliveryAddress)
@@ -185,7 +211,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
         <div>
           <CardTitle className="text-xl font-semibold text-foreground">New Order</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Step {step} of 3 - {step === 1 ? 'Select Items' : step === 2 ? 'Customer & Delivery' : 'Payment & Save'}
+            Step {step} of 3 - {step === 1 ? 'Select Items' : step === 2 ? 'Customer & Delivery' : 'Payment & Confirm'}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -193,15 +219,9 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
         </Button>
       </CardHeader>
 
-      {/* Step indicator */}
       <div className="flex gap-1 px-6 pt-4 shrink-0">
         {[1, 2, 3].map((s) => (
-          <div
-            key={s}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${
-              s <= step ? 'bg-primary' : 'bg-border'
-            }`}
-          />
+          <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-border'}`} />
         ))}
       </div>
 
@@ -209,161 +229,126 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
         {/* ===== STEP 1: ITEMS ===== */}
         {step === 1 && (
           <div className="space-y-5">
-            <Tabs defaultValue="menu" className="w-full">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="menu" className="flex items-center gap-2">
-                  <ShoppingCart className="h-4 w-4" />
-                  Menu Items
-                </TabsTrigger>
-                <TabsTrigger value="custom" className="flex items-center gap-2">
-                  <Cake className="h-4 w-4" />
-                  Custom Cake
-                </TabsTrigger>
-              </TabsList>
+            <p className="text-xs text-muted-foreground">Add items from the menu and/or build custom cakes. You can mix both in a single order.</p>
 
-              <TabsContent value="menu" className="space-y-4 mt-4">
-                <div className="flex flex-wrap gap-2">
-                  {['all', 'cake', 'bread', 'pastry', 'snack'].map((cat) => (
-                    <Button
-                      key={cat}
+            {/* Menu Items */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                Menu Items
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {['all', 'cake', 'bread', 'pastry', 'snack'].map((cat) => (
+                  <Button
+                    key={cat}
+                    type="button"
+                    size="sm"
+                    variant={menuFilter === cat ? 'default' : 'outline'}
+                    onClick={() => setMenuFilter(cat)}
+                    className={menuFilter !== cat ? 'bg-transparent' : ''}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-1">
+                {filteredMenu.map((item) => {
+                  const inCart = items.find((i) => i.name === item.name && !i.isCustom)
+                  return (
+                    <button
                       type="button"
-                      size="sm"
-                      variant={menuFilter === cat ? 'default' : 'outline'}
-                      onClick={() => setMenuFilter(cat)}
-                      className={menuFilter !== cat ? 'bg-transparent' : ''}
+                      key={item.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent"
+                      onClick={() => addMenuItemToOrder(item)}
                     >
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid gap-2 max-h-[260px] overflow-y-auto pr-1">
-                  {filteredMenu.map((item) => {
-                    const inCart = items.find((i) => i.name === item.name && !i.isCustom)
-                    return (
-                      <button
-                        type="button"
-                        key={item.id}
-                        className="flex items-center justify-between rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent"
-                        onClick={() => addMenuItemToOrder(item)}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground text-sm">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-secondary">${item.price}</span>
-                          {inCart && (
-                            <Badge className="bg-primary text-primary-foreground text-xs">{inCart.quantity}</Badge>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </TabsContent>
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground text-sm">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-secondary">${item.price}</span>
+                        {inCart && <Badge className="bg-primary text-primary-foreground text-xs">{inCart.quantity}</Badge>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
-              <TabsContent value="custom" className="space-y-4 mt-4">
-                <div className="rounded-lg bg-accent/50 border border-border p-4 space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Cake Flavour</Label>
-                      <Select value={customFlavour} onValueChange={setCustomFlavour}>
-                        <SelectTrigger><SelectValue placeholder="Select flavour" /></SelectTrigger>
-                        <SelectContent>
-                          {cakeFlavours.map((f) => (
-                            <SelectItem key={f} value={f}>{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Icing Type</Label>
-                      <Select value={customIcing} onValueChange={setCustomIcing}>
-                        <SelectTrigger><SelectValue placeholder="Select icing" /></SelectTrigger>
-                        <SelectContent>
-                          {icingTypes.map((i) => (
-                            <SelectItem key={i} value={i}>{i}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Kilogram (kg)</Label>
-                      <Input
-                        type="number"
-                        min="0.5"
-                        step="0.5"
-                        value={customKg}
-                        onChange={(e) => setCustomKg(Number.parseFloat(e.target.value) || 1)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Price ($)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={customPrice || ''}
-                        onChange={(e) => setCustomPrice(Number.parseFloat(e.target.value) || 0)}
-                        placeholder="Enter price"
-                      />
-                    </div>
+            {/* Custom Cake Builder */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Cake className="h-4 w-4" />
+                Custom Cake
+              </h3>
+              <div className="rounded-lg bg-accent/50 border border-border p-4 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Cake Flavour</Label>
+                    <Select value={customFlavour} onValueChange={setCustomFlavour}>
+                      <SelectTrigger><SelectValue placeholder="Select flavour" /></SelectTrigger>
+                      <SelectContent>{cakeFlavours.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Cake Description / Message</Label>
-                    <Textarea
-                      placeholder="e.g., Happy Birthday John, pink theme, 2 tiers..."
-                      value={customDesc}
-                      onChange={(e) => setCustomDesc(e.target.value)}
-                      rows={2}
-                    />
+                    <Label>Icing Type</Label>
+                    <Select value={customIcing} onValueChange={setCustomIcing}>
+                      <SelectTrigger><SelectValue placeholder="Select icing" /></SelectTrigger>
+                      <SelectContent>{icingTypes.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={addCustomCake}
-                    disabled={!customFlavour || !customIcing || customPrice <= 0}
-                    className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Custom Cake to Order
-                  </Button>
+                  <div className="space-y-2">
+                    <Label>Weight (kg)</Label>
+                    <Input type="number" min="0.5" step="0.5" value={customKg} onChange={(e) => setCustomKg(Number.parseFloat(e.target.value) || 1)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Price ($)</Label>
+                    <Input type="number" min="0" step="1" value={customPrice || ''} onChange={(e) => setCustomPrice(Number.parseFloat(e.target.value) || 0)} placeholder="Enter price" />
+                  </div>
                 </div>
-              </TabsContent>
-            </Tabs>
+                <div className="space-y-2">
+                  <Label>Cake Description (how it should look)</Label>
+                  <Textarea placeholder="e.g., 2-tier round, pink drip, fresh flowers on top, gold leaf accent..." value={customDesc} onChange={(e) => setCustomDesc(e.target.value)} rows={2} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Note for Customer (what to write on cake)</Label>
+                  <Input placeholder="e.g., Happy Birthday Sarah!" value={customNote} onChange={(e) => setCustomNote(e.target.value)} />
+                </div>
+                <Button
+                  type="button"
+                  onClick={addCustomCake}
+                  disabled={!customFlavour || !customIcing || customPrice <= 0}
+                  className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Custom Cake to Order
+                </Button>
+              </div>
+            </div>
 
-            {/* CART */}
+            {/* UNIFIED CART */}
             {items.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">Cart ({items.length} items)</h3>
+                <h3 className="text-sm font-semibold text-foreground">Cart ({items.length} item{items.length > 1 ? 's' : ''})</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {items.map((item, index) => (
                     <div key={index} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                          {item.isCustom && <Badge variant="outline" className="text-xs bg-transparent">Custom</Badge>}
+                        </div>
                         {item.isCustom && item.customCake && (
-                          <p className="text-xs text-muted-foreground">
-                            {item.customCake.flavour} / {item.customCake.icingType} / {item.customCake.kilogram}kg
-                          </p>
+                          <p className="text-xs text-muted-foreground">{item.customCake.flavour} / {item.customCake.icingType} / {item.customCake.kilogram}kg</p>
+                        )}
+                        {item.isCustom && item.customCake?.noteForCustomer && (
+                          <p className="text-xs text-pink-600 italic">{'"'}{item.customCake.noteForCustomer}{'"'}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateItemQty(index, Number.parseInt(e.target.value) || 1)}
-                          className="w-16 h-8 text-center text-sm"
-                        />
-                        <span className="text-sm font-semibold text-secondary w-16 text-right">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => removeItem(index)}
-                        >
+                        <Input type="number" min="1" value={item.quantity} onChange={(e) => updateItemQty(index, Number.parseInt(e.target.value) || 1)} className="w-16 h-8 text-center text-sm" />
+                        <span className="text-sm font-semibold text-secondary w-16 text-right">${(item.price * item.quantity).toFixed(2)}</span>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(index)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -378,15 +363,8 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1 bg-transparent">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={!canProceedStep1}
-                onClick={() => setStep(2)}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
+              <Button type="button" variant="outline" onClick={onClose} className="flex-1 bg-transparent">Cancel</Button>
+              <Button type="button" disabled={!canProceedStep1} onClick={() => setStep(2)} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
                 Next: Customer Details
               </Button>
             </div>
@@ -407,19 +385,44 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                   <Label htmlFor="phone">Phone *</Label>
                   <Input id="phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="+1 555-0000" required />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-2">
                   <Label htmlFor="email">Email (optional)</Label>
                   <Input id="email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="email@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 h-[40px]">
+                    <Switch id="gold" checked={isGoldCustomer} onCheckedChange={setIsGoldCustomer} />
+                    <Label htmlFor="gold" className="cursor-pointer flex items-center gap-1.5 text-sm">
+                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      Gold Customer
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Date and Time */}
             <div className="space-y-4">
-              <h3 className="font-medium text-foreground">Pickup / Delivery</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-foreground">Date & Time</h3>
+                {!editingDate && (
+                  <button type="button" onClick={() => setEditingDate(true)} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                    <Edit3 className="h-3 w-3" />
+                    Change date (advance order)
+                  </button>
+                )}
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date *</Label>
-                  <Input id="date" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} required />
+                  {editingDate ? (
+                    <Input id="date" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} required />
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                      <span className="text-foreground">{pickupDate}</span>
+                      <Badge variant="outline" className="text-xs bg-transparent">Today</Badge>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="time">Time *</Label>
@@ -430,58 +433,51 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
               {isAdvance && (
                 <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
                   <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-sm text-amber-800">
-                    This is an advance order. Customer can pay 50% deposit now and the rest on pickup/delivery day.
-                  </p>
+                  <p className="text-sm text-amber-800">Advance order detected. Customer can pay 50% deposit now.</p>
                 </div>
               )}
+            </div>
 
+            {/* Delivery */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-foreground">Delivery</h3>
               <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-4">
-                <Switch
-                  id="delivery"
-                  checked={deliveryType === 'delivery'}
-                  onCheckedChange={(checked) => setDeliveryType(checked ? 'delivery' : 'pickup')}
-                />
-                <Label htmlFor="delivery" className="cursor-pointer">
-                  Customer wants delivery
-                </Label>
+                <Switch id="delivery" checked={deliveryType === 'delivery'} onCheckedChange={(checked) => setDeliveryType(checked ? 'delivery' : 'pickup')} />
+                <Label htmlFor="delivery" className="cursor-pointer">Customer wants delivery</Label>
               </div>
-
               {deliveryType === 'delivery' && (
                 <div className="space-y-2">
                   <Label htmlFor="address">Delivery Address *</Label>
-                  <Textarea
-                    id="address"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder="Enter full delivery address"
-                    required
-                  />
+                  <Textarea id="address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Enter full delivery address" required />
                 </div>
               )}
             </div>
 
+            {/* Cake Description (shown if any custom cakes) */}
+            {hasCakeItems && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-foreground">Cake Details</h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="cakeDesc">Cake Description (overall design notes)</Label>
+                    <Textarea id="cakeDesc" value={cakeDescription} onChange={(e) => setCakeDescription(e.target.value)} placeholder="Detailed description of how the cake should look, theme, colors, tiers..." rows={3} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="noteForCust">Note for Customer (message on cake)</Label>
+                    <Input id="noteForCust" value={noteForCustomer} onChange={(e) => setNoteForCustomer(e.target.value)} placeholder="e.g., Happy Birthday John!" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="notes">Special Notes</Label>
-              <Textarea
-                id="notes"
-                value={specialNotes}
-                onChange={(e) => setSpecialNotes(e.target.value)}
-                placeholder="Any special requests or notes..."
-                rows={2}
-              />
+              <Textarea id="notes" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} placeholder="Any special requests, allergies, etc..." rows={2} />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 bg-transparent">
-                Back
-              </Button>
-              <Button
-                type="button"
-                disabled={!canProceedStep2}
-                onClick={() => setStep(3)}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
+              <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 bg-transparent">Back</Button>
+              <Button type="button" disabled={!canProceedStep2} onClick={() => setStep(3)} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
                 Next: Payment
               </Button>
             </div>
@@ -495,7 +491,10 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
             <div className="space-y-3">
               <h3 className="font-medium text-foreground">Order Summary</h3>
               <div className="rounded-lg bg-accent/50 border border-border p-4 space-y-2">
-                <p className="text-sm"><span className="text-muted-foreground">Customer:</span> <span className="font-medium text-foreground">{customerName}</span></p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm"><span className="text-muted-foreground">Customer:</span> <span className="font-medium text-foreground">{customerName}</span></p>
+                  {isGoldCustomer && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />}
+                </div>
                 <p className="text-sm"><span className="text-muted-foreground">Phone:</span> <span className="font-medium text-foreground">{customerPhone}</span></p>
                 <p className="text-sm"><span className="text-muted-foreground">Date:</span> <span className="font-medium text-foreground">{pickupDate} at {pickupTime}</span></p>
                 <p className="text-sm"><span className="text-muted-foreground">Type:</span> <span className="font-medium text-foreground">{deliveryType === 'delivery' ? 'Delivery' : 'Customer Pickup'}</span></p>
@@ -504,6 +503,16 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 )}
                 <p className="text-sm"><span className="text-muted-foreground">Est. time:</span> <span className="font-medium text-foreground">~{estimatedMinutes} minutes</span></p>
               </div>
+
+              {/* Tracking Link Preview */}
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-blue-700 font-medium">Customer Tracking Link (sent with order message)</p>
+                  <p className="text-xs text-blue-600 truncate font-mono">{typeof window !== 'undefined' ? window.location.origin : ''}/track/{trackingId}</p>
+                </div>
+              </div>
+
               <div className="space-y-1">
                 {items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
@@ -518,53 +527,127 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
               </div>
             </div>
 
-            {/* Payment Options */}
+            {/* Payment Method */}
             <div className="space-y-3">
               <h3 className="font-medium text-foreground flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
-                Payment
+                Payment Method
               </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: 'cash' as PaymentMethod, label: 'Cash' },
+                  { value: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer' },
+                  { value: 'mobile_money' as PaymentMethod, label: 'Mobile Money' },
+                  { value: 'card' as PaymentMethod, label: 'Card' },
+                ]).map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.value)}
+                    className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                      paymentMethod === m.value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-              <div className="grid gap-3">
-                {/* Full Payment */}
+            {/* Payment Terms */}
+            <div className="space-y-3">
+              <h3 className="font-medium text-foreground">Payment Terms</h3>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  className="rounded-xl border-2 border-green-300 bg-green-50 p-4 text-left transition-all hover:border-green-500 hover:shadow-sm"
-                  onClick={handleSubmitPaid}
+                  onClick={() => setPaymentTerms('upfront')}
+                  className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                    paymentTerms === 'upfront'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-border text-muted-foreground hover:border-green-300'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-green-900">Full Payment</p>
-                      <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to Post to Baker queue.</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-green-800">${totalPrice.toFixed(2)}</p>
-                      <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
-                    </div>
-                  </div>
+                  Pay Upfront
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentTerms('on_delivery')}
+                  className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                    paymentTerms === 'on_delivery'
+                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      : 'border-border text-muted-foreground hover:border-amber-300'
+                  }`}
+                >
+                  Pay on Delivery
+                </button>
+              </div>
+            </div>
 
-                {/* Deposit - only for advance orders */}
-                {isAdvance && (
+            {/* Payment Action Buttons */}
+            <div className="space-y-3">
+              <h3 className="font-medium text-foreground">Confirm Order</h3>
+              <div className="grid gap-3">
+                {paymentTerms === 'upfront' && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-xl border-2 border-green-300 bg-green-50 p-4 text-left transition-all hover:border-green-500 hover:shadow-sm"
+                      onClick={handleSubmitPaid}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-green-900">Full Payment</p>
+                          <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to baker queue.</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-green-800">${totalPrice.toFixed(2)}</p>
+                          <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isAdvance && (
+                      <button
+                        type="button"
+                        className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
+                        onClick={handleSubmitDeposit}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-amber-900">50% Deposit</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery day.</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-amber-800">${(totalPrice / 2).toFixed(2)}</p>
+                            <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance</Badge>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {paymentTerms === 'on_delivery' && (
                   <button
                     type="button"
                     className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
-                    onClick={handleSubmitDeposit}
+                    onClick={handleSaveUnpaid}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-semibold text-amber-900">50% Deposit</p>
-                        <p className="text-xs text-amber-700 mt-0.5">Customer pays half. Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery day.</p>
+                        <p className="font-semibold text-amber-900">Pay on Delivery / Pickup</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Trusted customer. Payment collected on delivery. Order starts processing.</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-amber-800">${(totalPrice / 2).toFixed(2)}</p>
-                        <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance Order</Badge>
+                        <p className="text-xl font-bold text-amber-800">${totalPrice.toFixed(2)}</p>
+                        <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">On Delivery</Badge>
                       </div>
                     </div>
                   </button>
                 )}
 
-                {/* Save without payment */}
                 <button
                   type="button"
                   className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
@@ -572,13 +655,8 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-foreground flex items-center gap-2">
-                        <Save className="h-4 w-4" />
-                        Save Order - Await Payment
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Customer hasn{"'"}t paid yet. Save order and come back to confirm payment later.
-                      </p>
+                      <p className="font-semibold text-foreground flex items-center gap-2"><Save className="h-4 w-4" /> Save Order - Await Payment</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Save order and confirm payment later.</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-muted-foreground">${totalPrice.toFixed(2)}</p>
@@ -587,12 +665,6 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                   </div>
                 </button>
               </div>
-
-              {!isAdvance && (
-                <p className="text-xs text-muted-foreground">
-                  Deposit option is available for advance (future date) orders only.
-                </p>
-              )}
             </div>
 
             <div className="pt-2">

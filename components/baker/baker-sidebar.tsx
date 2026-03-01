@@ -87,11 +87,18 @@ export function BakerSidebar() {
           })}
         </nav>
 
-        <div className="border-t border-white/20 p-3">
+        <div className="border-t border-white/20 p-3 space-y-1">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          >
+            <ChefHat className="h-5 w-5" />
+            All Portals
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/15 hover:text-white"
           >
             <LogOut className="h-5 w-5" />
             Sign Out

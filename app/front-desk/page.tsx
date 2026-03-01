@@ -8,19 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import {
   mockOrders,
-  mockInventory,
   Order,
   statusLabels,
   statusColors,
   daysUntilDue,
   minutesSincePosted,
 } from '@/lib/mock-data'
+import { Star } from 'lucide-react'
 import {
   ShoppingCart,
   Clock,
   ChefHat,
   Truck,
-  Package,
   AlertTriangle,
   Bell,
   CreditCard,
@@ -63,7 +62,7 @@ export default function FrontDeskDashboard() {
   const readyOrders = orders.filter(o => o.status === 'ready')
   const dispatchedOrders = orders.filter(o => o.status === 'dispatched')
   const completedOrders = orders.filter(o => o.status === 'delivered')
-  const lowStockItems = mockInventory.filter(i => i.quantity < i.minStock)
+  const goldCustomerOrders = orders.filter(o => o.isGoldCustomer)
 
   const overdueOrders = mounted ? orders.filter(o => {
     if (!['baker', 'decorator'].includes(o.status) || !o.postedToBakerAt) return false
@@ -221,14 +220,14 @@ export default function FrontDeskDashboard() {
             <Card className="border-0 shadow-sm bg-card">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Low Stock</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100">
-                    <Package className="h-4 w-4 text-red-600" />
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Gold Customers</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground">{lowStockItems.length}</p>
+                <p className="text-3xl font-bold text-foreground">{goldCustomerOrders.length}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {lowStockItems.length > 0 ? lowStockItems.slice(0, 2).map(i => i.name).join(', ') : 'All items stocked'}
+                  {goldCustomerOrders.length > 0 ? goldCustomerOrders.slice(0, 2).map(o => o.customerName).join(', ') : 'No gold orders today'}
                 </p>
               </CardContent>
             </Card>
@@ -297,7 +296,10 @@ export default function FrontDeskDashboard() {
                           <span className="text-xs font-bold text-foreground">{order.id}</span>
                           <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] px-1.5 py-0">Post to Baker</Badge>
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.items.map(i => i.name).join(', ')}</p>
+                        <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                          {order.isGoldCustomer && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
+                          {order.customerName} - {order.items.map(i => i.name).join(', ')}
+                        </p>
                       </div>
                       <Link href="/front-desk/orders">
                         <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">
