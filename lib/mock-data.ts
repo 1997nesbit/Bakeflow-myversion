@@ -250,6 +250,37 @@ export const mockOrders: Order[] = [
     totalPrice: 70, amountPaid: 70, paymentStatus: 'paid', paymentMethod: 'cash', paymentTerms: 'upfront',
     isAdvanceOrder: false, estimatedMinutes: 50, createdAt: '2026-02-06T08:00:00', postedToBakerAt: '2026-02-06T08:05:00',
   },
+  {
+    id: 'ORD-009', trackingId: 'TRK-Y7Z8A1',
+    customerName: 'Angela Mbeki', customerPhone: '+1 555-2468',
+    orderType: 'menu',
+    items: [{ name: 'Croissant', quantity: 8, price: 4, isCustom: false }, { name: 'Sourdough Loaf', quantity: 2, price: 8, isCustom: false }],
+    status: 'baker',
+    pickupDate: '2026-02-06', pickupTime: '15:00', deliveryType: 'pickup',
+    totalPrice: 48, amountPaid: 48, paymentStatus: 'paid', paymentMethod: 'cash', paymentTerms: 'upfront',
+    isAdvanceOrder: false, estimatedMinutes: 45, createdAt: '2026-02-06T09:30:00',
+  },
+  {
+    id: 'ORD-010', trackingId: 'TRK-B2C3D4',
+    customerName: 'Peter Kamau', customerPhone: '+1 555-1357', isGoldCustomer: true,
+    orderType: 'custom',
+    items: [{ name: 'Custom Cake - Lemon/Buttercream 2kg', quantity: 1, price: 85, isCustom: true, customCake: { flavour: 'Lemon', icingType: 'Buttercream', kilogram: 2, description: 'Anniversary cake, yellow and white' } }],
+    status: 'baker', cakeDescription: 'Round 2-tier, lemon drizzle with white buttercream rosettes', noteForCustomer: 'Happy Anniversary!',
+    specialNotes: 'Gluten-free flour requested',
+    pickupDate: '2026-02-07', pickupTime: '10:00', deliveryType: 'delivery', deliveryAddress: '22 Garden Lane',
+    totalPrice: 85, amountPaid: 85, paymentStatus: 'paid', paymentMethod: 'mobile_money', paymentTerms: 'upfront',
+    isAdvanceOrder: true, estimatedMinutes: 100, createdAt: '2026-02-06T09:45:00',
+  },
+  {
+    id: 'ORD-011', trackingId: 'TRK-E5F6G7',
+    customerName: 'Fatima Osei', customerPhone: '+1 555-3690',
+    orderType: 'menu',
+    items: [{ name: 'Meat Pie', quantity: 6, price: 6, isCustom: false }, { name: 'Sausage Roll', quantity: 8, price: 4, isCustom: false }],
+    status: 'baker',
+    pickupDate: '2026-02-06', pickupTime: '13:00', deliveryType: 'pickup',
+    totalPrice: 68, amountPaid: 68, paymentStatus: 'paid', paymentMethod: 'cash', paymentTerms: 'upfront',
+    isAdvanceOrder: false, estimatedMinutes: 40, createdAt: '2026-02-06T10:00:00',
+  },
 ]
 
 export const mockInventory: InventoryItem[] = [
