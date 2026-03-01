@@ -45,6 +45,8 @@ import {
   Timer,
   DollarSign,
   Banknote,
+  Link2,
+  Copy,
 } from 'lucide-react'
 
 interface OverdueAlert {
@@ -82,6 +84,16 @@ export default function OrdersPage() {
     setToast({ show: true, message, type })
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
   }, [])
+
+  const getTrackingUrl = useCallback((trackingId: string) => {
+    return typeof window !== 'undefined' ? `${window.location.origin}/track/${trackingId}` : `/track/${trackingId}`
+  }, [])
+
+  const copyTrackingLink = useCallback((trackingId: string) => {
+    const url = getTrackingUrl(trackingId)
+    navigator.clipboard.writeText(url)
+    showToast('Tracking link copied!', 'info')
+  }, [getTrackingUrl, showToast])
 
   // Overdue check
   useEffect(() => {
@@ -358,6 +370,15 @@ export default function OrdersPage() {
                             <Clock className="h-3 w-3 ml-1" />{order.pickupTime}
                             <Timer className="h-3 w-3 ml-1" />~{order.estimatedMinutes}min
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => copyTrackingLink(order.trackingId)}
+                            className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
+                          >
+                            <Link2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
+                            <Copy className="h-3 w-3 shrink-0" />
+                          </button>
                           <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={() => handlePostToBaker(order.id)}>
                             <ChefHat className="mr-1 h-4 w-4" /> Post to Baker
                           </Button>
@@ -403,6 +424,15 @@ export default function OrdersPage() {
                               <Phone className="h-3 w-3" />{order.customerPhone}
                             </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => copyTrackingLink(order.trackingId)}
+                            className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
+                          >
+                            <Link2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
+                            <Copy className="h-3 w-3 shrink-0" />
+                          </button>
                           <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={() => handleDispatchToDriver(order.id)}>
                             <Send className="mr-1 h-4 w-4" /> Send to Driver
                           </Button>
@@ -440,6 +470,15 @@ export default function OrdersPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-foreground truncate">{order.items.map(i => i.name).join(', ')}</p>
+                          <button
+                            type="button"
+                            onClick={() => copyTrackingLink(order.trackingId)}
+                            className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
+                          >
+                            <Link2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
+                            <Copy className="h-3 w-3 shrink-0" />
+                          </button>
                           <div className="flex flex-col gap-2">
                             <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={() => {
                               if (order.customerPhone) window.open(`tel:${order.customerPhone}`, '_self')
@@ -600,6 +639,15 @@ export default function OrdersPage() {
                               <span className="font-medium text-green-800">{order.assignedTo} is delivering</span>
                             </div>
                           )}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); copyTrackingLink(order.trackingId) }}
+                            className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
+                          >
+                            <Link2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
+                            <Copy className="h-3 w-3 shrink-0" />
+                          </button>
                         </CardContent>
                       </Card>
                     ))}
@@ -753,11 +801,20 @@ export default function OrdersPage() {
                   <label className="text-sm font-medium text-foreground">Message</label>
                   <Textarea placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[100px]" />
                 </div>
+                {/* Auto-include tracking link */}
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-2.5 mb-2">
+                  <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
+                  <p className="text-xs text-blue-600 font-mono truncate flex-1">{getTrackingUrl(messageOrder.trackingId)}</p>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-700 hover:bg-blue-100" onClick={() => copyTrackingLink(messageOrder.trackingId)}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">Tracking link is auto-appended to every message sent.</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup!`)}>Ready for Pickup</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery!`)}>Out for Delivery</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of $${messageOrder.totalPrice.toFixed(2)} for order ${messageOrder.id}. Please confirm.`)}>Payment Reminder</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of $${(messageOrder.totalPrice - messageOrder.amountPaid).toFixed(2)}.`)}>Balance Reminder</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup! Track here: ${getTrackingUrl(messageOrder.trackingId)}`)}>Ready for Pickup</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery! Track live: ${getTrackingUrl(messageOrder.trackingId)}`)}>Out for Delivery</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of $${messageOrder.totalPrice.toFixed(2)} for order ${messageOrder.id}. Please confirm. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Payment Reminder</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of $${(messageOrder.totalPrice - messageOrder.amountPaid).toFixed(2)}. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Balance Reminder</Button>
                 </div>
               </div>
             )}
