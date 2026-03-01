@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { mockOrders, Order, orderTypeLabels } from '@/lib/mock-data'
 import {
@@ -25,12 +26,23 @@ import {
   ThumbsUp,
   Palette,
   Bell,
+  Layers,
+  Plus,
+  X,
 } from 'lucide-react'
 
 interface TimerState {
   startedAt: number
   elapsed: number
   running: boolean
+}
+
+interface BulkBatch {
+  id: string
+  name: string
+  orderIds: string[]
+  notes: string
+  createdAt: string
 }
 
 export default function BakerActivePage() {
@@ -45,6 +57,13 @@ export default function BakerActivePage() {
   const [rejectNote, setRejectNote] = useState('')
   const [overduePopup, setOverduePopup] = useState<Order | null>(null)
   const [activeTab, setActiveTab] = useState('incoming')
+
+  // Bulk baking state
+  const [batches, setBatches] = useState<BulkBatch[]>([])
+  const [showBatchForm, setShowBatchForm] = useState(false)
+  const [batchName, setBatchName] = useState('')
+  const [batchNotes, setBatchNotes] = useState('')
+  const [selectedForBatch, setSelectedForBatch] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setMounted(true)
@@ -100,17 +119,27 @@ export default function BakerActivePage() {
       )
     )
     setActiveTab('baking')
-    showToast('Order accepted. Start baking!')
+    showToast('Order accepted!')
+  }
+
+  const handleAcceptAll = () => {
+    const incoming = orders.filter((o) => o.status === 'baker' && !o.postedToBakerAt)
+    if (incoming.length === 0) return
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.status === 'baker' && !o.postedToBakerAt
+          ? { ...o, postedToBakerAt: new Date().toISOString() }
+          : o
+      )
+    )
+    setActiveTab('baking')
+    showToast(`${incoming.length} orders accepted!`)
   }
 
   const handleStartTimer = (orderId: string) => {
     setTimers((prev) => ({
       ...prev,
-      [orderId]: {
-        startedAt: Date.now(),
-        elapsed: prev[orderId]?.elapsed || 0,
-        running: true,
-      },
+      [orderId]: { startedAt: Date.now(), elapsed: prev[orderId]?.elapsed || 0, running: true },
     }))
   }
 
@@ -118,7 +147,10 @@ export default function BakerActivePage() {
     setTimers((prev) => {
       const t = prev[orderId]
       if (!t || !t.running) return prev
-      return { ...prev, [orderId]: { ...t, elapsed: t.elapsed + (Date.now() - t.startedAt), running: false } }
+      return {
+        ...prev,
+        [orderId]: { ...t, elapsed: t.elapsed + (Date.now() - t.startedAt), running: false },
+      }
     })
   }
 
@@ -128,7 +160,7 @@ export default function BakerActivePage() {
       prev.map((o) => (o.id === orderId ? { ...o, status: 'quality' as Order['status'] } : o))
     )
     setActiveTab('qa')
-    showToast('Baking complete. Moved to QA inspection.')
+    showToast('Moved to QA.')
   }
 
   const handleQAPass = (orderId: string) => {
@@ -140,17 +172,64 @@ export default function BakerActivePage() {
 
   const handleQAFail = (orderId: string) => {
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: 'baker' as Order['status'], postedToBakerAt: new Date().toISOString() } : o))
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, status: 'baker' as Order['status'], postedToBakerAt: new Date().toISOString() }
+          : o
+      )
     )
     setRejectingId(null)
     setRejectNote('')
     setActiveTab('baking')
-    showToast('QA Failed. Order returned to baking.')
+    showToast('QA Failed. Returned to baking.')
+  }
+
+  // Bulk batch actions
+  const handleCreateBatch = () => {
+    if (selectedForBatch.size < 2 || !batchName.trim()) return
+    const batch: BulkBatch = {
+      id: `BATCH-${String(batches.length + 1).padStart(3, '0')}`,
+      name: batchName.trim(),
+      orderIds: Array.from(selectedForBatch),
+      notes: batchNotes.trim(),
+      createdAt: new Date().toISOString(),
+    }
+    setBatches((prev) => [...prev, batch])
+    setSelectedForBatch(new Set())
+    setBatchName('')
+    setBatchNotes('')
+    setShowBatchForm(false)
+    showToast(`Batch "${batch.name}" created with ${batch.orderIds.length} orders.`)
+  }
+
+  const toggleBatchSelect = (orderId: string) => {
+    setSelectedForBatch((prev) => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
+
+  const handleStartBatchTimers = (batch: BulkBatch) => {
+    for (const oid of batch.orderIds) {
+      handleStartTimer(oid)
+    }
+    showToast(`Started timers for batch "${batch.name}"`)
+  }
+
+  const handleSendBatchToQA = (batch: BulkBatch) => {
+    for (const oid of batch.orderIds) {
+      handleSendToQA(oid)
+    }
+    setBatches((prev) => prev.filter((b) => b.id !== batch.id))
   }
 
   const incomingOrders = orders.filter((o) => o.status === 'baker' && !o.postedToBakerAt)
   const bakingOrders = orders.filter((o) => o.status === 'baker' && o.postedToBakerAt)
   const qaOrders = orders.filter((o) => o.status === 'quality')
+
+  const getBatchForOrder = (orderId: string) => batches.find((b) => b.orderIds.includes(orderId))
 
   return (
     <div className="min-h-screen" style={{ background: '#fdf2f4' }}>
@@ -159,21 +238,32 @@ export default function BakerActivePage() {
         {/* Overdue Popup */}
         {overduePopup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <Card className="w-full max-w-md mx-4 border-2 shadow-2xl bg-card" style={{ borderColor: '#CA0123' }}>
+            <Card
+              className="w-full max-w-md mx-4 border-2 shadow-2xl bg-card"
+              style={{ borderColor: '#CA0123' }}
+            >
               <CardContent className="p-6 text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full animate-bounce" style={{ background: '#fce7ea' }}>
+                <div
+                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-full animate-bounce"
+                  style={{ background: '#fce7ea' }}
+                >
                   <AlertTriangle className="h-8 w-8" style={{ color: '#CA0123' }} />
                 </div>
-                <h2 className="text-xl font-bold text-balance" style={{ color: '#CA0123' }}>Order Overdue!</h2>
+                <h2 className="text-xl font-bold text-balance" style={{ color: '#CA0123' }}>
+                  Order Overdue!
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Order <span className="font-bold text-foreground">{overduePopup.id}</span> for{' '}
-                  <span className="font-bold text-foreground">{overduePopup.customerName}</span> has exceeded
-                  its estimated time of <span className="font-bold">{overduePopup.estimatedMinutes} minutes</span>.
+                  Order{' '}
+                  <span className="font-bold text-foreground">{overduePopup.id}</span> for{' '}
+                  <span className="font-bold text-foreground">{overduePopup.customerName}</span>{' '}
+                  exceeded its estimated time of{' '}
+                  <span className="font-bold">{overduePopup.estimatedMinutes} min</span>.
                 </p>
-                <div className="rounded-lg p-3" style={{ background: '#fce7ea' }}>
-                  <p className="text-sm" style={{ color: '#CA0123' }}>Front Desk has been notified automatically.</p>
-                </div>
-                <Button className="w-full text-white border-0" style={{ background: '#CA0123' }} onClick={() => setOverduePopup(null)}>
+                <Button
+                  className="w-full text-white border-0"
+                  style={{ background: '#CA0123' }}
+                  onClick={() => setOverduePopup(null)}
+                >
                   Acknowledged
                 </Button>
               </CardContent>
@@ -184,13 +274,17 @@ export default function BakerActivePage() {
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
-              <Flame className="h-8 w-8 text-white" />
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-md"
+              style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
+            >
+              <Flame className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Active Orders</h1>
+              <h1 className="text-xl font-bold text-foreground">Active Orders</h1>
               <p className="text-sm text-muted-foreground">
-                {incomingOrders.length} incoming &middot; {bakingOrders.length} baking &middot; {qaOrders.length} awaiting QA
+                {incomingOrders.length} incoming &middot; {bakingOrders.length} baking &middot;{' '}
+                {qaOrders.length} QA
               </p>
             </div>
           </div>
@@ -198,34 +292,32 @@ export default function BakerActivePage() {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
             <TabsList className="bg-card border border-border h-11">
-              <TabsTrigger
-                value="incoming"
-                className="gap-2 data-[state=active]:text-white"
-                style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}
-                data-active-bg="#e66386"
-              >
+              <TabsTrigger value="incoming" className="gap-2">
                 <Inbox className="h-4 w-4" />
                 Incoming
                 {incomingOrders.length > 0 && (
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full text-white text-[10px] font-bold px-1" style={{ background: '#CA0123' }}>
+                  <span
+                    className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full text-white text-[10px] font-bold px-1"
+                    style={{ background: '#CA0123' }}
+                  >
                     {incomingOrders.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="baking" className="gap-2 data-[state=active]:text-white">
+              <TabsTrigger value="baking" className="gap-2">
                 <Flame className="h-4 w-4" />
                 Baking
                 {bakingOrders.length > 0 && (
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold px-1">
+                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted text-xs font-bold px-1">
                     {bakingOrders.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="qa" className="gap-2 data-[state=active]:text-white">
+              <TabsTrigger value="qa" className="gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Quality Check
+                QA
                 {qaOrders.length > 0 && (
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold px-1">
+                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted text-xs font-bold px-1">
                     {qaOrders.length}
                   </span>
                 )}
@@ -234,28 +326,52 @@ export default function BakerActivePage() {
 
             {/* INCOMING TAB */}
             <TabsContent value="incoming" className="mt-0 space-y-4">
+              {incomingOrders.length > 1 && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    className="text-white border-0"
+                    style={{ background: '#CA0123' }}
+                    onClick={handleAcceptAll}
+                  >
+                    <ThumbsUp className="mr-1.5 h-3.5 w-3.5" />
+                    Accept All ({incomingOrders.length})
+                  </Button>
+                </div>
+              )}
               {incomingOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
                   <Bell className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
                   <p className="text-lg font-medium text-muted-foreground">No new orders</p>
-                  <p className="text-sm text-muted-foreground mt-1">Orders from Front Desk will appear here</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Orders from Front Desk will appear here
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {incomingOrders.map((order) => (
-                    <Card key={order.id} className="border-2 shadow-sm overflow-hidden" style={{ borderColor: '#fbd5db', background: '#fdf2f4' }}>
-                      <div className="px-4 py-2 flex items-center gap-2" style={{ background: '#e66386' }}>
+                    <Card
+                      key={order.id}
+                      className="border-2 shadow-sm overflow-hidden"
+                      style={{ borderColor: '#fbd5db', background: '#fdf2f4' }}
+                    >
+                      <div
+                        className="px-4 py-2 flex items-center gap-2"
+                        style={{ background: '#e66386' }}
+                      >
                         <Bell className="h-4 w-4 text-white" />
-                        <p className="text-xs font-semibold text-white">New Order from Front Desk</p>
+                        <p className="text-xs font-semibold text-white">New from Front Desk</p>
                       </div>
-                      <CardContent className="p-5 space-y-4">
+                      <CardContent className="p-5 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-lg font-bold text-foreground">{order.id}</p>
                             <p className="text-sm text-muted-foreground">{order.customerName}</p>
                           </div>
                           <div className="text-right">
-                            <Badge variant="outline" className="text-xs bg-transparent">{orderTypeLabels[order.orderType]}</Badge>
+                            <Badge variant="outline" className="text-xs bg-transparent">
+                              {orderTypeLabels[order.orderType]}
+                            </Badge>
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
                               <Clock className="h-3 w-3" />
                               Est. {order.estimatedMinutes}m
@@ -268,13 +384,19 @@ export default function BakerActivePage() {
                             <div key={idx} className="rounded-lg bg-card border border-border p-3">
                               <div className="flex items-start justify-between">
                                 <p className="font-medium text-sm text-foreground">{item.name}</p>
-                                <span className="text-xs text-muted-foreground">x{item.quantity}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  x{item.quantity}
+                                </span>
                               </div>
                               {item.isCustom && item.customCake && (
                                 <div className="flex items-center gap-1.5 mt-1.5">
-                                  <Cake className="h-3 w-3 shrink-0" style={{ color: '#e66386' }} />
+                                  <Cake
+                                    className="h-3 w-3 shrink-0"
+                                    style={{ color: '#e66386' }}
+                                  />
                                   <p className="text-xs" style={{ color: '#CA0123' }}>
-                                    {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
+                                    {item.customCake.flavour} &middot; {item.customCake.icingType}{' '}
+                                    &middot; {item.customCake.kilogram}kg
                                   </p>
                                 </div>
                               )}
@@ -282,24 +404,84 @@ export default function BakerActivePage() {
                           ))}
                         </div>
 
+                        {/* Cake description from front desk */}
+                        {order.cakeDescription && (
+                          <div
+                            className="flex items-start gap-2 rounded-lg border p-3"
+                            style={{ background: '#fce7ea', borderColor: '#fbd5db' }}
+                          >
+                            <Cake
+                              className="h-4 w-4 mt-0.5 shrink-0"
+                              style={{ color: '#CA0123' }}
+                            />
+                            <div>
+                              <p
+                                className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                                style={{ color: '#CA0123' }}
+                              >
+                                Cake Description
+                              </p>
+                              <p className="text-xs" style={{ color: '#CA0123' }}>
+                                {order.cakeDescription}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Note for customer */}
+                        {order.noteForCustomer && (
+                          <div
+                            className="flex items-start gap-2 rounded-lg border p-3"
+                            style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}
+                          >
+                            <FileText
+                              className="h-4 w-4 mt-0.5 shrink-0"
+                              style={{ color: '#e66386' }}
+                            />
+                            <div>
+                              <p
+                                className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                                style={{ color: '#e66386' }}
+                              >
+                                Write on cake
+                              </p>
+                              <p className="text-xs text-foreground">{order.noteForCustomer}</p>
+                            </div>
+                          </div>
+                        )}
+
                         {order.specialNotes && (
-                          <div className="flex items-start gap-2 rounded-lg border p-3" style={{ background: '#fce7ea', borderColor: '#fbd5db' }}>
-                            <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
-                            <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
+                          <div
+                            className="flex items-start gap-2 rounded-lg border p-3"
+                            style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}
+                          >
+                            <FileText
+                              className="h-4 w-4 mt-0.5 shrink-0"
+                              style={{ color: '#e66386' }}
+                            />
+                            <p className="text-xs" style={{ color: '#CA0123' }}>
+                              {order.specialNotes}
+                            </p>
                           </div>
                         )}
 
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{order.pickupTime}</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {order.pickupDate}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {order.pickupTime}
+                          </span>
                         </div>
 
                         <Button
-                          className="w-full h-12 text-white border-0 text-base"
+                          className="w-full h-11 text-white border-0"
                           style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
                           onClick={() => handleAcceptOrder(order.id)}
                         >
-                          <ThumbsUp className="mr-2 h-5 w-5" />
+                          <ThumbsUp className="mr-2 h-4 w-4" />
                           Accept Order
                         </Button>
                       </CardContent>
@@ -311,69 +493,302 @@ export default function BakerActivePage() {
 
             {/* BAKING TAB */}
             <TabsContent value="baking" className="mt-0 space-y-4">
+              {/* Bulk batch controls */}
+              {bakingOrders.length >= 2 && (
+                <Card className="border-0 shadow-sm bg-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4" style={{ color: '#e66386' }} />
+                        <p className="text-sm font-semibold text-foreground">Bulk Baking</p>
+                        <span className="text-xs text-muted-foreground">
+                          Group similar orders into a batch
+                        </span>
+                      </div>
+                      {!showBatchForm && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent"
+                          style={{ borderColor: '#e66386', color: '#e66386' }}
+                          onClick={() => setShowBatchForm(true)}
+                        >
+                          <Plus className="mr-1.5 h-3.5 w-3.5" />
+                          New Batch
+                        </Button>
+                      )}
+                    </div>
+
+                    {showBatchForm && (
+                      <div className="mt-4 space-y-3 rounded-xl border p-4" style={{ borderColor: '#fbd5db', background: '#fdf2f4' }}>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold" style={{ color: '#CA0123' }}>
+                            Create Batch
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowBatchForm(false)
+                              setSelectedForBatch(new Set())
+                              setBatchName('')
+                              setBatchNotes('')
+                            }}
+                          >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                        <Input
+                          placeholder="Batch name (e.g. Morning Bread Run)"
+                          value={batchName}
+                          onChange={(e) => setBatchName(e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Select orders to batch ({selectedForBatch.size} selected):
+                        </p>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {bakingOrders.map((o) => {
+                            const inBatch = getBatchForOrder(o.id)
+                            return (
+                              <label
+                                key={o.id}
+                                className={`flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+                                  selectedForBatch.has(o.id)
+                                    ? 'border-[#e66386] bg-white'
+                                    : inBatch
+                                      ? 'border-border bg-muted/50 opacity-50'
+                                      : 'border-border bg-white hover:border-[#fbd5db]'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedForBatch.has(o.id)}
+                                  onChange={() => toggleBatchSelect(o.id)}
+                                  disabled={!!inBatch}
+                                  className="accent-[#CA0123] h-4 w-4"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground">{o.id}</p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    {o.items.map((i) => i.name).join(', ')}
+                                  </p>
+                                </div>
+                                {inBatch && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] shrink-0 bg-transparent"
+                                  >
+                                    {inBatch.name}
+                                  </Badge>
+                                )}
+                              </label>
+                            )
+                          })}
+                        </div>
+                        <Textarea
+                          placeholder="Batch notes (e.g. use oven #2, 180C for 25 min)"
+                          value={batchNotes}
+                          onChange={(e) => setBatchNotes(e.target.value)}
+                          className="min-h-[60px] text-sm"
+                        />
+                        <Button
+                          className="w-full text-white border-0"
+                          style={{ background: '#CA0123' }}
+                          onClick={handleCreateBatch}
+                          disabled={selectedForBatch.size < 2 || !batchName.trim()}
+                        >
+                          <Layers className="mr-2 h-4 w-4" />
+                          Create Batch ({selectedForBatch.size} orders)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Existing batches */}
+                    {batches.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {batches.map((batch) => {
+                          const batchOrds = bakingOrders.filter((o) =>
+                            batch.orderIds.includes(o.id)
+                          )
+                          if (batchOrds.length === 0) return null
+                          return (
+                            <div
+                              key={batch.id}
+                              className="rounded-xl border-2 p-4"
+                              style={{ borderColor: '#e66386', background: '#fdf2f4' }}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Layers className="h-4 w-4" style={{ color: '#CA0123' }} />
+                                  <p className="text-sm font-bold text-foreground">{batch.name}</p>
+                                  <Badge
+                                    className="text-[10px] text-white border-0"
+                                    style={{ background: '#e66386' }}
+                                  >
+                                    {batchOrds.length} orders
+                                  </Badge>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white border-0"
+                                    onClick={() => handleStartBatchTimers(batch)}
+                                  >
+                                    <Play className="mr-1 h-3 w-3" />
+                                    Start All
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs text-white border-0"
+                                    style={{ background: '#CA0123' }}
+                                    onClick={() => handleSendBatchToQA(batch)}
+                                  >
+                                    {'Done \u2192 QA'}
+                                  </Button>
+                                </div>
+                              </div>
+                              {batch.notes && (
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  {batch.notes}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-1.5">
+                                {batchOrds.map((o) => (
+                                  <span
+                                    key={o.id}
+                                    className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                    style={{ background: '#fce7ea', color: '#CA0123' }}
+                                  >
+                                    {o.id} - {o.items.map((i) => i.name).join(', ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {bakingOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
                   <ChefHat className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
                   <p className="text-lg font-medium text-muted-foreground">Nothing baking</p>
-                  <p className="text-sm text-muted-foreground mt-1">Accept an incoming order to start</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Accept an incoming order to start
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {bakingOrders.map((order) => {
                     const td = getTimerDisplay(order.id, order.estimatedMinutes)
                     const hasTimer = !!timers[order.id]
+                    const batch = getBatchForOrder(order.id)
                     return (
                       <Card
                         key={order.id}
                         className="border-2 shadow-sm transition-all"
                         style={{
-                          borderColor: td.overdue ? '#CA0123' : td.running ? '#e66386' : undefined,
-                          background: td.overdue ? '#fdf2f4' : td.running ? '#fdf2f4' : undefined,
+                          borderColor: td.overdue
+                            ? '#CA0123'
+                            : td.running
+                              ? '#e66386'
+                              : undefined,
+                          background:
+                            td.overdue || td.running ? '#fdf2f4' : undefined,
                         }}
                       >
-                        <CardContent className="p-5 space-y-4">
+                        <CardContent className="p-5 space-y-3">
                           <div className="flex items-start justify-between">
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-lg font-bold text-foreground">{order.id}</p>
-                                <Badge variant="outline" className="text-[10px] bg-transparent">{orderTypeLabels[order.orderType]}</Badge>
+                                <Badge variant="outline" className="text-[10px] bg-transparent">
+                                  {orderTypeLabels[order.orderType]}
+                                </Badge>
+                                {batch && (
+                                  <Badge
+                                    className="text-[10px] text-white border-0"
+                                    style={{ background: '#e66386' }}
+                                  >
+                                    <Layers className="mr-1 h-2.5 w-2.5" />
+                                    {batch.name}
+                                  </Badge>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {order.customerName}
+                              </p>
                             </div>
                             {td.overdue ? (
-                              <Badge className="text-white border-0 animate-pulse text-xs" style={{ background: '#CA0123' }}>OVERDUE</Badge>
+                              <Badge
+                                className="text-white border-0 animate-pulse text-xs"
+                                style={{ background: '#CA0123' }}
+                              >
+                                OVERDUE
+                              </Badge>
                             ) : td.running ? (
-                              <Badge className="text-white border-0 text-xs" style={{ background: '#e66386' }}>BAKING</Badge>
+                              <Badge
+                                className="text-white border-0 text-xs"
+                                style={{ background: '#e66386' }}
+                              >
+                                BAKING
+                              </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-transparent text-xs">READY</Badge>
+                              <Badge variant="outline" className="bg-transparent text-xs">
+                                READY
+                              </Badge>
                             )}
                           </div>
 
                           {/* Timer */}
-                          <div className="rounded-xl p-5 text-center" style={{ background: td.overdue ? '#fce7ea' : '#fdf2f4' }}>
-                            <p className="text-5xl font-mono font-bold tabular-nums" style={{ color: td.overdue ? '#CA0123' : undefined }}>
-                              {String(td.min).padStart(2, '0')}:{String(td.sec).padStart(2, '0')}
+                          <div
+                            className="rounded-xl p-4 text-center"
+                            style={{
+                              background: td.overdue ? '#fce7ea' : '#fdf2f4',
+                            }}
+                          >
+                            <p
+                              className="text-4xl font-mono font-bold tabular-nums"
+                              style={{ color: td.overdue ? '#CA0123' : undefined }}
+                            >
+                              {String(td.min).padStart(2, '0')}:
+                              {String(td.sec).padStart(2, '0')}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-2">Estimated: {order.estimatedMinutes} min</p>
-                            <div className="mt-3 h-2 rounded-full bg-border overflow-hidden">
+                            <p className="text-xs text-muted-foreground mt-1">
+                              of {order.estimatedMinutes} min
+                            </p>
+                            <div className="mt-2 h-1.5 rounded-full bg-border overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all duration-1000"
                                 style={{
                                   width: `${td.pct}%`,
-                                  background: td.overdue ? '#CA0123' : td.pct > 75 ? '#e66386' : '#22c55e',
+                                  background: td.overdue
+                                    ? '#CA0123'
+                                    : td.pct > 75
+                                      ? '#e66386'
+                                      : '#22c55e',
                                 }}
                               />
                             </div>
                           </div>
 
-                          {/* Timer button */}
                           {!hasTimer || !td.running ? (
-                            <Button className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={() => handleStartTimer(order.id)}>
+                            <Button
+                              className="w-full bg-green-600 hover:bg-green-700 text-white border-0"
+                              onClick={() => handleStartTimer(order.id)}
+                            >
                               <Play className="mr-2 h-4 w-4" />
                               {hasTimer ? 'Resume' : 'Start Timer'}
                             </Button>
                           ) : (
-                            <Button variant="outline" className="w-full bg-transparent" onClick={() => handlePauseTimer(order.id)}>
+                            <Button
+                              variant="outline"
+                              className="w-full bg-transparent"
+                              onClick={() => handlePauseTimer(order.id)}
+                            >
                               <Pause className="mr-2 h-4 w-4" />
                               Pause
                             </Button>
@@ -384,30 +799,94 @@ export default function BakerActivePage() {
                             {order.items.map((item, idx) => (
                               <div key={idx} className="rounded-lg bg-muted/50 p-3">
                                 <div className="flex items-start justify-between">
-                                  <p className="font-medium text-sm text-foreground">{item.name}</p>
-                                  <span className="text-xs text-muted-foreground">x{item.quantity}</span>
+                                  <p className="font-medium text-sm text-foreground">
+                                    {item.name}
+                                  </p>
+                                  <span className="text-xs text-muted-foreground">
+                                    x{item.quantity}
+                                  </span>
                                 </div>
                                 {item.isCustom && item.customCake && (
-                                  <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#e66386' }}>
+                                  <p
+                                    className="text-xs mt-1 flex items-center gap-1"
+                                    style={{ color: '#e66386' }}
+                                  >
                                     <Cake className="h-3 w-3" />
-                                    {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
+                                    {item.customCake.flavour} &middot;{' '}
+                                    {item.customCake.icingType} &middot;{' '}
+                                    {item.customCake.kilogram}kg
                                   </p>
                                 )}
                               </div>
                             ))}
                           </div>
 
-                          {order.specialNotes && (
-                            <div className="flex items-start gap-2 rounded-lg border p-3" style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}>
-                              <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
-                              <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
+                          {order.cakeDescription && (
+                            <div
+                              className="flex items-start gap-2 rounded-lg border p-3"
+                              style={{ background: '#fce7ea', borderColor: '#fbd5db' }}
+                            >
+                              <Cake
+                                className="h-4 w-4 mt-0.5 shrink-0"
+                                style={{ color: '#CA0123' }}
+                              />
+                              <div>
+                                <p
+                                  className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                                  style={{ color: '#CA0123' }}
+                                >
+                                  Cake Description
+                                </p>
+                                <p className="text-xs" style={{ color: '#CA0123' }}>
+                                  {order.cakeDescription}
+                                </p>
+                              </div>
                             </div>
                           )}
 
-                          {/* Action: Done Baking -> QA */}
+                          {order.noteForCustomer && (
+                            <div
+                              className="flex items-start gap-2 rounded-lg border p-3"
+                              style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}
+                            >
+                              <FileText
+                                className="h-4 w-4 mt-0.5 shrink-0"
+                                style={{ color: '#e66386' }}
+                              />
+                              <div>
+                                <p
+                                  className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                                  style={{ color: '#e66386' }}
+                                >
+                                  Write on cake
+                                </p>
+                                <p className="text-xs text-foreground">
+                                  {order.noteForCustomer}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {order.specialNotes && (
+                            <div
+                              className="flex items-start gap-2 rounded-lg border p-3"
+                              style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}
+                            >
+                              <FileText
+                                className="h-4 w-4 mt-0.5 shrink-0"
+                                style={{ color: '#e66386' }}
+                              />
+                              <p className="text-xs" style={{ color: '#CA0123' }}>
+                                {order.specialNotes}
+                              </p>
+                            </div>
+                          )}
+
                           <Button
                             className="w-full text-white border-0"
-                            style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
+                            style={{
+                              background: 'linear-gradient(135deg, #CA0123, #e66386)',
+                            }}
                             onClick={() => handleSendToQA(order.id)}
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
@@ -426,55 +905,82 @@ export default function BakerActivePage() {
               {qaOrders.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-border p-14 text-center">
                   <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
-                  <p className="text-lg font-medium text-muted-foreground">No items awaiting QA</p>
-                  <p className="text-sm text-muted-foreground mt-1">{'Finish baking an order and it will appear here for quality check'}</p>
+                  <p className="text-lg font-medium text-muted-foreground">
+                    No items awaiting QA
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Finish baking an order and it will appear here
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {qaOrders.map((order) => (
-                    <Card key={order.id} className="border-2 shadow-sm overflow-hidden" style={{ borderColor: '#e66386' }}>
-                      <div className="px-4 py-2 flex items-center gap-2" style={{ background: '#e66386' }}>
+                    <Card
+                      key={order.id}
+                      className="border-2 shadow-sm overflow-hidden"
+                      style={{ borderColor: '#e66386' }}
+                    >
+                      <div
+                        className="px-4 py-2 flex items-center gap-2"
+                        style={{ background: '#e66386' }}
+                      >
                         <CheckCircle className="h-4 w-4 text-white" />
-                        <p className="text-xs font-semibold text-white">Quality Assurance Check</p>
+                        <p className="text-xs font-semibold text-white">Quality Assurance</p>
                       </div>
-                      <CardContent className="p-5 space-y-4">
+                      <CardContent className="p-5 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-lg font-bold text-foreground">{order.id}</p>
-                            <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {order.customerName}
+                            </p>
                           </div>
-                          <Badge variant="outline" className="text-xs bg-transparent">{orderTypeLabels[order.orderType]}</Badge>
+                          <Badge variant="outline" className="text-xs bg-transparent">
+                            {orderTypeLabels[order.orderType]}
+                          </Badge>
                         </div>
 
                         <div className="space-y-2">
                           {order.items.map((item, idx) => (
-                            <div key={idx} className="rounded-lg border p-3" style={{ background: '#fdf2f4', borderColor: '#fce7ea' }}>
+                            <div
+                              key={idx}
+                              className="rounded-lg border p-3"
+                              style={{ background: '#fdf2f4', borderColor: '#fce7ea' }}
+                            >
                               <div className="flex items-start justify-between">
-                                <p className="font-medium text-sm text-foreground">{item.name}</p>
-                                <span className="text-xs text-muted-foreground">x{item.quantity}</span>
+                                <p className="font-medium text-sm text-foreground">
+                                  {item.name}
+                                </p>
+                                <span className="text-xs text-muted-foreground">
+                                  x{item.quantity}
+                                </span>
                               </div>
                               {item.isCustom && item.customCake && (
                                 <p className="text-xs mt-1" style={{ color: '#e66386' }}>
-                                  {item.customCake.flavour} &middot; {item.customCake.icingType} &middot; {item.customCake.kilogram}kg
-                                  {item.customCake.description && ` - ${item.customCake.description}`}
+                                  {item.customCake.flavour} &middot;{' '}
+                                  {item.customCake.icingType} &middot;{' '}
+                                  {item.customCake.kilogram}kg
+                                  {item.customCake.description &&
+                                    ` - ${item.customCake.description}`}
                                 </p>
                               )}
                             </div>
                           ))}
                         </div>
 
-                        {order.specialNotes && (
-                          <div className="flex items-start gap-2 rounded-lg p-3" style={{ background: '#fdf2f4' }}>
-                            <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#e66386' }} />
-                            <p className="text-xs" style={{ color: '#CA0123' }}>{order.specialNotes}</p>
-                          </div>
-                        )}
-
-                        <div className="rounded-xl border p-4" style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}>
-                          <p className="text-sm font-medium mb-2" style={{ color: '#CA0123' }}>QA Checklist</p>
-                          <div className="space-y-1.5 text-xs" style={{ color: '#e66386' }}>
-                            <p>{'- Correct flavour and icing as per order?'}</p>
-                            <p>{'- Proper texture, colour, and consistency?'}</p>
+                        <div
+                          className="rounded-xl border p-4"
+                          style={{ background: '#fdf2f4', borderColor: '#fbd5db' }}
+                        >
+                          <p className="text-sm font-medium mb-2" style={{ color: '#CA0123' }}>
+                            QA Checklist
+                          </p>
+                          <div
+                            className="space-y-1.5 text-xs"
+                            style={{ color: '#e66386' }}
+                          >
+                            <p>{'- Correct flavour and icing?'}</p>
+                            <p>{'- Proper texture, colour, consistency?'}</p>
                             <p>{'- Correct weight/size?'}</p>
                             <p>{'- No defects or damage?'}</p>
                           </div>
@@ -483,16 +989,29 @@ export default function BakerActivePage() {
                         {rejectingId === order.id ? (
                           <div className="space-y-3">
                             <Textarea
-                              placeholder="What needs to be fixed? (will be visible when order returns to baking)"
+                              placeholder="What needs fixing?"
                               value={rejectNote}
                               onChange={(e) => setRejectNote(e.target.value)}
-                              className="min-h-[70px] text-sm"
+                              className="min-h-[60px] text-sm"
                             />
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm" className="flex-1 bg-transparent" onClick={() => { setRejectingId(null); setRejectNote('') }}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 bg-transparent"
+                                onClick={() => {
+                                  setRejectingId(null)
+                                  setRejectNote('')
+                                }}
+                              >
                                 Cancel
                               </Button>
-                              <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleQAFail(order.id)}>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="flex-1"
+                                onClick={() => handleQAFail(order.id)}
+                              >
                                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                                 {'Fail \u2192 Re-bake'}
                               </Button>
@@ -511,7 +1030,9 @@ export default function BakerActivePage() {
                             </Button>
                             <Button
                               className="flex-1 text-white border-0"
-                              style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}
+                              style={{
+                                background: 'linear-gradient(135deg, #CA0123, #e66386)',
+                              }}
                               onClick={() => handleQAPass(order.id)}
                             >
                               <Palette className="mr-1.5 h-4 w-4" />
@@ -530,7 +1051,10 @@ export default function BakerActivePage() {
 
         {/* Toast */}
         {toastMsg && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl px-5 py-3 text-white shadow-lg animate-in slide-in-from-bottom-4" style={{ background: '#CA0123' }}>
+          <div
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl px-5 py-3 text-white shadow-lg animate-in slide-in-from-bottom-4"
+            style={{ background: '#CA0123' }}
+          >
             <CheckCircle className="h-5 w-5" />
             <span className="text-sm font-medium">{toastMsg}</span>
           </div>
