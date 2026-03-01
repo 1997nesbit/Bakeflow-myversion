@@ -5,7 +5,6 @@ import { InventorySidebar } from '@/components/inventory/inventory-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import Link from 'next/link'
 import {
   mockInventory,
@@ -190,12 +189,13 @@ export default function InventoryDashboard() {
                   return (
                     <div key={item.id} className="flex items-center gap-3">
                       <p className="w-36 text-sm font-medium text-foreground truncate">{item.name}</p>
-                      <div className="flex-1 relative">
-                        <Progress value={pct} className="h-2.5 [&>div]:transition-all" />
-                        <div
-                          className={`absolute top-0 left-0 h-2.5 rounded-full ${color} transition-all`}
-                          style={{ width: `${pct}%` }}
-                        />
+                      <div className="flex-1">
+                        <div className="h-2.5 w-full rounded-full bg-muted">
+                          <div
+                            className={`h-2.5 rounded-full ${color} transition-all`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
                       <p className="w-20 text-right text-xs text-muted-foreground">
                         {item.quantity} / {item.minStock * 2} {item.unit}

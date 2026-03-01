@@ -27,7 +27,20 @@ import {
   Filter,
   ArrowUpDown,
   Download,
+  ShieldAlert,
+  Lock,
+  Package,
 } from 'lucide-react'
+
+const categoryColors: Record<ExpenseCategory, string> = {
+  raw_materials: 'bg-amber-100 text-amber-800',
+  packaging: 'bg-blue-100 text-blue-800',
+  equipment: 'bg-orange-100 text-orange-800',
+  storage: 'bg-teal-100 text-teal-800',
+  delivery_logistics: 'bg-indigo-100 text-indigo-800',
+  wastage: 'bg-red-100 text-red-800',
+  miscellaneous: 'bg-gray-100 text-gray-800',
+}
 
 const paymentMethodLabels: Record<string, string> = {
   cash: 'Cash',
@@ -36,22 +49,12 @@ const paymentMethodLabels: Record<string, string> = {
   cheque: 'Cheque',
 }
 
-const categoryColors: Record<ExpenseCategory, string> = {
-  utilities: 'bg-blue-100 text-blue-800',
-  rent: 'bg-purple-100 text-purple-800',
-  salaries: 'bg-emerald-100 text-emerald-800',
-  equipment: 'bg-orange-100 text-orange-800',
-  maintenance: 'bg-red-100 text-red-800',
-  transport: 'bg-amber-100 text-amber-800',
-  marketing: 'bg-pink-100 text-pink-800',
-  licenses: 'bg-indigo-100 text-indigo-800',
-  cleaning: 'bg-teal-100 text-teal-800',
-  miscellaneous: 'bg-gray-100 text-gray-800',
-}
-
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>(mockExpenses)
   const [mounted, setMounted] = useState(false)
+  const [isManager, setIsManager] = useState(false)
+  const [managerPin, setManagerPin] = useState('')
+  const [pinError, setPinError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [filterMonth, setFilterMonth] = useState<string>('all')
@@ -60,14 +63,27 @@ export default function ExpensesPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [toast, setToast] = useState({ show: false, message: '' })
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    setMounted(true)
+    const stored = sessionStorage.getItem('bbr_manager_expenses_access')
+    if (stored === 'granted') setIsManager(true)
+  }, [])
 
-  // New expense form
+  const handleManagerLogin = () => {
+    if (managerPin === '1234') {
+      setIsManager(true)
+      setPinError(false)
+      sessionStorage.setItem('bbr_manager_expenses_access', 'granted')
+    } else {
+      setPinError(true)
+    }
+  }
+
   const [newExpense, setNewExpense] = useState({
     title: '',
     category: '' as ExpenseCategory | '',
     amount: '',
-    date: '',
+    date: new Date().toISOString().split('T')[0],
     paidTo: '',
     paymentMethod: '' as string,
     receiptRef: '',
@@ -76,7 +92,6 @@ export default function ExpensesPage() {
     recurringPeriod: '' as string,
   })
 
-  // Filter and sort
   const filtered = expenses
     .filter(e => {
       if (searchQuery) {
@@ -92,14 +107,11 @@ export default function ExpensesPage() {
       return sortDir === 'desc' ? b.amount - a.amount : a.amount - b.amount
     })
 
-  // Metrics
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
   const thisMonthExpenses = expenses.filter(e => e.date.startsWith('2026-02')).reduce((s, e) => s + e.amount, 0)
   const lastMonthExpenses = expenses.filter(e => e.date.startsWith('2026-01')).reduce((s, e) => s + e.amount, 0)
   const recurringTotal = expenses.filter(e => e.recurring).reduce((s, e) => s + e.amount, 0)
-  const oneTimeTotal = expenses.filter(e => !e.recurring).reduce((s, e) => s + e.amount, 0)
 
-  // Category breakdown
   const categoryBreakdown = expenseCategories.map(cat => ({
     ...cat,
     total: expenses.filter(e => e.category === cat.value).reduce((s, e) => s + e.amount, 0),
@@ -126,9 +138,58 @@ export default function ExpensesPage() {
 
     setExpenses([expense, ...expenses])
     setShowAddDialog(false)
-    setNewExpense({ title: '', category: '', amount: '', date: '', paidTo: '', paymentMethod: '', receiptRef: '', notes: '', recurring: false, recurringPeriod: '' })
-    setToast({ show: true, message: `Expense "${expense.title}" added - $${expense.amount.toFixed(2)}` })
+    setNewExpense({ title: '', category: '', amount: '', date: new Date().toISOString().split('T')[0], paidTo: '', paymentMethod: '', receiptRef: '', notes: '', recurring: false, recurringPeriod: '' })
+    setToast({ show: true, message: `Expense "${expense.title}" recorded - $${expense.amount.toFixed(2)}` })
     setTimeout(() => setToast({ show: false, message: '' }), 3000)
+  }
+
+  // Manager access gate
+  if (!isManager) {
+    return (
+      <div className="min-h-screen bg-background">
+        <InventorySidebar />
+        <main className="ml-64 flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-sm border-0 shadow-lg">
+            <CardContent className="p-8 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mx-auto mb-5">
+                <Lock className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Manager Access Required</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Inventory expenses are restricted to managers only. Enter your PIN to continue.
+              </p>
+              <div className="space-y-3">
+                <Input
+                  type="password"
+                  maxLength={4}
+                  placeholder="Enter 4-digit PIN"
+                  value={managerPin}
+                  onChange={(e) => { setManagerPin(e.target.value); setPinError(false) }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleManagerLogin()}
+                  className={`text-center text-lg tracking-[0.5em] ${pinError ? 'border-red-500 ring-red-500' : ''}`}
+                />
+                {pinError && (
+                  <p className="text-xs text-red-600 flex items-center justify-center gap-1">
+                    <ShieldAlert className="h-3 w-3" />
+                    Incorrect PIN. Try again.
+                  </p>
+                )}
+                <Button
+                  onClick={handleManagerLogin}
+                  disabled={managerPin.length !== 4}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  Unlock Expenses
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                Demo PIN: 1234
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -139,20 +200,31 @@ export default function ExpensesPage() {
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Expenses</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-foreground">Inventory Expenses</h1>
+                <Badge className="bg-primary/10 text-primary border-0 text-xs">
+                  <Package className="mr-1 h-3 w-3" />
+                  Stock Only
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Track all non-stock business expenses
+                Track stock-related costs: ingredients, packaging, equipment, storage
               </p>
             </div>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setShowAddDialog(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Record Expense
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="bg-transparent text-xs" onClick={() => { sessionStorage.removeItem('bbr_manager_expenses_access'); setIsManager(false) }}>
+                <Lock className="mr-1.5 h-3.5 w-3.5" />
+                Lock
+              </Button>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setShowAddDialog(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Record Expense
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="p-6 space-y-6">
-
           {/* Summary Cards */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <Card className="border-0 shadow-sm">
@@ -190,7 +262,7 @@ export default function ExpensesPage() {
                   <p className="text-sm text-muted-foreground">Recurring</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">${recurringTotal.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">{expenses.filter(e => e.recurring).length} recurring items</p>
+                <p className="text-xs text-muted-foreground mt-1">{expenses.filter(e => e.recurring).length} recurring costs</p>
               </CardContent>
             </Card>
 
@@ -200,10 +272,10 @@ export default function ExpensesPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
                     <Receipt className="h-5 w-5 text-amber-600" />
                   </div>
-                  <p className="text-sm text-muted-foreground">One-Time</p>
+                  <p className="text-sm text-muted-foreground">Total Tracked</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${oneTimeTotal.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">{expenses.filter(e => !e.recurring).length} one-time items</p>
+                <p className="text-2xl font-bold text-foreground">${totalExpenses.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">{expenses.length} stock expense records</p>
               </CardContent>
             </Card>
           </div>
@@ -223,7 +295,7 @@ export default function ExpensesPage() {
                     className={`w-full text-left rounded-lg p-2.5 transition-colors ${filterCategory === cat.value ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted'}`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-foreground truncate">{cat.label.split('(')[0].trim()}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{cat.label.split('&')[0].trim()}</p>
                       <p className="text-sm font-bold text-foreground">${cat.total.toLocaleString()}</p>
                     </div>
                     <div className="w-full bg-muted rounded-full h-1.5">
@@ -247,7 +319,7 @@ export default function ExpensesPage() {
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search expenses..."
+                        placeholder="Search stock expenses..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
@@ -261,7 +333,7 @@ export default function ExpensesPage() {
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
                         {expenseCategories.map(c => (
-                          <SelectItem key={c.value} value={c.value}>{c.label.split('(')[0].trim()}</SelectItem>
+                          <SelectItem key={c.value} value={c.value}>{c.label.split('&')[0].trim()}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -279,9 +351,7 @@ export default function ExpensesPage() {
                     <Button
                       variant="outline"
                       className="bg-transparent"
-                      onClick={() => {
-                        setSortDir(sortDir === 'desc' ? 'asc' : 'desc')
-                      }}
+                      onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
                     >
                       <ArrowUpDown className="mr-1.5 h-4 w-4" />
                       {sortBy === 'date' ? 'Date' : 'Amount'}
@@ -348,7 +418,7 @@ export default function ExpensesPage() {
                         <div className="text-right shrink-0">
                           <p className="text-lg font-bold text-secondary">${expense.amount.toLocaleString()}</p>
                           <Badge className={`text-xs border-0 ${categoryColors[expense.category]}`}>
-                            {expenseCategories.find(c => c.value === expense.category)?.label.split('(')[0].trim()}
+                            {expenseCategories.find(c => c.value === expense.category)?.label.split('&')[0].trim()}
                           </Badge>
                         </div>
                       </div>
@@ -364,13 +434,13 @@ export default function ExpensesPage() {
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Record New Expense</DialogTitle>
+              <DialogTitle>Record Stock Expense</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div>
                 <Label>Expense Title *</Label>
                 <Input
-                  placeholder="e.g. Electricity Bill - February"
+                  placeholder="e.g. Bulk Flour Order - 50kg bags"
                   value={newExpense.title}
                   onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
                 />
@@ -423,9 +493,9 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <Label>Paid To *</Label>
+                <Label>Paid To / Supplier *</Label>
                 <Input
-                  placeholder="e.g. City Power Co."
+                  placeholder="e.g. GrainCo Suppliers"
                   value={newExpense.paidTo}
                   onChange={(e) => setNewExpense({ ...newExpense, paidTo: e.target.value })}
                 />
@@ -448,7 +518,7 @@ export default function ExpensesPage() {
                   onChange={(e) => setNewExpense({ ...newExpense, recurring: e.target.checked })}
                   className="h-4 w-4 rounded border-border text-primary"
                 />
-                <Label htmlFor="recurring" className="mb-0">This is a recurring expense</Label>
+                <Label htmlFor="recurring" className="mb-0">This is a recurring stock expense</Label>
               </div>
 
               {newExpense.recurring && (
@@ -468,7 +538,7 @@ export default function ExpensesPage() {
               <div>
                 <Label>Notes</Label>
                 <Textarea
-                  placeholder="Additional details..."
+                  placeholder="Additional details about this stock expense..."
                   value={newExpense.notes}
                   onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}
                   rows={2}
