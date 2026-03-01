@@ -7,6 +7,7 @@ import {
   LogOut,
   ChefHat,
   User,
+  Layers,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils'
 
 const bakerNav = [
   { name: 'Dashboard', href: '/portal/baker', icon: LayoutDashboard },
+  { name: 'Daily Production', href: '/portal/baker/production', icon: Layers },
   { name: 'Active Orders', href: '/portal/baker/active', icon: Flame },
   { name: 'History', href: '/portal/baker/history', icon: History },
 ]

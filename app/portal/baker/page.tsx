@@ -5,7 +5,7 @@ import { BakerSidebar } from '@/components/baker/baker-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { mockOrders, minutesSincePosted, orderTypeLabels } from '@/lib/mock-data'
+import { mockOrders, mockDailyBatches, minutesSincePosted, orderTypeLabels } from '@/lib/mock-data'
 import {
   ChefHat,
   Clock,
@@ -17,6 +17,7 @@ import {
   Bell,
   Inbox,
   Layers,
+  Users,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -26,21 +27,19 @@ export default function BakerDashboardPage() {
 
   useEffect(() => {
     setMounted(true)
-    const id = setInterval(() => setTick((t) => t + 1), 10000)
+    const id = setInterval(() => setTick(t => t + 1), 10000)
     return () => clearInterval(id)
   }, [])
 
-  const incomingOrders = mockOrders.filter((o) => o.status === 'baker' && !o.postedToBakerAt)
-  const bakingOrders = mockOrders.filter((o) => o.status === 'baker' && o.postedToBakerAt)
-  const qaOrders = mockOrders.filter((o) => o.status === 'quality')
-  const sentToDecorator = mockOrders.filter((o) =>
+  const incomingOrders = mockOrders.filter(o => o.status === 'baker' && !o.postedToBakerAt)
+  const bakingOrders = mockOrders.filter(o => o.status === 'baker' && o.postedToBakerAt)
+  const qaOrders = mockOrders.filter(o => o.status === 'quality')
+  const sentToDecorator = mockOrders.filter(o =>
     ['decorator', 'packing', 'ready', 'dispatched', 'delivered'].includes(o.status)
   )
 
   const overdueOrders = mounted
-    ? bakingOrders.filter(
-        (o) => o.postedToBakerAt && minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes
-      )
+    ? bakingOrders.filter(o => o.postedToBakerAt && minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes)
     : []
 
   const getElapsed = useCallback(
@@ -52,6 +51,19 @@ export default function BakerDashboardPage() {
   )
 
   const totalActive = incomingOrders.length + bakingOrders.length + qaOrders.length
+
+  // Daily production summary
+  const totalBaked = mockDailyBatches.reduce((s, b) => s + b.quantityBaked, 0)
+  const totalRemaining = mockDailyBatches.reduce((s, b) => s + b.quantityRemaining, 0)
+
+  // Get baker name
+  const [bakerName, setBakerName] = useState('Baker')
+  useEffect(() => {
+    try {
+      const auth = localStorage.getItem('baker_auth')
+      if (auth) setBakerName(JSON.parse(auth).name || 'Baker')
+    } catch { /* ignore */ }
+  }, [])
 
   return (
     <div className="min-h-screen" style={{ background: '#fdf2f4' }}>
@@ -79,7 +91,7 @@ export default function BakerDashboardPage() {
             <div className="flex items-center gap-3">
               <Bell className="h-5 w-5 text-white animate-bounce" />
               <p className="text-sm font-semibold text-white">
-                {incomingOrders.length} new order{incomingOrders.length > 1 ? 's' : ''} waiting to be accepted
+                {incomingOrders.length} new order{incomingOrders.length > 1 ? 's' : ''} from Front Desk -- any baker can accept
               </p>
               <Link href="/portal/baker/active" className="ml-auto">
                 <Button size="sm" className="bg-white text-[#e66386] hover:bg-pink-50 border-0">
@@ -101,8 +113,13 @@ export default function BakerDashboardPage() {
                 <ChefHat className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground text-balance">Kitchen Dashboard</h1>
-                <p className="text-sm text-muted-foreground">{totalActive} active in pipeline</p>
+                <h1 className="text-xl font-bold text-foreground text-balance">
+                  Welcome, {bakerName}
+                </h1>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  {totalActive} active in pipeline -- shared across all bakers
+                </p>
               </div>
             </div>
             <Link href="/portal/baker/active">
@@ -116,21 +133,19 @@ export default function BakerDashboardPage() {
             </Link>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               { label: 'Incoming', count: incomingOrders.length, icon: Inbox, bg: '#fce7ea', color: '#CA0123' },
               { label: 'Baking', count: bakingOrders.length, icon: Flame, bg: '#fbd5db', color: '#CA0123' },
               { label: 'QA Check', count: qaOrders.length, icon: CheckCircle, bg: '#fce7ea', color: '#e66386' },
               { label: 'Sent Out', count: sentToDecorator.length, icon: Palette, bg: '#f0fdf4', color: '#16a34a' },
-            ].map((s) => (
+              { label: 'Batches Today', count: mockDailyBatches.length, icon: Layers, bg: '#fce7ea', color: '#CA0123' },
+            ].map(s => (
               <Card key={s.label} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span
-                      className="flex h-9 w-9 items-center justify-center rounded-lg"
-                      style={{ background: s.bg }}
-                    >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: s.bg }}>
                       <s.icon className="h-4 w-4" style={{ color: s.color }} />
                     </span>
                   </div>
@@ -144,9 +159,7 @@ export default function BakerDashboardPage() {
           {/* Workflow */}
           <Card className="border-0 shadow-sm bg-card">
             <CardContent className="p-5">
-              <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider font-semibold">
-                Workflow
-              </p>
+              <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider font-semibold">Workflow</p>
               <div className="flex items-center justify-between">
                 {[
                   { label: 'Incoming', count: incomingOrders.length, bg: '#e66386' },
@@ -174,7 +187,71 @@ export default function BakerDashboardPage() {
           </Card>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Incoming */}
+            {/* Daily Production Summary */}
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4" style={{ color: '#CA0123' }} />
+                    <h3 className="text-sm font-semibold text-foreground">Today&apos;s Production</h3>
+                    <Badge className="text-[10px] text-white border-0" style={{ background: '#e66386' }}>
+                      {totalBaked} baked
+                    </Badge>
+                  </div>
+                  <Link href="/portal/baker/production" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
+                    Manage
+                  </Link>
+                </div>
+
+                {mockDailyBatches.length === 0 ? (
+                  <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
+                    <Layers className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+                    <p className="text-sm text-muted-foreground">No batches logged yet today</p>
+                    <Link href="/portal/baker/production">
+                      <Button size="sm" variant="outline" className="mt-3 bg-transparent text-xs" style={{ borderColor: '#e66386', color: '#e66386' }}>
+                        Log First Batch
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {mockDailyBatches.slice(0, 5).map(batch => {
+                      const usedPct = Math.round(((batch.quantityBaked - batch.quantityRemaining) / batch.quantityBaked) * 100)
+                      return (
+                        <div key={batch.id} className="flex items-center gap-3 rounded-lg border p-3" style={{ borderColor: '#fbd5db' }}>
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-bold text-white" style={{ background: '#e66386' }}>
+                            {batch.quantityRemaining}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{batch.productName}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 h-1 rounded-full bg-border overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${usedPct}%`,
+                                    background: usedPct > 80 ? '#CA0123' : '#e66386',
+                                  }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground tabular-nums">{usedPct}%</span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0">{batch.quantityRemaining}/{batch.quantityBaked}</span>
+                        </div>
+                      )
+                    })}
+                    {mockDailyBatches.length > 5 && (
+                      <Link href="/portal/baker/production" className="block text-center text-xs font-medium py-2 hover:underline" style={{ color: '#e66386' }}>
+                        View all {mockDailyBatches.length} batches
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Incoming Orders */}
             <Card className="border-0 shadow-sm bg-card">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -182,19 +259,12 @@ export default function BakerDashboardPage() {
                     <Inbox className="h-4 w-4" style={{ color: '#e66386' }} />
                     <h3 className="text-sm font-semibold text-foreground">Incoming Orders</h3>
                     {incomingOrders.length > 0 && (
-                      <Badge
-                        className="text-[10px] text-white border-0"
-                        style={{ background: '#CA0123' }}
-                      >
+                      <Badge className="text-[10px] text-white border-0" style={{ background: '#CA0123' }}>
                         {incomingOrders.length}
                       </Badge>
                     )}
                   </div>
-                  <Link
-                    href="/portal/baker/active"
-                    className="text-xs font-medium hover:underline"
-                    style={{ color: '#e66386' }}
-                  >
+                  <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
                     View All
                   </Link>
                 </div>
@@ -203,10 +273,11 @@ export default function BakerDashboardPage() {
                   <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
                     <Bell className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
                     <p className="text-sm text-muted-foreground">No new orders</p>
+                    <p className="text-xs text-muted-foreground mt-1">Orders from Front Desk appear here for any baker</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {incomingOrders.slice(0, 4).map((order) => (
+                    {incomingOrders.slice(0, 4).map(order => (
                       <div
                         key={order.id}
                         className="rounded-xl border-2 p-4"
@@ -243,11 +314,7 @@ export default function BakerDashboardPage() {
                             Est. {order.estimatedMinutes}m
                           </span>
                           <Link href="/portal/baker/active">
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs text-white border-0"
-                              style={{ background: '#e66386' }}
-                            >
+                            <Button size="sm" className="h-7 text-xs text-white border-0" style={{ background: '#e66386' }}>
                               Accept
                             </Button>
                           </Link>
@@ -258,8 +325,10 @@ export default function BakerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {/* Active Baking */}
+          {/* Active Baking */}
+          {bakingOrders.length > 0 && (
             <Card className="border-0 shadow-sm bg-card">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -267,78 +336,55 @@ export default function BakerDashboardPage() {
                     <Flame className="h-4 w-4" style={{ color: '#CA0123' }} />
                     <h3 className="text-sm font-semibold text-foreground">Active Baking</h3>
                   </div>
-                  <Link
-                    href="/portal/baker/active"
-                    className="text-xs font-medium hover:underline"
-                    style={{ color: '#CA0123' }}
-                  >
+                  <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
                     View All
                   </Link>
                 </div>
-
-                {bakingOrders.length === 0 ? (
-                  <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
-                    <ChefHat className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">No orders baking</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {bakingOrders.slice(0, 5).map((order) => {
-                      const elapsed = getElapsed(order.postedToBakerAt)
-                      const isOverdue = elapsed > order.estimatedMinutes
-                      const pct = Math.min(
-                        100,
-                        Math.round((elapsed / order.estimatedMinutes) * 100)
-                      )
-                      return (
-                        <div
-                          key={order.id}
-                          className={`rounded-xl border p-3 ${isOverdue ? 'border-red-300 bg-red-50' : 'border-border'}`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-bold text-white"
-                                style={{ background: isOverdue ? '#CA0123' : '#e66386' }}
-                              >
-                                {order.id.split('-')[1]}
-                              </span>
-                              <div>
-                                <p className="font-medium text-sm text-foreground leading-tight">
-                                  {order.customerName}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground truncate max-w-[160px]">
-                                  {order.items.map((i) => i.name).join(', ')}
-                                </p>
-                              </div>
-                            </div>
-                            <p
-                              className={`text-sm font-mono font-bold tabular-nums ${isOverdue ? 'text-[#CA0123]' : 'text-foreground'}`}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {bakingOrders.slice(0, 6).map(order => {
+                    const elapsed = getElapsed(order.postedToBakerAt)
+                    const isOverdue = elapsed > order.estimatedMinutes
+                    const pct = Math.min(100, Math.round((elapsed / order.estimatedMinutes) * 100))
+                    return (
+                      <div
+                        key={order.id}
+                        className={`rounded-xl border p-3 ${isOverdue ? 'border-red-300 bg-red-50' : 'border-border'}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-bold text-white"
+                              style={{ background: isOverdue ? '#CA0123' : '#e66386' }}
                             >
-                              {elapsed}m / {order.estimatedMinutes}m
-                            </p>
+                              {order.id.split('-')[1]}
+                            </span>
+                            <div>
+                              <p className="font-medium text-sm text-foreground leading-tight">{order.customerName}</p>
+                              <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                {order.items.map(i => i.name).join(', ')}
+                              </p>
+                            </div>
                           </div>
-                          <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${pct}%`,
-                                background: isOverdue
-                                  ? '#CA0123'
-                                  : pct > 75
-                                    ? '#e66386'
-                                    : '#22c55e',
-                              }}
-                            />
-                          </div>
+                          <p className={`text-sm font-mono font-bold tabular-nums ${isOverdue ? 'text-[#CA0123]' : 'text-foreground'}`}>
+                            {elapsed}m / {order.estimatedMinutes}m
+                          </p>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${pct}%`,
+                              background: isOverdue ? '#CA0123' : pct > 75 ? '#e66386' : '#22c55e',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </CardContent>
             </Card>
-          </div>
+          )}
 
           {/* QA Queue */}
           {qaOrders.length > 0 && (
@@ -348,23 +394,16 @@ export default function BakerDashboardPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4" style={{ color: '#e66386' }} />
                     <h3 className="text-sm font-semibold text-foreground">Awaiting QA</h3>
-                    <Badge
-                      className="text-[10px] text-white border-0"
-                      style={{ background: '#e66386' }}
-                    >
+                    <Badge className="text-[10px] text-white border-0" style={{ background: '#e66386' }}>
                       {qaOrders.length}
                     </Badge>
                   </div>
-                  <Link
-                    href="/portal/baker/active"
-                    className="text-xs font-medium hover:underline"
-                    style={{ color: '#e66386' }}
-                  >
+                  <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
                     Inspect
                   </Link>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {qaOrders.map((order) => (
+                  {qaOrders.map(order => (
                     <div
                       key={order.id}
                       className="rounded-xl border-2 p-3"
@@ -372,21 +411,12 @@ export default function BakerDashboardPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                        <Badge
-                          className="text-[10px] text-white border-0"
-                          style={{ background: '#e66386' }}
-                        >
-                          QA
-                        </Badge>
+                        <Badge className="text-[10px] text-white border-0" style={{ background: '#e66386' }}>QA</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">{order.customerName}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {order.items.map((item, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[10px] px-1.5 py-0.5 rounded-full"
-                            style={{ background: '#fce7ea', color: '#CA0123' }}
-                          >
+                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: '#fce7ea', color: '#CA0123' }}>
                             {item.name}
                           </span>
                         ))}
