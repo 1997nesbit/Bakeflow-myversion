@@ -108,6 +108,19 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
   )
 
   const hasCakeItems = useMemo(() => items.some(i => i.isCustom), [items])
+  const hasOnlyMenuItems = useMemo(() => items.length > 0 && items.every(i => !i.isCustom), [items])
+
+  // Custom orders below 15000 TZS must be fully paid
+  const customOrderMustBeFullPaid = useMemo(() => {
+    return hasCakeItems && totalPrice < 15000
+  }, [hasCakeItems, totalPrice])
+
+  // Force payment terms: only menu-only orders allow pay on delivery
+  // If user selects on_delivery but has custom items, auto-correct to upfront
+  const effectivePaymentTerms = useMemo(() => {
+    if (hasCakeItems) return 'upfront' as PaymentTerms
+    return paymentTerms
+  }, [hasCakeItems, paymentTerms])
 
   const isAdvance = useMemo(() => {
     if (!pickupDate) return false
@@ -191,7 +204,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
     amountPaid,
     paymentStatus,
     paymentMethod,
-    paymentTerms,
+    paymentTerms: effectivePaymentTerms,
     isAdvanceOrder: isAdvance,
     estimatedMinutes,
     trackingId,
@@ -266,7 +279,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                         <p className="text-xs text-muted-foreground">{item.description}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold text-secondary">${item.price}</span>
+                        <span className="text-sm font-semibold text-secondary">TZS {item.price.toLocaleString()}</span>
                         {inCart && <Badge className="bg-primary text-primary-foreground text-xs">{inCart.quantity}</Badge>}
                       </div>
                     </button>
@@ -347,7 +360,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                       </div>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
                         <Input type="number" min="1" value={item.quantity} onChange={(e) => updateItemQty(index, Number.parseInt(e.target.value) || 1)} className="w-16 h-8 text-center text-sm" />
-                        <span className="text-sm font-semibold text-secondary w-16 text-right">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="text-sm font-semibold text-secondary w-20 text-right">TZS {(item.price * item.quantity).toLocaleString()}</span>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(index)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -357,7 +370,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <span className="text-sm font-medium text-foreground">Total</span>
-                  <span className="text-lg font-bold text-secondary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-secondary">TZS {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -517,12 +530,12 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 {items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
                     <span className="text-foreground">{item.name} x{item.quantity}</span>
-                    <span className="font-medium text-foreground">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-medium text-foreground">TZS {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
                 <div className="flex justify-between text-base font-bold border-t border-border pt-2 mt-2">
                   <span className="text-foreground">Total</span>
-                  <span className="text-secondary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-secondary">TZS {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -559,12 +572,22 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
             {/* Payment Terms */}
             <div className="space-y-3">
               <h3 className="font-medium text-foreground">Payment Terms</h3>
+              {hasCakeItems && (
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0" />
+                  <p className="text-xs text-blue-800">
+                    {customOrderMustBeFullPaid
+                      ? 'Custom orders below TZS 15,000 require full payment before processing.'
+                      : 'Custom cake orders require advance payment (full or 50% deposit). Pay on delivery is not available for custom orders.'}
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentTerms('upfront')}
                   className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                    paymentTerms === 'upfront'
+                    effectivePaymentTerms === 'upfront'
                       ? 'border-green-500 bg-green-50 text-green-700'
                       : 'border-border text-muted-foreground hover:border-green-300'
                   }`}
@@ -573,14 +596,18 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentTerms('on_delivery')}
+                  onClick={() => { if (hasOnlyMenuItems) setPaymentTerms('on_delivery') }}
+                  disabled={!hasOnlyMenuItems}
                   className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                    paymentTerms === 'on_delivery'
+                    effectivePaymentTerms === 'on_delivery'
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-border text-muted-foreground hover:border-amber-300'
+                      : !hasOnlyMenuItems
+                        ? 'border-border text-muted-foreground/40 cursor-not-allowed bg-muted/30'
+                        : 'border-border text-muted-foreground hover:border-amber-300'
                   }`}
                 >
                   Pay on Delivery
+                  {!hasOnlyMenuItems && <span className="block text-xs mt-0.5 opacity-60">(Menu items only)</span>}
                 </button>
               </div>
             </div>
@@ -589,7 +616,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
             <div className="space-y-3">
               <h3 className="font-medium text-foreground">Confirm Order</h3>
               <div className="grid gap-3">
-                {paymentTerms === 'upfront' && (
+                {effectivePaymentTerms === 'upfront' && (
                   <>
                     <button
                       type="button"
@@ -599,16 +626,20 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-green-900">Full Payment</p>
-                          <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to baker queue.</p>
+                          <p className="text-xs text-green-700 mt-0.5">
+                            {customOrderMustBeFullPaid
+                              ? 'Required: custom order below TZS 15,000 must be fully paid.'
+                              : 'Customer pays now. Order goes to baker queue.'}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-green-800">${totalPrice.toFixed(2)}</p>
+                          <p className="text-xl font-bold text-green-800">TZS {totalPrice.toLocaleString()}</p>
                           <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
                         </div>
                       </div>
                     </button>
 
-                    {isAdvance && (
+                    {isAdvance && !customOrderMustBeFullPaid && (
                       <button
                         type="button"
                         className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
@@ -617,10 +648,10 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-semibold text-amber-900">50% Deposit</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery day.</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Balance TZS {(totalPrice / 2).toLocaleString()} on pickup/delivery day.</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold text-amber-800">${(totalPrice / 2).toFixed(2)}</p>
+                            <p className="text-xl font-bold text-amber-800">TZS {(totalPrice / 2).toLocaleString()}</p>
                             <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance</Badge>
                           </div>
                         </div>
@@ -629,7 +660,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                   </>
                 )}
 
-                {paymentTerms === 'on_delivery' && (
+                {effectivePaymentTerms === 'on_delivery' && hasOnlyMenuItems && (
                   <button
                     type="button"
                     className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
@@ -638,32 +669,34 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-amber-900">Pay on Delivery / Pickup</p>
-                        <p className="text-xs text-amber-700 mt-0.5">Trusted customer. Payment collected on delivery. Order starts processing.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Trusted customer. Payment collected on delivery. Menu orders only.</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-amber-800">${totalPrice.toFixed(2)}</p>
+                        <p className="text-xl font-bold text-amber-800">TZS {totalPrice.toLocaleString()}</p>
                         <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">On Delivery</Badge>
                       </div>
                     </div>
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
-                  onClick={handleSaveUnpaid}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground flex items-center gap-2"><Save className="h-4 w-4" /> Save Order - Await Payment</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Save order and confirm payment later.</p>
+                {!customOrderMustBeFullPaid && (
+                  <button
+                    type="button"
+                    className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                    onClick={handleSaveUnpaid}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-foreground flex items-center gap-2"><Save className="h-4 w-4" /> Save Order - Await Payment</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Save order and confirm payment later.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-muted-foreground">TZS {totalPrice.toLocaleString()}</p>
+                        <Badge variant="outline" className="text-xs mt-1 bg-transparent">Unpaid</Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-muted-foreground">${totalPrice.toFixed(2)}</p>
-                      <Badge variant="outline" className="text-xs mt-1 bg-transparent">Unpaid</Badge>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                )}
               </div>
             </div>
 

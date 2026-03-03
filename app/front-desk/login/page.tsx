@@ -6,21 +6,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { ChefHat, Eye, EyeOff, LogIn } from 'lucide-react'
+import { ShoppingCart, Eye, EyeOff, LogIn } from 'lucide-react'
 
-export default function BakerLoginPage() {
+const DEMO_USERS = [
+  { username: 'sarah', password: 'frontdesk1', name: 'Sarah Mwangi' },
+  { username: 'mary', password: 'frontdesk2', name: 'Mary Otieno' },
+  { username: 'admin', password: 'admin123', name: 'Front Desk Admin' },
+]
+
+export default function FrontDeskLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const DEMO_USERS = [
-    { username: 'john', password: 'baker1', name: 'Baker John' },
-    { username: 'sarah', password: 'baker2', name: 'Baker Sarah' },
-    { username: 'admin', password: 'admin123', name: 'Head Baker' },
-  ]
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,13 +30,13 @@ export default function BakerLoginPage() {
     setTimeout(() => {
       const user = DEMO_USERS.find(u => u.username === username.toLowerCase() && u.password === password)
       if (user) {
-        localStorage.setItem('baker_auth', JSON.stringify({ name: user.name, username: user.username, loggedInAt: new Date().toISOString() }))
-        router.push('/portal/baker')
+        localStorage.setItem('bbr_frontdesk_user', JSON.stringify({ name: user.name, username: user.username, loggedInAt: new Date().toISOString() }))
+        router.push('/front-desk')
       } else if (username && password) {
-        localStorage.setItem('baker_auth', JSON.stringify({ name: username, loggedInAt: new Date().toISOString() }))
-        router.push('/portal/baker')
+        localStorage.setItem('bbr_frontdesk_user', JSON.stringify({ name: username, username, loggedInAt: new Date().toISOString() }))
+        router.push('/front-desk')
       } else {
-        setError('Please enter your credentials')
+        setError('Please enter your username and password')
       }
       setLoading(false)
     }, 600)
@@ -50,10 +50,10 @@ export default function BakerLoginPage() {
         <CardContent className="p-8">
           <div className="text-center mb-8">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
-              <ChefHat className="h-10 w-10 text-white" />
+              <ShoppingCart className="h-10 w-10 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Baker Portal</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Bbr Bakeflow Kitchen Access</p>
+            <h1 className="text-2xl font-bold text-foreground">Front Desk</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Bbr Bakeflow Order Management</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -61,7 +61,7 @@ export default function BakerLoginPage() {
               <Label htmlFor="username" className="text-sm font-medium text-foreground">Username</Label>
               <Input
                 id="username"
-                placeholder="Enter your name"
+                placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="h-12 text-base"
@@ -117,9 +117,9 @@ export default function BakerLoginPage() {
           <div className="mt-6 rounded-lg bg-muted/50 border border-border p-4">
             <p className="text-xs font-medium text-foreground mb-2">Demo Credentials:</p>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p><span className="font-mono text-foreground">john</span> / <span className="font-mono text-foreground">baker1</span> - Baker John</p>
-              <p><span className="font-mono text-foreground">sarah</span> / <span className="font-mono text-foreground">baker2</span> - Baker Sarah</p>
-              <p><span className="font-mono text-foreground">admin</span> / <span className="font-mono text-foreground">admin123</span> - Head Baker</p>
+              <p><span className="font-mono text-foreground">sarah</span> / <span className="font-mono text-foreground">frontdesk1</span> - Sarah Mwangi</p>
+              <p><span className="font-mono text-foreground">mary</span> / <span className="font-mono text-foreground">frontdesk2</span> - Mary Otieno</p>
+              <p><span className="font-mono text-foreground">admin</span> / <span className="font-mono text-foreground">admin123</span> - Admin</p>
             </div>
           </div>
         </CardContent>
