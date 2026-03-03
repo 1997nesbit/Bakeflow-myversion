@@ -17,7 +17,7 @@ const managerNav = [
   { name: 'Debts', href: '/manager/debts', icon: Banknote },
   { name: 'Customers', href: '/manager/customers', icon: Crown },
   { name: 'Tasks', href: '/manager/tasks', icon: ListChecks },
-  { name: 'Task History', href: '/manager/task-history', icon: History },
+  { name: 'Order History', href: '/manager/order-history', icon: History },
   { name: 'Bulk Messages', href: '/manager/messages', icon: MessageSquare },
   { name: 'Payments', href: '/manager/payments', icon: CreditCard },
   { name: 'Reports', href: '/manager/reports', icon: BarChart3 },
