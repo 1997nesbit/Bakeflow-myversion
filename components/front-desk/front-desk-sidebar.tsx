@@ -34,14 +34,12 @@ export function FrontDeskSidebar() {
     const stored = localStorage.getItem('bbr_frontdesk_user')
     if (stored) {
       try { setUserName(JSON.parse(stored).name || 'Front Desk') } catch { setUserName('Front Desk') }
-    } else {
-      router.push('/front-desk/login')
     }
-  }, [router])
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('bbr_frontdesk_user')
-    router.push('/front-desk/login')
+    router.push('/')
   }
 
   return (

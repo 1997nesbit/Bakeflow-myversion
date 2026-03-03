@@ -16,24 +16,14 @@ export default function BakerLoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const DEMO_USERS = [
-    { username: 'john', password: 'baker1', name: 'Baker John' },
-    { username: 'sarah', password: 'baker2', name: 'Baker Sarah' },
-    { username: 'admin', password: 'admin123', name: 'Head Baker' },
-  ]
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     setTimeout(() => {
-      const user = DEMO_USERS.find(u => u.username === username.toLowerCase() && u.password === password)
-      if (user) {
-        localStorage.setItem('baker_auth', JSON.stringify({ name: user.name, username: user.username, loggedInAt: new Date().toISOString() }))
-        router.push('/portal/baker')
-      } else if (username && password) {
-        localStorage.setItem('baker_auth', JSON.stringify({ name: username, loggedInAt: new Date().toISOString() }))
+      if (username && password) {
+        localStorage.setItem('baker_auth', JSON.stringify({ name: username || 'Baker', loggedInAt: new Date().toISOString() }))
         router.push('/portal/baker')
       } else {
         setError('Please enter your credentials')
@@ -114,14 +104,9 @@ export default function BakerLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 rounded-lg bg-muted/50 border border-border p-4">
-            <p className="text-xs font-medium text-foreground mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p><span className="font-mono text-foreground">john</span> / <span className="font-mono text-foreground">baker1</span> - Baker John</p>
-              <p><span className="font-mono text-foreground">sarah</span> / <span className="font-mono text-foreground">baker2</span> - Baker Sarah</p>
-              <p><span className="font-mono text-foreground">admin</span> / <span className="font-mono text-foreground">admin123</span> - Head Baker</p>
-            </div>
-          </div>
+          <p className="mt-6 text-xs text-center text-muted-foreground">
+            Contact your manager if you need access credentials
+          </p>
         </CardContent>
       </Card>
     </div>

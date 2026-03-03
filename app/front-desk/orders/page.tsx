@@ -153,9 +153,9 @@ export default function OrdersPage() {
     setOrders([newOrder, ...orders])
     setShowNewOrder(false)
     if (data.paymentStatus === 'unpaid') {
-      showToast(`Order ${newOrder.id} saved. Awaiting payment of TZS ${data.totalPrice.toLocaleString()}`, 'warning')
+      showToast(`Order ${newOrder.id} saved. Awaiting payment of $${data.totalPrice.toFixed(2)}`, 'warning')
     } else {
-      showToast(`Order ${newOrder.id} created! Payment: TZS ${data.amountPaid.toLocaleString()}`, 'success')
+      showToast(`Order ${newOrder.id} created! Payment: $${data.amountPaid.toFixed(2)}`, 'success')
     }
   }
 
@@ -282,7 +282,7 @@ export default function OrdersPage() {
                       <p className="font-semibold text-sm text-amber-900">
                         Advance Order {days === 0 ? 'Due Today' : days === 1 ? 'Due Tomorrow' : `Due in ${days} days`}: {order.id}
                       </p>
-                      <p className="text-xs text-amber-700">{order.customerName} {order.paymentStatus === 'deposit' ? `| Balance: TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}` : ''}</p>
+                      <p className="text-xs text-amber-700">{order.customerName} {order.paymentStatus === 'deposit' ? `| Balance: $${(order.totalPrice - order.amountPaid).toFixed(2)}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -541,7 +541,7 @@ export default function OrdersPage() {
                             <p className="text-xs text-muted-foreground">{order.customerPhone}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-xl font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</p>
+                            <p className="text-xl font-bold text-secondary">${order.totalPrice.toFixed(2)}</p>
                             <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">Unpaid</Badge>
                           </div>
                         </div>
@@ -551,7 +551,7 @@ export default function OrdersPage() {
                           {order.items.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-xs">
                               <span className="text-foreground">{item.name} x{item.quantity}</span>
-                              <span className="font-medium text-foreground">TZS {(item.price * item.quantity).toLocaleString()}</span>
+                              <span className="font-medium text-foreground">${(item.price * item.quantity).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>
@@ -743,7 +743,7 @@ export default function OrdersPage() {
                 <div className="rounded-lg bg-accent p-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-foreground">{paymentOrder.id}</p>
-                    <p className="text-lg font-bold text-secondary">TZS {paymentOrder.totalPrice.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-secondary">${paymentOrder.totalPrice.toFixed(2)}</p>
                   </div>
                   <p className="text-sm text-muted-foreground">{paymentOrder.customerName} - {paymentOrder.customerPhone}</p>
                   <p className="text-xs text-muted-foreground">{paymentOrder.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
@@ -760,7 +760,7 @@ export default function OrdersPage() {
                         <p className="font-semibold text-green-900">Full Payment</p>
                         <p className="text-xs text-green-700">Customer pays full amount now</p>
                       </div>
-                      <p className="text-xl font-bold text-green-800">TZS {paymentOrder.totalPrice.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-green-800">${paymentOrder.totalPrice.toFixed(2)}</p>
                     </div>
                   </button>
 
@@ -773,9 +773,9 @@ export default function OrdersPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-amber-900">50% Deposit</p>
-                          <p className="text-xs text-amber-700">Balance TZS {(paymentOrder.totalPrice / 2).toLocaleString()} on pickup day</p>
+                          <p className="text-xs text-amber-700">Balance ${(paymentOrder.totalPrice / 2).toFixed(2)} on pickup day</p>
                         </div>
-                        <p className="text-xl font-bold text-amber-800">TZS {(paymentOrder.totalPrice / 2).toLocaleString()}</p>
+                        <p className="text-xl font-bold text-amber-800">${(paymentOrder.totalPrice / 2).toFixed(2)}</p>
                       </div>
                     </button>
                   )}
@@ -787,7 +787,7 @@ export default function OrdersPage() {
 
         {/* Message Dialog */}
         <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-foreground">Message Customer</DialogTitle>
             </DialogHeader>
@@ -799,7 +799,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Message</label>
-                  <Textarea placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[140px] text-sm leading-relaxed" />
+                  <Textarea placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[100px]" />
                 </div>
                 {/* Auto-include tracking link */}
                 <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-2.5 mb-2">
@@ -813,8 +813,8 @@ export default function OrdersPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup! Track here: ${getTrackingUrl(messageOrder.trackingId)}`)}>Ready for Pickup</Button>
                   <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery! Track live: ${getTrackingUrl(messageOrder.trackingId)}`)}>Out for Delivery</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of TZS ${messageOrder.totalPrice.toLocaleString()} for order ${messageOrder.id}. Please confirm. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Payment Reminder</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of TZS ${(messageOrder.totalPrice - messageOrder.amountPaid).toLocaleString()}. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Balance Reminder</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of $${messageOrder.totalPrice.toFixed(2)} for order ${messageOrder.id}. Please confirm. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Payment Reminder</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of $${(messageOrder.totalPrice - messageOrder.amountPaid).toFixed(2)}. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Balance Reminder</Button>
                 </div>
               </div>
             )}

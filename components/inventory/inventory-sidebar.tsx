@@ -34,14 +34,12 @@ export function InventorySidebar() {
     const stored = localStorage.getItem('bbr_inventory_user')
     if (stored) {
       try { setUserName(JSON.parse(stored).name || 'Store Clerk') } catch { setUserName('Store Clerk') }
-    } else {
-      router.push('/inventory/login')
     }
-  }, [router])
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('bbr_inventory_user')
-    router.push('/inventory/login')
+    router.push('/')
   }
 
   return (

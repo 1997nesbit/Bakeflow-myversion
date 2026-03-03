@@ -161,7 +161,7 @@ export default function FrontDeskDashboard() {
                         </p>
                         <p className="text-xs text-amber-700">
                           {order.customerName} - {order.items.map(i => i.name).join(', ')}
-                          {order.paymentStatus === 'deposit' && ` | Balance due: TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}`}
+                          {order.paymentStatus === 'deposit' && ` | Balance due: $${(order.totalPrice - order.amountPaid).toFixed(2)}`}
                         </p>
                       </div>
                     </div>
@@ -199,7 +199,7 @@ export default function FrontDeskDashboard() {
                     <DollarSign className="h-4 w-4 text-green-600" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground">TZS {totalRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-foreground">${totalRevenue.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">collected from {orders.filter(o => o.amountPaid > 0).length} orders</p>
               </CardContent>
             </Card>
@@ -212,7 +212,7 @@ export default function FrontDeskDashboard() {
                     <CircleDollarSign className="h-4 w-4 text-amber-600" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground">TZS {outstandingBalance.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-foreground">${outstandingBalance.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">{pendingPayments.length} unpaid, {depositOrders.length} deposits</p>
               </CardContent>
             </Card>
@@ -362,7 +362,7 @@ export default function FrontDeskDashboard() {
                           <span className="text-xs font-bold text-foreground">{order.id}</span>
                           <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0">Awaiting Payment</Badge>
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - TZS {order.totalPrice.toLocaleString()}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - ${order.totalPrice.toFixed(2)}</p>
                       </div>
                       <Link href="/front-desk/orders">
                         <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 bg-transparent text-xs h-8 px-3">
