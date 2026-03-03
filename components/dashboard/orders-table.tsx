@@ -55,8 +55,8 @@ export function OrdersTable({ orders, title = "Today's Orders" }: OrdersTablePro
                   {statusLabels[order.status]}
                 </Badge>
 
-                <p className="w-20 text-right font-semibold text-foreground">
-                  ${order.totalPrice.toFixed(2)}
+                <p className="w-24 text-right font-semibold text-foreground text-sm">
+                  TZS {order.totalPrice.toLocaleString()}
                 </p>
               </div>
             </div>

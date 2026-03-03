@@ -99,7 +99,7 @@ export default function AlertsPage() {
             </div>
             <div className="flex justify-between mt-1">
               <span className="text-muted-foreground">Est. cost</span>
-              <span className="font-semibold text-foreground">${(suggestedReorder * item.costPerUnit).toFixed(2)}</span>
+              <span className="font-semibold text-foreground">TZS {(suggestedReorder * item.costPerUnit).toLocaleString()}</span>
             </div>
           </div>
 

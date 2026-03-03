@@ -199,7 +199,7 @@ export default function FrontDeskDashboard() {
                     <DollarSign className="h-4 w-4 text-green-600" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground">${totalRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-foreground">TZS {totalRevenue.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">collected from {orders.filter(o => o.amountPaid > 0).length} orders</p>
               </CardContent>
             </Card>
@@ -212,7 +212,7 @@ export default function FrontDeskDashboard() {
                     <CircleDollarSign className="h-4 w-4 text-amber-600" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground">${outstandingBalance.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-foreground">TZS {outstandingBalance.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">{pendingPayments.length} unpaid, {depositOrders.length} deposits</p>
               </CardContent>
             </Card>
@@ -470,7 +470,7 @@ export default function FrontDeskDashboard() {
                               <p className="text-xs font-bold text-foreground">{order.customerName}</p>
                               <p className="text-[11px] text-muted-foreground">{order.id} - Due: {new Date(order.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                             </div>
-                            <span className="text-sm font-bold text-secondary">${balance.toFixed(0)}</span>
+                            <span className="text-sm font-bold text-secondary">TZS {balance.toLocaleString()}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">

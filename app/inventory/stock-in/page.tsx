@@ -138,7 +138,7 @@ export default function StockInPage() {
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">Today&apos;s Spend</p>
-                <p className="text-2xl font-bold text-foreground mt-1">${todayTotal.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-foreground mt-1">TZS {todayTotal.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-sm">
@@ -306,7 +306,7 @@ export default function StockInPage() {
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Cost</span>
-                    <span className="font-bold text-foreground">${totalCost.toFixed(2)}</span>
+                    <span className="font-bold text-foreground">TZS {totalCost.toLocaleString()}</span>
                   </div>
                   {selectedItem && (
                     <div className="flex justify-between text-sm mt-1">

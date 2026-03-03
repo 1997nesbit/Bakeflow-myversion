@@ -235,7 +235,7 @@ export default function ExpensesPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">This Month</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${thisMonthExpenses.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">TZS {thisMonthExpenses.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">February 2026</p>
               </CardContent>
             </Card>
@@ -248,7 +248,7 @@ export default function ExpensesPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">Last Month</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${lastMonthExpenses.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">TZS {lastMonthExpenses.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">January 2026</p>
               </CardContent>
             </Card>
@@ -261,7 +261,7 @@ export default function ExpensesPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">Recurring</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${recurringTotal.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">TZS {recurringTotal.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">{expenses.filter(e => e.recurring).length} recurring costs</p>
               </CardContent>
             </Card>
@@ -274,7 +274,7 @@ export default function ExpensesPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">Total Tracked</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${totalExpenses.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">TZS {totalExpenses.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">{expenses.length} stock expense records</p>
               </CardContent>
             </Card>
@@ -296,7 +296,7 @@ export default function ExpensesPage() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-sm font-medium text-foreground truncate">{cat.label.split('&')[0].trim()}</p>
-                      <p className="text-sm font-bold text-foreground">${cat.total.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-foreground">TZS {cat.total.toLocaleString()}</p>
                     </div>
                     <div className="w-full bg-muted rounded-full h-1.5">
                       <div
@@ -416,7 +416,7 @@ export default function ExpensesPage() {
                         </div>
 
                         <div className="text-right shrink-0">
-                          <p className="text-lg font-bold text-secondary">${expense.amount.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-secondary">TZS {expense.amount.toLocaleString()}</p>
                           <Badge className={`text-xs border-0 ${categoryColors[expense.category]}`}>
                             {expenseCategories.find(c => c.value === expense.category)?.label.split('&')[0].trim()}
                           </Badge>

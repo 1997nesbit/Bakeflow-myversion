@@ -266,7 +266,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                         <p className="text-xs text-muted-foreground">{item.description}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold text-secondary">${item.price}</span>
+                        <span className="text-sm font-semibold text-secondary">TZS {item.price.toLocaleString()}</span>
                         {inCart && <Badge className="bg-primary text-primary-foreground text-xs">{inCart.quantity}</Badge>}
                       </div>
                     </button>
@@ -302,7 +302,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                     <Input type="number" min="0.5" step="0.5" value={customKg} onChange={(e) => setCustomKg(Number.parseFloat(e.target.value) || 1)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Price ($)</Label>
+                    <Label>Price (TZS)</Label>
                     <Input type="number" min="0" step="1" value={customPrice || ''} onChange={(e) => setCustomPrice(Number.parseFloat(e.target.value) || 0)} placeholder="Enter price" />
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                       </div>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
                         <Input type="number" min="1" value={item.quantity} onChange={(e) => updateItemQty(index, Number.parseInt(e.target.value) || 1)} className="w-16 h-8 text-center text-sm" />
-                        <span className="text-sm font-semibold text-secondary w-16 text-right">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="text-sm font-semibold text-secondary w-20 text-right">TZS {(item.price * item.quantity).toLocaleString()}</span>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(index)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -357,7 +357,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <span className="text-sm font-medium text-foreground">Total</span>
-                  <span className="text-lg font-bold text-secondary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-secondary">TZS {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -433,7 +433,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
               {isAdvance && (
                 <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
                   <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-sm text-amber-800">Advance order detected. Customer can pay 50% deposit now.</p>
+                  <p className="text-sm text-amber-800">Advance order detected. Deposit options available at checkout.</p>
                 </div>
               )}
             </div>
@@ -517,12 +517,12 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                 {items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
                     <span className="text-foreground">{item.name} x{item.quantity}</span>
-                    <span className="font-medium text-foreground">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-medium text-foreground">TZS {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
                 <div className="flex justify-between text-base font-bold border-t border-border pt-2 mt-2">
                   <span className="text-foreground">Total</span>
-                  <span className="text-secondary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-secondary">TZS {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -559,37 +559,54 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
             {/* Payment Terms */}
             <div className="space-y-3">
               <h3 className="font-medium text-foreground">Payment Terms</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentTerms('upfront')}
-                  className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                    paymentTerms === 'upfront'
-                      ? 'border-green-500 bg-green-50 text-green-700'
-                      : 'border-border text-muted-foreground hover:border-green-300'
-                  }`}
-                >
-                  Pay Upfront
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentTerms('on_delivery')}
-                  className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                    paymentTerms === 'on_delivery'
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-border text-muted-foreground hover:border-amber-300'
-                  }`}
-                >
-                  Pay on Delivery
-                </button>
-              </div>
+              {hasCakeItems ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border-2 border-primary/30 bg-primary/5 px-3 py-2.5 text-sm font-medium text-primary">
+                    Pay Upfront (required for custom cakes)
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-800">
+                      {totalPrice < 15000
+                        ? 'Custom orders below 15,000 TZS must be paid in full before processing.'
+                        : 'Custom cake orders require advance payment. 50% deposit available for advance orders.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTerms('upfront')}
+                    className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                      paymentTerms === 'upfront'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-border text-muted-foreground hover:border-green-300'
+                    }`}
+                  >
+                    Pay Upfront
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTerms('on_delivery')}
+                    className={`rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                      paymentTerms === 'on_delivery'
+                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                        : 'border-border text-muted-foreground hover:border-amber-300'
+                    }`}
+                  >
+                    Pay on Delivery
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Payment Action Buttons */}
             <div className="space-y-3">
               <h3 className="font-medium text-foreground">Confirm Order</h3>
               <div className="grid gap-3">
-                {paymentTerms === 'upfront' && (
+                {/* Custom cakes: always upfront */}
+                {hasCakeItems && (
                   <>
                     <button
                       type="button"
@@ -602,7 +619,48 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                           <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to baker queue.</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-green-800">${totalPrice.toFixed(2)}</p>
+                          <p className="text-xl font-bold text-green-800">TZS {totalPrice.toLocaleString()}</p>
+                          <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isAdvance && totalPrice >= 15000 && (
+                      <button
+                        type="button"
+                        className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
+                        onClick={handleSubmitDeposit}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-amber-900">50% Deposit</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Balance TZS {Math.ceil(totalPrice / 2).toLocaleString()} on pickup/delivery day.</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-amber-800">TZS {Math.ceil(totalPrice / 2).toLocaleString()}</p>
+                            <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance</Badge>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* Menu items: upfront or on-delivery */}
+                {!hasCakeItems && paymentTerms === 'upfront' && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-xl border-2 border-green-300 bg-green-50 p-4 text-left transition-all hover:border-green-500 hover:shadow-sm"
+                      onClick={handleSubmitPaid}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-green-900">Full Payment</p>
+                          <p className="text-xs text-green-700 mt-0.5">Customer pays now. Order goes to baker queue.</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-green-800">TZS {totalPrice.toLocaleString()}</p>
                           <Badge className="bg-green-600 text-white border-0 text-xs mt-1">Ready to Post</Badge>
                         </div>
                       </div>
@@ -617,10 +675,10 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-semibold text-amber-900">50% Deposit</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Balance ${(totalPrice / 2).toFixed(2)} on pickup/delivery day.</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Balance TZS {Math.ceil(totalPrice / 2).toLocaleString()} on pickup/delivery day.</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold text-amber-800">${(totalPrice / 2).toFixed(2)}</p>
+                            <p className="text-xl font-bold text-amber-800">TZS {Math.ceil(totalPrice / 2).toLocaleString()}</p>
                             <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">Advance</Badge>
                           </div>
                         </div>
@@ -629,7 +687,7 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                   </>
                 )}
 
-                {paymentTerms === 'on_delivery' && (
+                {!hasCakeItems && paymentTerms === 'on_delivery' && (
                   <button
                     type="button"
                     className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition-all hover:border-amber-500 hover:shadow-sm"
@@ -638,32 +696,35 @@ export function OrderForm({ onClose, onSubmit }: OrderFormProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-amber-900">Pay on Delivery / Pickup</p>
-                        <p className="text-xs text-amber-700 mt-0.5">Trusted customer. Payment collected on delivery. Order starts processing.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Trusted customer. Payment collected on delivery.</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-amber-800">${totalPrice.toFixed(2)}</p>
+                        <p className="text-xl font-bold text-amber-800">TZS {totalPrice.toLocaleString()}</p>
                         <Badge className="bg-amber-600 text-white border-0 text-xs mt-1">On Delivery</Badge>
                       </div>
                     </div>
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
-                  onClick={handleSaveUnpaid}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground flex items-center gap-2"><Save className="h-4 w-4" /> Save Order - Await Payment</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Save order and confirm payment later.</p>
+                {/* Save unpaid (always available for menu items, not for custom) */}
+                {!hasCakeItems && (
+                  <button
+                    type="button"
+                    className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                    onClick={handleSaveUnpaid}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-foreground flex items-center gap-2"><Save className="h-4 w-4" /> Save Order - Await Payment</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Save order and confirm payment later.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-muted-foreground">TZS {totalPrice.toLocaleString()}</p>
+                        <Badge variant="outline" className="text-xs mt-1 bg-transparent">Unpaid</Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-muted-foreground">${totalPrice.toFixed(2)}</p>
-                      <Badge variant="outline" className="text-xs mt-1 bg-transparent">Unpaid</Badge>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                )}
               </div>
             </div>
 

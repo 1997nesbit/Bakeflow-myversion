@@ -108,16 +108,16 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
           <div className="rounded-lg bg-accent p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Total</span>
-              <span className="font-bold text-foreground">${order.totalPrice.toFixed(2)}</span>
+              <span className="font-bold text-foreground">TZS {order.totalPrice.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Paid</span>
-              <span className="font-bold text-green-600">${order.amountPaid.toFixed(2)}</span>
+              <span className="font-bold text-green-600">TZS {order.amountPaid.toLocaleString()}</span>
             </div>
             {balanceDue > 0 && (
               <div className="flex justify-between border-t border-border pt-2">
                 <span className="text-sm font-medium text-secondary">Balance Due</span>
-                <span className="font-bold text-secondary">${balanceDue.toFixed(2)}</span>
+                <span className="font-bold text-secondary">TZS {balanceDue.toLocaleString()}</span>
               </div>
             )}
             <Badge className={`${

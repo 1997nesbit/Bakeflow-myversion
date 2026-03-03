@@ -222,7 +222,7 @@ export default function SearchPage() {
 
                     {/* Right: Price and actions */}
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-lg font-bold text-secondary">${order.totalPrice.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</span>
                       <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent" onClick={(e) => handleOpenMessage(order, e)}>
                         <MessageSquare className="h-4 w-4" />
                       </Button>

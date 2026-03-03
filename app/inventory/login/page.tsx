@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { ChefHat, Eye, EyeOff, LogIn } from 'lucide-react'
+import { Package, Eye, EyeOff, LogIn } from 'lucide-react'
 
 const CREDENTIALS = [
-  { username: 'john', password: 'bake123', displayName: 'Baker John' },
-  { username: 'grace', password: 'bake123', displayName: 'Baker Grace' },
+  { username: 'manager', password: 'inv123', displayName: 'Manager Admin', role: 'manager' },
+  { username: 'clerk', password: 'inv123', displayName: 'Store Clerk Mary', role: 'clerk' },
 ]
 
-export default function BakerLoginPage() {
+export default function InventoryLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -29,8 +29,8 @@ export default function BakerLoginPage() {
     setTimeout(() => {
       const match = CREDENTIALS.find(c => c.username === username.toLowerCase() && c.password === password)
       if (match) {
-        localStorage.setItem('baker_auth', JSON.stringify({ name: match.displayName, username: match.username, loggedInAt: new Date().toISOString() }))
-        router.push('/portal/baker')
+        localStorage.setItem('inventory_auth', JSON.stringify({ name: match.displayName, username: match.username, role: match.role, loggedInAt: new Date().toISOString() }))
+        router.push('/inventory')
       } else if (username && password) {
         setError('Invalid username or password')
       } else {
@@ -41,17 +41,17 @@ export default function BakerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fdf2f4 0%, #fce7ea 40%, #fbd5db 100%)' }}>
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #CA0123 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdf2f4] via-white to-[#fce7ea]">
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #e66386 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
 
       <Card className="relative w-full max-w-md mx-4 shadow-2xl border-0 bg-card">
         <CardContent className="p-8">
           <div className="text-center mb-8">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
-              <ChefHat className="h-10 w-10 text-white" />
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg bg-gradient-to-br from-[#e66386] to-[#d94a70]">
+              <Package className="h-10 w-10 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Baker Portal</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Bbr Bakeflow Kitchen Access</p>
+            <h1 className="text-2xl font-bold text-foreground">Inventory Portal</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Bbr Bakeflow Stock Management</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -71,7 +71,7 @@ export default function BakerLoginPage() {
 
             {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 text-center">{error}</p>}
 
-            <Button type="submit" disabled={loading} className="w-full h-12 text-base text-white border-0" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
+            <Button type="submit" disabled={loading} className="w-full h-12 text-base text-white border-0 bg-gradient-to-r from-[#e66386] to-[#d94a70] hover:opacity-90">
               {loading ? (
                 <span className="flex items-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Signing in...</span>
               ) : (
@@ -83,8 +83,8 @@ export default function BakerLoginPage() {
           <div className="mt-6 rounded-lg bg-accent/50 border border-border p-3">
             <p className="text-xs font-medium text-foreground mb-2">Demo Credentials:</p>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Username: <span className="font-mono font-medium text-foreground">john</span> / Password: <span className="font-mono font-medium text-foreground">bake123</span></p>
-              <p className="text-xs text-muted-foreground">Username: <span className="font-mono font-medium text-foreground">grace</span> / Password: <span className="font-mono font-medium text-foreground">bake123</span></p>
+              <p className="text-xs text-muted-foreground">Manager: <span className="font-mono font-medium text-foreground">manager</span> / <span className="font-mono font-medium text-foreground">inv123</span></p>
+              <p className="text-xs text-muted-foreground">Clerk: <span className="font-mono font-medium text-foreground">clerk</span> / <span className="font-mono font-medium text-foreground">inv123</span></p>
             </div>
           </div>
 

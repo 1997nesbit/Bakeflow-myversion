@@ -138,7 +138,7 @@ export default function InventoryDashboard() {
                   </div>
                   <p className="text-sm text-muted-foreground">Stock Value</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">${totalValue.toFixed(0)}</p>
+                <p className="text-2xl font-bold text-foreground">TZS {totalValue.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Total inventory value
                 </p>
@@ -155,7 +155,7 @@ export default function InventoryDashboard() {
                 </div>
                 <p className="text-2xl font-bold text-foreground">{todayRollouts.length} items</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ${todayRolloutValue.toFixed(2)} value used
+                  TZS {todayRolloutValue.toLocaleString()} value used
                 </p>
               </CardContent>
             </Card>
@@ -267,7 +267,7 @@ export default function InventoryDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold text-emerald-600">+{entry.quantity} {entry.unit}</p>
-                          <p className="text-xs text-muted-foreground">${entry.totalCost.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">TZS {entry.totalCost.toLocaleString()}</p>
                         </div>
                       </div>
                     ))}
