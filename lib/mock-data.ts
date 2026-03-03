@@ -478,3 +478,144 @@ export const mockDailyBatches: DailyBatchItem[] = [
 ]
 
 export type FulfillmentMethod = 'from_batch' | 'bake_fresh'
+
+// ---- MANAGER PORTAL DATA ----
+export type StaffRole = 'manager' | 'front_desk' | 'baker' | 'decorator' | 'driver' | 'inventory_clerk'
+
+export interface StaffMember {
+  id: string
+  name: string
+  role: StaffRole
+  phone: string
+  email?: string
+  status: 'active' | 'inactive'
+  joinDate: string
+  salary: number
+}
+
+export const mockStaff: StaffMember[] = [
+  { id: 'STF-001', name: 'Admin Manager', role: 'manager', phone: '+255 755 000 001', email: 'admin@bbrbakeflow.co.tz', status: 'active', joinDate: '2024-01-15', salary: 800000 },
+  { id: 'STF-002', name: 'Sarah Mwangi', role: 'front_desk', phone: '+255 713 002 200', email: 'sarah@bbrbakeflow.co.tz', status: 'active', joinDate: '2024-03-01', salary: 450000 },
+  { id: 'STF-003', name: 'Baker John', role: 'baker', phone: '+255 784 003 300', status: 'active', joinDate: '2024-02-10', salary: 550000 },
+  { id: 'STF-004', name: 'Baker Sarah', role: 'baker', phone: '+255 756 004 400', status: 'active', joinDate: '2024-06-01', salary: 550000 },
+  { id: 'STF-005', name: 'Tom Martinez', role: 'driver', phone: '+255 716 005 500', status: 'active', joinDate: '2024-04-15', salary: 350000 },
+  { id: 'STF-006', name: 'Amy Garcia', role: 'driver', phone: '+255 787 006 600', status: 'active', joinDate: '2024-05-20', salary: 350000 },
+  { id: 'STF-007', name: 'Chris Lee', role: 'driver', phone: '+255 715 007 700', status: 'active', joinDate: '2025-01-10', salary: 350000 },
+  { id: 'STF-008', name: 'Mary Kendi', role: 'inventory_clerk', phone: '+255 754 008 800', status: 'active', joinDate: '2024-07-01', salary: 400000 },
+  { id: 'STF-009', name: 'Rose Otieno', role: 'decorator', phone: '+255 782 009 900', status: 'active', joinDate: '2024-08-15', salary: 500000 },
+  { id: 'STF-010', name: 'James Nyamwanga', role: 'front_desk', phone: '+255 713 010 100', status: 'inactive', joinDate: '2024-03-01', salary: 450000 },
+]
+
+export interface CustomerRecord {
+  id: string
+  name: string
+  phone: string
+  email?: string
+  isGold: boolean
+  totalOrders: number
+  totalSpent: number
+  lastOrderDate: string
+  notes?: string
+}
+
+export const mockCustomers: CustomerRecord[] = [
+  { id: 'CUS-001', name: 'Sarah Johnson', phone: '+255 755 012 345', email: 'sarah@email.com', isGold: true, totalOrders: 12, totalSpent: 890000, lastOrderDate: '2026-02-06', notes: 'Loyal customer, prefers chocolate' },
+  { id: 'CUS-002', name: 'Mike Chen', phone: '+255 712 045 678', isGold: false, totalOrders: 3, totalSpent: 82000, lastOrderDate: '2026-02-06' },
+  { id: 'CUS-003', name: 'Emma Williams', phone: '+255 784 078 901', isGold: true, totalOrders: 8, totalSpent: 1250000, lastOrderDate: '2026-02-03', notes: 'Event planner, bulk orders' },
+  { id: 'CUS-004', name: 'David Brown', phone: '+255 755 032 100', isGold: true, totalOrders: 15, totalSpent: 560000, lastOrderDate: '2026-02-06', notes: 'Cafe owner, weekly bulk' },
+  { id: 'CUS-005', name: 'Lisa Anderson', phone: '+255 713 065 400', isGold: false, totalOrders: 5, totalSpent: 310000, lastOrderDate: '2026-02-06' },
+  { id: 'CUS-006', name: 'Grace Okonkwo', phone: '+255 754 123 456', isGold: false, totalOrders: 2, totalSpent: 195000, lastOrderDate: '2026-02-04' },
+  { id: 'CUS-007', name: 'Peter Kamau', phone: '+255 756 135 700', isGold: true, totalOrders: 9, totalSpent: 720000, lastOrderDate: '2026-02-06' },
+  { id: 'CUS-008', name: 'Angela Mbeki', phone: '+255 787 246 800', isGold: false, totalOrders: 1, totalSpent: 44000, lastOrderDate: '2026-02-06' },
+  { id: 'CUS-009', name: 'Fatima Osei', phone: '+255 715 369 000', isGold: false, totalOrders: 4, totalSpent: 198000, lastOrderDate: '2026-02-06' },
+  { id: 'CUS-010', name: 'Tom Richards', phone: '+255 716 567 890', isGold: false, totalOrders: 6, totalSpent: 340000, lastOrderDate: '2026-02-06' },
+]
+
+export interface DebtRecord {
+  id: string
+  customerName: string
+  customerPhone: string
+  orderId: string
+  totalAmount: number
+  amountPaid: number
+  balance: number
+  dueDate: string
+  status: 'overdue' | 'pending' | 'partial'
+  createdAt: string
+}
+
+export const mockDebts: DebtRecord[] = [
+  { id: 'DBT-001', customerName: 'James Wilson', customerPhone: '+255 782 098 700', orderId: 'ORD-006', totalAmount: 34000, amountPaid: 0, balance: 34000, dueDate: '2026-02-06', status: 'overdue', createdAt: '2026-02-06T06:45:00' },
+  { id: 'DBT-002', customerName: 'Emma Williams', customerPhone: '+255 784 078 901', orderId: 'ORD-003', totalAmount: 350000, amountPaid: 175000, balance: 175000, dueDate: '2026-02-08', status: 'partial', createdAt: '2026-02-03T11:00:00' },
+  { id: 'DBT-003', customerName: 'Grace Okonkwo', customerPhone: '+255 754 123 456', orderId: 'ORD-007', totalAmount: 120000, amountPaid: 60000, balance: 60000, dueDate: '2026-02-08', status: 'partial', createdAt: '2026-02-04T10:00:00' },
+]
+
+export interface TaskItem {
+  id: string
+  title: string
+  description?: string
+  assignedTo: string
+  assignedRole: StaffRole
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'pending' | 'in_progress' | 'completed'
+  dueDate: string
+  createdAt: string
+  completedAt?: string
+}
+
+export const mockTasks: TaskItem[] = [
+  { id: 'TSK-001', title: 'Deep clean oven #2', description: 'Full disassembly and clean after element replacement', assignedTo: 'Baker John', assignedRole: 'baker', priority: 'high', status: 'in_progress', dueDate: '2026-02-07', createdAt: '2026-02-05T09:00:00' },
+  { id: 'TSK-002', title: 'Restock cake box inventory', description: 'Small boxes below minimum. Contact PackRight for urgent delivery.', assignedTo: 'Mary Kendi', assignedRole: 'inventory_clerk', priority: 'urgent', status: 'pending', dueDate: '2026-02-06', createdAt: '2026-02-06T07:00:00' },
+  { id: 'TSK-003', title: 'Update menu board photos', assignedTo: 'Sarah Mwangi', assignedRole: 'front_desk', priority: 'low', status: 'pending', dueDate: '2026-02-10', createdAt: '2026-02-05T14:00:00' },
+  { id: 'TSK-004', title: 'Prepare Valentine special pricing', description: 'Create pricing for Valentine heart cakes and cupcake sets', assignedTo: 'Admin Manager', assignedRole: 'manager', priority: 'high', status: 'in_progress', dueDate: '2026-02-12', createdAt: '2026-02-04T10:00:00' },
+  { id: 'TSK-005', title: 'Deliver wedding cake to Hyatt', description: 'ORD-003 delivery on Feb 8, coordinate with Emma', assignedTo: 'Tom Martinez', assignedRole: 'driver', priority: 'high', status: 'pending', dueDate: '2026-02-08', createdAt: '2026-02-06T08:00:00' },
+  { id: 'TSK-006', title: 'Practice new fondant flower technique', assignedTo: 'Rose Otieno', assignedRole: 'decorator', priority: 'medium', status: 'completed', dueDate: '2026-02-05', createdAt: '2026-02-03T09:00:00', completedAt: '2026-02-05T16:00:00' },
+  { id: 'TSK-007', title: 'Verify supplier invoices for Jan', description: 'Cross-check all January supplier invoices with stock entries', assignedTo: 'Mary Kendi', assignedRole: 'inventory_clerk', priority: 'medium', status: 'completed', dueDate: '2026-02-05', createdAt: '2026-02-01T09:00:00', completedAt: '2026-02-04T17:00:00' },
+]
+
+// ---- BUSINESS EXPENSES (manager-level) ----
+export type BusinessExpenseCategory = 'rent' | 'salaries' | 'utilities' | 'marketing' | 'licenses' | 'transport' | 'cleaning' | 'misc'
+
+export const businessExpenseCategories: { value: BusinessExpenseCategory; label: string }[] = [
+  { value: 'rent', label: 'Rent & Lease' },
+  { value: 'salaries', label: 'Salaries & Wages' },
+  { value: 'utilities', label: 'Utilities (Electric, Water, Gas)' },
+  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'licenses', label: 'Licenses & Permits' },
+  { value: 'transport', label: 'Transport & Fuel' },
+  { value: 'cleaning', label: 'Cleaning & Sanitation' },
+  { value: 'misc', label: 'Miscellaneous' },
+]
+
+export interface BusinessExpense {
+  id: string
+  title: string
+  category: BusinessExpenseCategory
+  amount: number
+  date: string
+  paidTo: string
+  paymentMethod: PaymentMethod
+  receiptRef?: string
+  notes?: string
+  recurring: boolean
+}
+
+export const mockBusinessExpenses: BusinessExpense[] = [
+  { id: 'BEX-001', title: 'Shop Rent - February', category: 'rent', amount: 1500000, date: '2026-02-01', paidTo: 'Greenfield Properties', paymentMethod: 'bank_transfer', receiptRef: 'GFP-0201', recurring: true },
+  { id: 'BEX-002', title: 'Electricity - January', category: 'utilities', amount: 280000, date: '2026-01-31', paidTo: 'TANESCO', paymentMethod: 'mobile_money', receiptRef: 'TAN-0131', recurring: true },
+  { id: 'BEX-003', title: 'Water - January', category: 'utilities', amount: 85000, date: '2026-01-31', paidTo: 'DAWASCO', paymentMethod: 'mobile_money', receiptRef: 'DAW-0131', recurring: true },
+  { id: 'BEX-004', title: 'Staff Salaries - February', category: 'salaries', amount: 4750000, date: '2026-02-01', paidTo: 'All Staff', paymentMethod: 'bank_transfer', recurring: true },
+  { id: 'BEX-005', title: 'Instagram Ad - Valentine Promo', category: 'marketing', amount: 150000, date: '2026-02-05', paidTo: 'Meta Ads', paymentMethod: 'card', recurring: false },
+  { id: 'BEX-006', title: 'Health Inspection Renewal', category: 'licenses', amount: 200000, date: '2026-01-15', paidTo: 'City Health Dept', paymentMethod: 'bank_transfer', receiptRef: 'CHD-0115', recurring: true },
+  { id: 'BEX-007', title: 'Deep Cleaning Service', category: 'cleaning', amount: 120000, date: '2026-02-02', paidTo: 'SparkClean Services', paymentMethod: 'mobile_money', recurring: true },
+  { id: 'BEX-008', title: 'Delivery Van Insurance', category: 'transport', amount: 350000, date: '2026-01-10', paidTo: 'Jubilee Insurance', paymentMethod: 'bank_transfer', receiptRef: 'JUB-0110', recurring: true },
+]
+
+export const staffRoleLabels: Record<StaffRole, string> = {
+  manager: 'Manager',
+  front_desk: 'Front Desk',
+  baker: 'Baker',
+  decorator: 'Decorator',
+  driver: 'Driver',
+  inventory_clerk: 'Inventory Clerk',
+}

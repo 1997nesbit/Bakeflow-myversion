@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChefHat, ShoppingCart, Package, ArrowRight, Clock, Shield } from 'lucide-react'
+import { ChefHat, ShoppingCart, Package, ArrowRight, Clock, Shield, Settings } from 'lucide-react'
 
 const portals = [
   {
@@ -41,6 +41,18 @@ const portals = [
     shadowColor: 'shadow-[#e66386]/20',
     borderHover: 'hover:border-[#e66386]/40',
   },
+  {
+    id: 'manager',
+    name: 'Manager Portal',
+    description: 'Full business oversight, staff, debts, reports and account management',
+    href: '/manager/login',
+    icon: Settings,
+    features: ['Dashboard & reports', 'Staff & task management', 'Debt tracking', 'Bulk messaging'],
+    gradient: 'from-[#1a0a0e] to-[#CA0123]',
+    iconBg: 'bg-[#1a0a0e]',
+    shadowColor: 'shadow-[#1a0a0e]/20',
+    borderHover: 'hover:border-[#CA0123]/40',
+  },
 ]
 
 export default function PortalSelector() {
@@ -78,7 +90,7 @@ export default function PortalSelector() {
         </div>
 
         {/* Portal Cards */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {portals.map((portal) => {
             const isHovered = hoveredPortal === portal.id
             return (
