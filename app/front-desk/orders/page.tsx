@@ -787,7 +787,7 @@ export default function OrdersPage() {
 
         {/* Message Dialog */}
         <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-xl md:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="text-foreground">Message Customer</DialogTitle>
             </DialogHeader>
@@ -799,22 +799,27 @@ export default function OrdersPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Message</label>
-                  <Textarea placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[140px] text-sm leading-relaxed" />
+                  <Textarea 
+                    placeholder="Type message..." 
+                    value={messageText} 
+                    onChange={(e) => setMessageText(e.target.value)} 
+                    className="min-h-[180px] text-sm leading-relaxed resize-y" 
+                  />
                 </div>
                 {/* Auto-include tracking link */}
-                <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-2.5 mb-2">
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-2.5">
                   <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
-                  <p className="text-xs text-blue-600 font-mono truncate flex-1">{getTrackingUrl(messageOrder.trackingId)}</p>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-700 hover:bg-blue-100" onClick={() => copyTrackingLink(messageOrder.trackingId)}>
+                  <p className="text-xs text-blue-600 font-mono flex-1 break-all">{getTrackingUrl(messageOrder.trackingId)}</p>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-700 hover:bg-blue-100 shrink-0" onClick={() => copyTrackingLink(messageOrder.trackingId)}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">Tracking link is auto-appended to every message sent.</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup! Track here: ${getTrackingUrl(messageOrder.trackingId)}`)}>Ready for Pickup</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery! Track live: ${getTrackingUrl(messageOrder.trackingId)}`)}>Out for Delivery</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of TZS ${messageOrder.totalPrice.toLocaleString()} for order ${messageOrder.id}. Please confirm. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Payment Reminder</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of TZS ${(messageOrder.totalPrice - messageOrder.amountPaid).toLocaleString()}. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Balance Reminder</Button>
+                <p className="text-xs text-muted-foreground">Tracking link is auto-appended to every message sent.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent justify-start" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup! Track here: ${getTrackingUrl(messageOrder.trackingId)}`)}>Ready for Pickup</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent justify-start" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery! Track live: ${getTrackingUrl(messageOrder.trackingId)}`)}>Out for Delivery</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent justify-start" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, we are waiting for your payment of TZS ${messageOrder.totalPrice.toLocaleString()} for order ${messageOrder.id}. Please confirm. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Payment Reminder</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent justify-start" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order has a balance of TZS ${(messageOrder.totalPrice - messageOrder.amountPaid).toLocaleString()}. Track: ${getTrackingUrl(messageOrder.trackingId)}`)}>Balance Reminder</Button>
                 </div>
               </div>
             )}
