@@ -1,6 +1,6 @@
 'use client'
 
-import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
+import { FrontDeskSidebar } from '@/components/portal-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

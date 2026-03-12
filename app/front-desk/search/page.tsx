@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
+import { FrontDeskSidebar } from '@/components/portal-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'

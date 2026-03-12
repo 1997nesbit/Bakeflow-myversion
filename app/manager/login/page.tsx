@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChefHat, Shield, Eye, EyeOff } from 'lucide-react'
+import { ChefHat, Eye, EyeOff } from 'lucide-react'
 
 export default function ManagerLoginPage() {
   const router = useRouter()
@@ -19,38 +19,36 @@ export default function ManagerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1a0a0e]">
+    <div className="min-h-screen flex items-center justify-center bg-manager-bg">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#CA0123]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
             <ChefHat className="h-7 w-7 text-white" />
           </div>
           <h1 className="mt-4 text-xl font-bold text-white">Manager Portal</h1>
           <p className="text-sm text-white/40 mt-1">Bbr Bakeflow Administration</p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm space-y-4">
-          <div className="flex items-center gap-2 rounded-lg bg-[#CA0123]/10 border border-[#CA0123]/20 px-3 py-2">
-            <Shield className="h-4 w-4 text-[#e66386]" />
-            <p className="text-xs text-[#e66386]">Demo: manager / manager123</p>
-          </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm space-y-4">
           {error && <p className="text-xs text-red-400 text-center">{error}</p>}
           <div>
-            <label className="text-xs font-medium text-white/60 mb-1 block">Username</label>
+            <label htmlFor="username" className="text-xs font-medium text-white/60 mb-1 block">Username</label>
             <input
+              id="username"
               value={username} onChange={(e) => { setUsername(e.target.value); setError('') }}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#CA0123] focus:outline-none"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-primary focus:outline-none"
               placeholder="Enter username"
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-white/60 mb-1 block">Password</label>
+            <label htmlFor="password" className="text-xs font-medium text-white/60 mb-1 block">Password</label>
             <div className="relative">
               <input
+                id="password"
                 type={showPw ? 'text' : 'password'}
                 value={password} onChange={(e) => { setPassword(e.target.value); setError('') }}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#CA0123] focus:outline-none pr-10"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-primary focus:outline-none pr-10"
                 placeholder="Enter password"
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               />
@@ -59,10 +57,12 @@ export default function ManagerLoginPage() {
               </button>
             </div>
           </div>
-          <button type="button" onClick={handleLogin} className="w-full rounded-lg bg-[#CA0123] py-2.5 text-sm font-semibold text-white hover:bg-[#a8011d] transition-colors">
+          <button type="button" onClick={handleLogin} className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors">
             Sign In
           </button>
         </div>
+
+        <p className="mt-4 text-center text-xs text-white/25">Demo: manager / manager123</p>
       </div>
     </div>
   )

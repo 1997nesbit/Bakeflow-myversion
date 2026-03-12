@@ -288,14 +288,14 @@ export const mockInventory: InventoryItem[] = [
   { id: 'INV-002', name: 'Sugar', category: 'ingredient', quantity: 8, unit: 'kg', minStock: 15, costPerUnit: 0.9, lastRestocked: '2026-01-28', supplierId: 'SUP-002' },
   { id: 'INV-003', name: 'Butter', category: 'ingredient', quantity: 12, unit: 'kg', minStock: 10, costPerUnit: 4.5, lastRestocked: '2026-02-03', supplierId: 'SUP-003' },
   { id: 'INV-004', name: 'Eggs', category: 'ingredient', quantity: 120, unit: 'pcs', minStock: 100, costPerUnit: 0.15, lastRestocked: '2026-02-04', supplierId: 'SUP-003' },
-  { id: 'INV-005', name: 'Yeast', category: 'ingredient', quantity: 3, unit: 'kg', minStock: 2, costPerUnit: 8.0, lastRestocked: '2026-02-02', supplierId: 'SUP-004' },
-  { id: 'INV-006', name: 'Chocolate Chips', category: 'ingredient', quantity: 4, unit: 'kg', minStock: 5, costPerUnit: 6.0, lastRestocked: '2026-01-30', supplierId: 'SUP-004' },
-  { id: 'INV-007', name: 'Vanilla Extract', category: 'ingredient', quantity: 2, unit: 'L', minStock: 1, costPerUnit: 12.0, lastRestocked: '2026-02-01', supplierId: 'SUP-004' },
+  { id: 'INV-005', name: 'Yeast', category: 'ingredient', quantity: 3, unit: 'kg', minStock: 2, costPerUnit: 8, lastRestocked: '2026-02-02', supplierId: 'SUP-004' },
+  { id: 'INV-006', name: 'Chocolate Chips', category: 'ingredient', quantity: 4, unit: 'kg', minStock: 5, costPerUnit: 6, lastRestocked: '2026-01-30', supplierId: 'SUP-004' },
+  { id: 'INV-007', name: 'Vanilla Extract', category: 'ingredient', quantity: 2, unit: 'L', minStock: 1, costPerUnit: 12, lastRestocked: '2026-02-01', supplierId: 'SUP-004' },
   { id: 'INV-008', name: 'Cake Boxes - Small', category: 'packaging', quantity: 25, unit: 'pcs', minStock: 50, costPerUnit: 0.5, lastRestocked: '2026-01-25', supplierId: 'SUP-005' },
   { id: 'INV-009', name: 'Cake Boxes - Large', category: 'packaging', quantity: 40, unit: 'pcs', minStock: 30, costPerUnit: 0.8, lastRestocked: '2026-01-28', supplierId: 'SUP-005' },
   { id: 'INV-010', name: 'Bread Bags', category: 'packaging', quantity: 200, unit: 'pcs', minStock: 100, costPerUnit: 0.1, lastRestocked: '2026-02-02', supplierId: 'SUP-005' },
   { id: 'INV-011', name: 'Heavy Cream', category: 'ingredient', quantity: 6, unit: 'L', minStock: 8, costPerUnit: 3.5, lastRestocked: '2026-02-03', supplierId: 'SUP-003' },
-  { id: 'INV-012', name: 'Fondant - White', category: 'ingredient', quantity: 5, unit: 'kg', minStock: 3, costPerUnit: 7.0, lastRestocked: '2026-01-30', supplierId: 'SUP-004' },
+  { id: 'INV-012', name: 'Fondant - White', category: 'ingredient', quantity: 5, unit: 'kg', minStock: 3, costPerUnit: 7, lastRestocked: '2026-01-30', supplierId: 'SUP-004' },
 ]
 
 export const mockSuppliers: Supplier[] = [
@@ -312,7 +312,7 @@ export const mockStockEntries: StockEntry[] = [
   { id: 'SE-003', inventoryItemId: 'INV-003', itemName: 'Butter', quantity: 15, unit: 'kg', supplierName: 'Green Pastures Dairy', costPerUnit: 4.5, totalCost: 67.5, invoiceRef: 'GP-2026-0112', date: '2026-02-03', addedBy: 'Admin' },
   { id: 'SE-004', inventoryItemId: 'INV-004', itemName: 'Eggs', quantity: 200, unit: 'pcs', supplierName: 'Green Pastures Dairy', costPerUnit: 0.15, totalCost: 30, invoiceRef: 'GP-2026-0113', date: '2026-02-04', addedBy: 'Admin' },
   { id: 'SE-005', inventoryItemId: 'INV-008', itemName: 'Cake Boxes - Small', quantity: 100, unit: 'pcs', supplierName: 'PackRight Solutions', costPerUnit: 0.5, totalCost: 50, invoiceRef: 'PR-2026-0044', date: '2026-01-25', addedBy: 'Admin' },
-  { id: 'SE-006', inventoryItemId: 'INV-006', itemName: 'Chocolate Chips', quantity: 10, unit: 'kg', supplierName: 'Baker\'s Best Supply', costPerUnit: 6.0, totalCost: 60, invoiceRef: 'BB-2026-0321', date: '2026-01-30', addedBy: 'Admin' },
+  { id: 'SE-006', inventoryItemId: 'INV-006', itemName: 'Chocolate Chips', quantity: 10, unit: 'kg', supplierName: 'Baker\'s Best Supply', costPerUnit: 6, totalCost: 60, invoiceRef: 'BB-2026-0321', date: '2026-01-30', addedBy: 'Admin' },
 ]
 
 export const mockDailyRollouts: DailyRollout[] = [
@@ -358,6 +358,28 @@ export const statusColors: Record<OrderStatus, string> = {
   ready: 'bg-green-100 text-green-800',
   dispatched: 'bg-purple-100 text-purple-800',
   delivered: 'bg-gray-100 text-gray-800',
+}
+
+/** For use on dark (manager portal) backgrounds */
+export const statusColorsDark: Record<OrderStatus, string> = {
+  pending: 'bg-amber-500/20 text-amber-300',
+  paid: 'bg-green-500/20 text-green-300',
+  baker: 'bg-orange-500/20 text-orange-300',
+  decorator: 'bg-pink-500/20 text-pink-300',
+  quality: 'bg-blue-500/20 text-blue-300',
+  packing: 'bg-indigo-500/20 text-indigo-300',
+  ready: 'bg-emerald-500/20 text-emerald-300',
+  dispatched: 'bg-purple-500/20 text-purple-300',
+  delivered: 'bg-gray-500/20 text-gray-400',
+}
+
+export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low'
+
+export const priorityColorsDark: Record<string, string> = {
+  urgent: 'bg-red-500/20 text-red-300',
+  high: 'bg-orange-500/20 text-orange-300',
+  medium: 'bg-blue-500/20 text-blue-300',
+  low: 'bg-gray-500/20 text-gray-400',
 }
 
 export const orderTypeLabels: Record<OrderType, string> = {

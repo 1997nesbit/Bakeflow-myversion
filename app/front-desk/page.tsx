@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
+import { FrontDeskSidebar } from '@/components/portal-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,10 +14,9 @@ import {
   daysUntilDue,
   minutesSincePosted,
 } from '@/lib/mock-data'
-import { Star } from 'lucide-react'
 import {
+  Star,
   ShoppingCart,
-  Clock,
   ChefHat,
   Truck,
   AlertTriangle,
@@ -40,14 +39,11 @@ export default function FrontDeskDashboard() {
   const [orders] = useState<Order[]>(mockOrders)
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
-  const [, setTick] = useState(0)
-
   useEffect(() => {
     setMounted(true)
     setCurrentTime(new Date())
     const interval = setInterval(() => {
       setCurrentTime(new Date())
-      setTick(t => t + 1)
     }, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -107,7 +103,7 @@ export default function FrontDeskDashboard() {
                 <Link href="/front-desk/orders">
                   <Badge className="bg-secondary text-secondary-foreground px-3 py-1.5 text-xs cursor-pointer hover:bg-secondary/90">
                     <Bell className="mr-1.5 h-3.5 w-3.5" />
-                    {actionCount} action{actionCount !== 1 ? 's' : ''} needed
+                    {actionCount} action{actionCount === 1 ? '' : 's'} needed
                   </Badge>
                 </Link>
               )}
@@ -149,6 +145,10 @@ export default function FrontDeskDashboard() {
               ))}
               {advanceDueSoon.map(order => {
                 const days = daysUntilDue(order.pickupDate)
+                let dueLabel: string
+                if (days === 0) { dueLabel = 'Today' }
+                else if (days === 1) { dueLabel = 'Tomorrow' }
+                else { dueLabel = `in ${days} days` }
                 return (
                   <div key={order.id} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export default function FrontDeskDashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-amber-900">
-                          Advance Due {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `in ${days} days`}: {order.id}
+                          Advance Due {dueLabel}: {order.id}
                         </p>
                         <p className="text-xs text-amber-700">
                           {order.customerName} - {order.items.map(i => i.name).join(', ')}
@@ -362,7 +362,7 @@ export default function FrontDeskDashboard() {
                           <span className="text-xs font-bold text-foreground">{order.id}</span>
                           <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0">Awaiting Payment</Badge>
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - ${order.totalPrice.toFixed(2)}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - TZS {order.totalPrice.toLocaleString()}</p>
                       </div>
                       <Link href="/front-desk/orders">
                         <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 bg-transparent text-xs h-8 px-3">
@@ -400,8 +400,10 @@ export default function FrontDeskDashboard() {
                     const elapsed = mounted && order.postedToBakerAt ? minutesSincePosted(order.postedToBakerAt) : 0
                     const isOverdue = elapsed > order.estimatedMinutes
                     const progress = Math.min((elapsed / order.estimatedMinutes) * 100, 100)
+                    const kitchenCardClass = isOverdue ? 'bg-red-50 border border-red-200' : 'bg-muted/50 border border-border'
+                    const progressBarColor = progress > 75 ? 'bg-amber-500' : 'bg-emerald-500'
                     return (
-                      <div key={order.id} className={`rounded-lg p-3 ${isOverdue ? 'bg-red-50 border border-red-200' : 'bg-muted/50 border border-border'}`}>
+                      <div key={order.id} className={`rounded-lg p-3 ${kitchenCardClass}`}>
                         <div className="flex items-start justify-between mb-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
@@ -417,7 +419,7 @@ export default function FrontDeskDashboard() {
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : progress > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                              className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : progressBarColor}`}
                               style={{ width: `${progress}%` }}
                             />
                           </div>

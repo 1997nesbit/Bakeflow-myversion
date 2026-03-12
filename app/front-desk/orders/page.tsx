@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { FrontDeskSidebar } from '@/components/front-desk/front-desk-sidebar'
+import { FrontDeskSidebar } from '@/components/portal-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'

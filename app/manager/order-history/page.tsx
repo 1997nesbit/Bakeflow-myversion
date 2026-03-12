@@ -1,6 +1,6 @@
 'use client'
 
-import { ManagerSidebar } from '@/components/manager/manager-sidebar'
+import { ManagerSidebar } from '@/components/portal-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { mockOrders, paymentMethodLabels, type Order } from '@/lib/mock-data'

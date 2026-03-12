@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AppSidebar } from '@/components/app-sidebar'
+import { AppSidebar } from '@/components/portal-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'

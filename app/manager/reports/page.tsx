@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ManagerSidebar } from '@/components/manager/manager-sidebar'
+import { ManagerSidebar } from '@/components/portal-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { mockOrders, mockExpenses, mockBusinessExpenses, mockStaff, mockCustomers, mockDebts, mockDailyBatches, statusLabels, paymentMethodLabels, type PaymentMethod } from '@/lib/mock-data'
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, ChefHat, Banknote, ArrowUpRight, ArrowDownRight } from 'lucide-react'

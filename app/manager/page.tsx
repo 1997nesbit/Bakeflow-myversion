@@ -1,12 +1,11 @@
 'use client'
 
-import { ManagerSidebar } from '@/components/manager/manager-sidebar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ManagerSidebar } from '@/components/portal-sidebar'
 import { Badge } from '@/components/ui/badge'
-import { mockOrders, mockDebts, mockTasks, mockStaff, mockCustomers, mockBusinessExpenses, mockExpenses } from '@/lib/mock-data'
+import { mockOrders, mockDebts, mockTasks, mockStaff, mockCustomers, mockBusinessExpenses, mockExpenses, statusColorsDark, priorityColorsDark } from '@/lib/mock-data'
 import {
   DollarSign, ShoppingCart, Users, AlertTriangle,
-  TrendingUp, Clock, ListChecks, Banknote,
+  TrendingUp, ListChecks, Banknote,
   ArrowUpRight, ArrowDownRight, ChefHat,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -31,25 +30,12 @@ export default function ManagerDashboard() {
 
   const recentOrders = [...mockOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
   const urgentTasks = mockTasks.filter(t => t.status !== 'completed').sort((a, b) => {
-    const pri = { urgent: 0, high: 1, medium: 2, low: 3 }
-    return (pri[a.priority] || 3) - (pri[b.priority] || 3)
+    const pri: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+    return (pri[a.priority] ?? 3) - (pri[b.priority] ?? 3)
   }).slice(0, 4)
 
-  const statusColor: Record<string, string> = {
-    pending: 'bg-amber-500/20 text-amber-300', paid: 'bg-green-500/20 text-green-300',
-    baker: 'bg-orange-500/20 text-orange-300', decorator: 'bg-pink-500/20 text-pink-300',
-    quality: 'bg-blue-500/20 text-blue-300', packing: 'bg-indigo-500/20 text-indigo-300',
-    ready: 'bg-emerald-500/20 text-emerald-300', dispatched: 'bg-purple-500/20 text-purple-300',
-    delivered: 'bg-gray-500/20 text-gray-300',
-  }
-
-  const priorityColor: Record<string, string> = {
-    urgent: 'bg-red-500/20 text-red-300', high: 'bg-orange-500/20 text-orange-300',
-    medium: 'bg-blue-500/20 text-blue-300', low: 'bg-gray-500/20 text-gray-400',
-  }
-
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
@@ -112,17 +98,17 @@ export default function ManagerDashboard() {
               </div>
               <div className="border-t border-white/5 pt-2 flex justify-between items-center">
                 <span className="text-xs text-white/60 font-medium">Total Expenditure</span>
-                <span className="text-sm font-bold text-[#e66386]">TZS {(totalBusinessExpenses + totalStockExpenses).toLocaleString()}</span>
+                <span className="text-sm font-bold text-primary">TZS {(totalBusinessExpenses + totalStockExpenses).toLocaleString()}</span>
               </div>
               <div className="border-t border-white/5 pt-2 flex justify-between items-center">
-                <span className="text-xs text-white/60 font-medium">Revenue - Expenses</span>
+                <span className="text-xs text-white/60 font-medium">Revenue – Expenses</span>
                 <span className={`text-sm font-bold ${totalRevenue - totalBusinessExpenses - totalStockExpenses >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   TZS {(totalRevenue - totalBusinessExpenses - totalStockExpenses).toLocaleString()}
                 </span>
               </div>
             </div>
-            <div className="mt-4 space-y-1.5">
-              <p className="text-[10px] text-white/30 uppercase tracking-wider">Top categories</p>
+            <div className="mt-4 space-y-2">
+              <p className="text-xs text-white/30 uppercase tracking-wider">Top categories</p>
               {[
                 { label: 'Salaries', pct: 65, color: 'bg-purple-500' },
                 { label: 'Rent', pct: 20, color: 'bg-blue-500' },
@@ -130,11 +116,11 @@ export default function ManagerDashboard() {
                 { label: 'Other', pct: 5, color: 'bg-gray-500' },
               ].map((c) => (
                 <div key={c.label} className="flex items-center gap-2">
-                  <span className="text-[11px] text-white/50 w-16">{c.label}</span>
+                  <span className="text-xs text-white/50 w-16">{c.label}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-white/5">
                     <div className={`h-1.5 rounded-full ${c.color}`} style={{ width: `${c.pct}%` }} />
                   </div>
-                  <span className="text-[11px] text-white/40 w-8 text-right">{c.pct}%</span>
+                  <span className="text-xs text-white/40 w-8 text-right">{c.pct}%</span>
                 </div>
               ))}
             </div>
@@ -146,26 +132,26 @@ export default function ManagerDashboard() {
               <AlertTriangle className="h-4 w-4 text-amber-400" />
               Attention Needed
             </h3>
-            <div className="space-y-2.5">
-              {mockDebts.filter(d => d.status === 'overdue').length > 0 && (
+            <div className="space-y-2">
+              {mockDebts.some(d => d.status === 'overdue') && (
                 <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
                   <p className="text-xs font-medium text-red-300">{mockDebts.filter(d => d.status === 'overdue').length} overdue debt(s)</p>
-                  <p className="text-[11px] text-red-400/60 mt-0.5">TZS {mockDebts.filter(d => d.status === 'overdue').reduce((s, d) => s + d.balance, 0).toLocaleString()} outstanding</p>
+                  <p className="text-xs text-red-400/60 mt-0.5">TZS {mockDebts.filter(d => d.status === 'overdue').reduce((s, d) => s + d.balance, 0).toLocaleString()} outstanding</p>
                 </div>
               )}
               {pendingTasks > 0 && (
                 <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
                   <p className="text-xs font-medium text-amber-300">{pendingTasks} pending task(s)</p>
-                  <p className="text-[11px] text-amber-400/60 mt-0.5">Including {mockTasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length} urgent</p>
+                  <p className="text-xs text-amber-400/60 mt-0.5">Including {mockTasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length} urgent</p>
                 </div>
               )}
               <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
                 <p className="text-xs font-medium text-blue-300">{goldCustomers} gold customers</p>
-                <p className="text-[11px] text-blue-400/60 mt-0.5">Top spenders in the system</p>
+                <p className="text-xs text-blue-400/60 mt-0.5">Top spenders in the system</p>
               </div>
               <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
                 <p className="text-xs font-medium text-green-300">{activeOrders} orders in pipeline</p>
-                <p className="text-[11px] text-green-400/60 mt-0.5">Being processed across portals</p>
+                <p className="text-xs text-green-400/60 mt-0.5">Being processed across portals</p>
               </div>
             </div>
           </div>
@@ -177,7 +163,7 @@ export default function ManagerDashboard() {
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-white">Recent Orders</h3>
-              <Link href="/manager/payments" className="text-xs text-[#e66386] hover:underline">View all</Link>
+              <Link href="/manager/payments" className="text-xs text-primary hover:underline">View all</Link>
             </div>
             <div className="space-y-2">
               {recentOrders.map((o) => (
@@ -185,7 +171,7 @@ export default function ManagerDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-white truncate">{o.customerName}</p>
-                      <Badge className={`text-[10px] px-1.5 py-0 border-0 ${statusColor[o.status] || ''}`}>{o.status}</Badge>
+                      <Badge className={`text-xs px-1.5 py-0 border-0 ${statusColorsDark[o.status] || ''}`}>{o.status}</Badge>
                     </div>
                     <p className="text-xs text-white/40 truncate">{o.items.map(i => i.name).join(', ')}</p>
                   </div>
@@ -199,7 +185,7 @@ export default function ManagerDashboard() {
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-white">Urgent Tasks</h3>
-              <Link href="/manager/tasks" className="text-xs text-[#e66386] hover:underline">View all</Link>
+              <Link href="/manager/tasks" className="text-xs text-primary hover:underline">View all</Link>
             </div>
             <div className="space-y-2">
               {urgentTasks.map((t) => (
@@ -207,11 +193,11 @@ export default function ManagerDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-white truncate">{t.title}</p>
-                      <Badge className={`text-[10px] px-1.5 py-0 border-0 ${priorityColor[t.priority] || ''}`}>{t.priority}</Badge>
+                      <Badge className={`text-xs px-1.5 py-0 border-0 ${priorityColorsDark[t.priority] || ''}`}>{t.priority}</Badge>
                     </div>
-                    <p className="text-xs text-white/40">Assigned to {t.assignedTo} - Due {t.dueDate}</p>
+                    <p className="text-xs text-white/40">Assigned to {t.assignedTo} · Due {t.dueDate}</p>
                   </div>
-                  <Badge className={`text-[10px] px-1.5 py-0 border-0 ${t.status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                  <Badge className={`text-xs px-1.5 py-0 border-0 ${t.status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' : 'bg-amber-500/20 text-amber-300'}`}>
                     {t.status === 'in_progress' ? 'In Progress' : 'Pending'}
                   </Badge>
                 </div>
