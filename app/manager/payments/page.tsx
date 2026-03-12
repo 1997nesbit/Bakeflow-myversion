@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ManagerSidebar } from '@/components/portal-sidebar'
+import { ManagerSidebar } from '@/components/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'

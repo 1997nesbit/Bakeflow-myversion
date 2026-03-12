@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { FrontDeskSidebar } from '@/components/portal-sidebar'
+import { FrontDeskSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -86,7 +86,7 @@ export default function OrdersPage() {
   }, [])
 
   const getTrackingUrl = useCallback((trackingId: string) => {
-    return typeof window !== 'undefined' ? `${window.location.origin}/track/${trackingId}` : `/track/${trackingId}`
+    return typeof globalThis.window !== 'undefined' ? `${globalThis.window.location.origin}/track/${trackingId}` : `/track/${trackingId}`
   }, [])
 
   const copyTrackingLink = useCallback((trackingId: string) => {
@@ -280,7 +280,11 @@ export default function OrdersPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-sm text-amber-900">
-                        Advance Order {days === 0 ? 'Due Today' : days === 1 ? 'Due Tomorrow' : `Due in ${days} days`}: {order.id}
+                        {(() => {
+                          if (days === 0) return `Advance Order Due Today: ${order.id}`
+                          if (days === 1) return `Advance Order Due Tomorrow: ${order.id}`
+                          return `Advance Order Due in ${days} days: ${order.id}`
+                        })()}
                       </p>
                       <p className="text-xs text-amber-700">{order.customerName} {order.paymentStatus === 'deposit' ? `| Balance: TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}` : ''}</p>
                     </div>
@@ -516,7 +520,7 @@ export default function OrdersPage() {
               ) : (
                 <div className="space-y-1 mb-4">
                   <p className="text-sm text-muted-foreground">
-                    {pendingPayment.length} order{pendingPayment.length !== 1 ? 's' : ''} awaiting customer payment. Confirm payment to move to baker queue.
+                    {pendingPayment.length} order{pendingPayment.length === 1 ? '' : 's'} awaiting customer payment. Confirm payment to move to baker queue.
                   </p>
                 </div>
               )}
@@ -548,8 +552,8 @@ export default function OrdersPage() {
 
                         {/* Items */}
                         <div className="rounded-lg bg-muted/50 p-2.5 space-y-1">
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between text-xs">
+                          {order.items.map((item) => (
+                            <div key={item.name} className="flex justify-between text-xs">
                               <span className="text-foreground">{item.name} x{item.quantity}</span>
                               <span className="font-medium text-foreground">TZS {(item.price * item.quantity).toLocaleString()}</span>
                             </div>
@@ -684,7 +688,11 @@ export default function OrdersPage() {
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : progress > 75 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${progress}%` }} />
+                                <div className={`h-full rounded-full transition-all ${(() => {
+                                  if (isOverdue) return 'bg-red-500'
+                                  if (progress > 75) return 'bg-amber-500'
+                                  return 'bg-green-500'
+                                })()}`} style={{ width: `${progress}%` }} />
                               </div>
                               <span className={`text-xs font-medium shrink-0 ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
                                 {elapsed}m / {order.estimatedMinutes}m
@@ -798,8 +806,9 @@ export default function OrdersPage() {
                   <p className="text-sm text-muted-foreground">{messageOrder.customerPhone}</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Message</label>
+                  <label htmlFor="order-message" className="text-sm font-medium text-foreground">Message</label>
                   <Textarea 
+                    id="order-message"
                     placeholder="Type message..." 
                     value={messageText} 
                     onChange={(e) => setMessageText(e.target.value)} 
@@ -834,9 +843,11 @@ export default function OrdersPage() {
 
         {/* Toast */}
         {toast.show && (
-          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl px-5 py-3 shadow-lg transition-all ${
-            toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'
-          }`}>
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl px-5 py-3 shadow-lg transition-all ${(() => {
+            if (toast.type === 'success') return 'bg-green-600 text-white'
+            if (toast.type === 'warning') return 'bg-amber-500 text-white'
+            return 'bg-primary text-primary-foreground'
+          })()}`}>
             <CheckCircle className="h-5 w-5" />
             <span className="text-sm font-medium">{toast.message}</span>
           </div>

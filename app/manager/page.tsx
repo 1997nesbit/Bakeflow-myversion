@@ -1,6 +1,6 @@
 'use client'
 
-import { ManagerSidebar } from '@/components/portal-sidebar'
+import { ManagerSidebar } from '@/components/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { mockOrders, mockDebts, mockTasks, mockStaff, mockCustomers, mockBusinessExpenses, mockExpenses, statusColorsDark, priorityColorsDark } from '@/lib/mock-data'
 import {

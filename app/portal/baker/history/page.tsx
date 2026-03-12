@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { BakerSidebar } from '@/components/portal-sidebar'
+import { BakerSidebar } from '@/components/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

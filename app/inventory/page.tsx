@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { InventorySidebar } from '@/components/portal-sidebar'
+import { InventorySidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,6 @@ import {
   Package,
   AlertTriangle,
   TrendingDown,
-  TrendingUp,
   PackagePlus,
   ScrollText,
   ArrowRight,
@@ -185,7 +184,14 @@ export default function InventoryDashboard() {
                 {inventory.map(item => {
                   const pct = Math.min((item.quantity / (item.minStock * 2)) * 100, 100)
                   const ratio = item.quantity / item.minStock
-                  const color = ratio < 0.5 ? 'bg-red-500' : ratio < 1 ? 'bg-amber-500' : 'bg-emerald-500'
+                  let color: string
+                  if (ratio < 0.5) {
+                    color = 'bg-red-500'
+                  } else if (ratio < 1) {
+                    color = 'bg-amber-500'
+                  } else {
+                    color = 'bg-emerald-500'
+                  }
                   return (
                     <div key={item.id} className="flex items-center gap-3">
                       <p className="w-36 text-sm font-medium text-foreground truncate">{item.name}</p>

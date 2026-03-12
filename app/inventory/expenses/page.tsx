@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { InventorySidebar } from '@/components/portal-sidebar'
+import { InventorySidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -125,7 +125,7 @@ export default function ExpensesPage() {
       id: `EXP-${String(expenses.length + 1).padStart(3, '0')}`,
       title: newExpense.title,
       category: newExpense.category as ExpenseCategory,
-      amount: parseFloat(newExpense.amount),
+      amount: Number.parseFloat(newExpense.amount),
       date: newExpense.date,
       paidTo: newExpense.paidTo,
       paymentMethod: newExpense.paymentMethod as Expense['paymentMethod'],
@@ -372,7 +372,7 @@ export default function ExpensesPage() {
               {/* Results Count */}
               <div className="flex items-center justify-between px-1">
                 <p className="text-sm text-muted-foreground">
-                  {filtered.length} expense{filtered.length !== 1 ? 's' : ''} found
+                  {filtered.length} expense{filtered.length === 1 ? '' : 's'} found
                   {filtered.length > 0 && ` - Total: $${filtered.reduce((s, e) => s + e.amount, 0).toLocaleString()}`}
                 </p>
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">

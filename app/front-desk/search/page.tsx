@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { FrontDeskSidebar } from '@/components/portal-sidebar'
+import { FrontDeskSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +41,6 @@ import {
   Filter,
   Phone,
   CreditCard,
-  ChefHat,
   X,
 } from 'lucide-react'
 
@@ -179,7 +178,7 @@ export default function SearchPage() {
             </Button>
           )}
           <div className="ml-auto text-sm text-muted-foreground">
-            {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found
+            {filteredOrders.length} order{filteredOrders.length === 1 ? '' : 's'} found
           </div>
         </div>
 
@@ -256,8 +255,8 @@ export default function SearchPage() {
                   <p className="text-sm text-muted-foreground">{messageOrder.customerPhone}</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Message</label>
-                  <Textarea placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[100px]" />
+                  <label htmlFor="search-message" className="text-sm font-medium text-foreground">Message</label>
+                  <Textarea id="search-message" placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[100px]" />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup!`)}>Ready for Pickup</Button>

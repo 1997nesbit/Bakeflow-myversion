@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { InventorySidebar } from '@/components/portal-sidebar'
+import { InventorySidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,109 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 
+interface AlertCardProps {
+  readonly item: InventoryItem
+  readonly severity: 'critical' | 'low'
+  readonly reorderSent: Set<string>
+  readonly onReorder: (item: InventoryItem) => void
+  readonly onQuickRestock: (itemId: string, amount: number) => void
+}
+
+function AlertCard({ item, severity, reorderSent, onReorder, onQuickRestock }: AlertCardProps) {
+  const supplier = mockSuppliers.find(s => s.id === item.supplierId) ?? null
+  const ratio = item.quantity / item.minStock
+  const suggestedReorder = Math.ceil(item.minStock * 2 - item.quantity)
+  const isSent = reorderSent.has(item.id)
+
+  return (
+    <Card className={`border-0 shadow-sm border-l-4 ${severity === 'critical' ? 'border-l-red-500' : 'border-l-amber-500'}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {severity === 'critical'
+              ? <AlertOctagon className="h-4.5 w-4.5 text-red-600" />
+              : <AlertTriangle className="h-4.5 w-4.5 text-amber-600" />
+            }
+            <div>
+              <p className="font-semibold text-foreground">{item.name}</p>
+              <p className="text-xs text-muted-foreground">{item.category}</p>
+            </div>
+          </div>
+          <Badge className={`border-0 ${severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+            {severity === 'critical' ? 'Critical' : 'Low'}
+          </Badge>
+        </div>
+
+        {/* Stock bar */}
+        <div className="mb-3">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+            <span>Current: {item.quantity} {item.unit}</span>
+            <span>Min: {item.minStock} {item.unit}</span>
+          </div>
+          <div className="h-2.5 w-full rounded-full bg-muted">
+            <div
+              className={`h-2.5 rounded-full transition-all ${severity === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}
+              style={{ width: `${Math.min(ratio * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-muted/50 p-2.5 mb-3 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Suggested reorder</span>
+            <span className="font-semibold text-foreground">{suggestedReorder} {item.unit}</span>
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-muted-foreground">Est. cost</span>
+            <span className="font-semibold text-foreground">TZS {(suggestedReorder * item.costPerUnit).toLocaleString()}</span>
+          </div>
+        </div>
+
+        {supplier && (
+          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+            <span>Supplier: <span className="font-medium text-foreground">{supplier.name}</span></span>
+            <a href={`tel:${supplier.phone}`} className="text-primary hover:underline flex items-center gap-0.5">
+              <Phone className="h-3 w-3" /> Call
+            </a>
+            {supplier.email && (
+              <a href={`mailto:${supplier.email}?subject=Reorder: ${item.name}&body=Please supply ${suggestedReorder} ${item.unit} of ${item.name}.`} className="text-primary hover:underline flex items-center gap-0.5">
+                <Mail className="h-3 w-3" /> Email
+              </a>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {isSent ? (
+            <Button size="sm" disabled className="flex-1 bg-emerald-100 text-emerald-800 border-0">
+              <CheckCircle className="mr-1 h-3.5 w-3.5" />
+              Reorder Sent
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => onReorder(item)}
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Mail className="mr-1 h-3.5 w-3.5" />
+              Send Reorder
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-transparent"
+            onClick={() => onQuickRestock(item.id, suggestedReorder)}
+          >
+            <PackagePlus className="mr-1 h-3.5 w-3.5" />
+            Quick Add
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function AlertsPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory)
   const [toast, setToast] = useState('')
@@ -30,15 +133,10 @@ export default function AlertsPage() {
   const lowItems = inventory.filter(i => i.quantity >= i.minStock * 0.5 && i.quantity <= i.minStock)
   const healthyItems = inventory.filter(i => i.quantity > i.minStock)
 
-  const getSupplierForItem = (item: InventoryItem) => {
-    if (!item.supplierId) return null
-    return mockSuppliers.find(s => s.id === item.supplierId) || null
-  }
-
   const handleReorder = (item: InventoryItem) => {
-    const supplier = getSupplierForItem(item)
+    const supplier = mockSuppliers.find(s => s.id === item.supplierId)
     setReorderSent(prev => new Set(prev).add(item.id))
-    setToast(`Reorder request sent to ${supplier?.name || 'supplier'} for ${item.name}`)
+    setToast(`Reorder request sent to ${supplier?.name ?? 'supplier'} for ${item.name}`)
     setTimeout(() => setToast(''), 3000)
   }
 
@@ -53,101 +151,6 @@ export default function AlertsPage() {
     setTimeout(() => setToast(''), 3000)
   }
 
-  function AlertCard({ item, severity }: { item: InventoryItem; severity: 'critical' | 'low' }) {
-    const supplier = getSupplierForItem(item)
-    const ratio = item.quantity / item.minStock
-    const suggestedReorder = Math.ceil(item.minStock * 2 - item.quantity)
-    const isSent = reorderSent.has(item.id)
-
-    return (
-      <Card className={`border-0 shadow-sm border-l-4 ${severity === 'critical' ? 'border-l-red-500' : 'border-l-amber-500'}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              {severity === 'critical'
-                ? <AlertOctagon className="h-4.5 w-4.5 text-red-600" />
-                : <AlertTriangle className="h-4.5 w-4.5 text-amber-600" />
-              }
-              <div>
-                <p className="font-semibold text-foreground">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.category}</p>
-              </div>
-            </div>
-            <Badge className={`border-0 ${severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
-              {severity === 'critical' ? 'Critical' : 'Low'}
-            </Badge>
-          </div>
-
-          {/* Stock bar */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>Current: {item.quantity} {item.unit}</span>
-              <span>Min: {item.minStock} {item.unit}</span>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-muted">
-              <div
-                className={`h-2.5 rounded-full transition-all ${severity === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}
-                style={{ width: `${Math.min(ratio * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-muted/50 p-2.5 mb-3 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Suggested reorder</span>
-              <span className="font-semibold text-foreground">{suggestedReorder} {item.unit}</span>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-muted-foreground">Est. cost</span>
-              <span className="font-semibold text-foreground">TZS {(suggestedReorder * item.costPerUnit).toLocaleString()}</span>
-            </div>
-          </div>
-
-          {supplier && (
-            <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-              <span>Supplier: <span className="font-medium text-foreground">{supplier.name}</span></span>
-              <a href={`tel:${supplier.phone}`} className="text-primary hover:underline flex items-center gap-0.5">
-                <Phone className="h-3 w-3" /> Call
-              </a>
-              {supplier.email && (
-                <a href={`mailto:${supplier.email}?subject=Reorder: ${item.name}&body=Please supply ${suggestedReorder} ${item.unit} of ${item.name}.`} className="text-primary hover:underline flex items-center gap-0.5">
-                  <Mail className="h-3 w-3" /> Email
-                </a>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            {isSent ? (
-              <Button size="sm" disabled className="flex-1 bg-emerald-100 text-emerald-800 border-0">
-                <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                Reorder Sent
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => handleReorder(item)}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                <Mail className="mr-1 h-3.5 w-3.5" />
-                Send Reorder
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="bg-transparent"
-              onClick={() => handleQuickRestock(item.id, suggestedReorder)}
-            >
-              <PackagePlus className="mr-1 h-3.5 w-3.5" />
-              Quick Add
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <InventorySidebar />
@@ -155,7 +158,7 @@ export default function AlertsPage() {
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Alerts & Reorder</h1>
+              <h1 className="text-xl font-bold text-foreground">Alerts &amp; Reorder</h1>
               <p className="text-xs text-muted-foreground">Low stock warnings and supplier reorder</p>
             </div>
             <div className="flex gap-3">
@@ -181,7 +184,7 @@ export default function AlertsPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {criticalItems.map(item => (
-                  <AlertCard key={item.id} item={item} severity="critical" />
+                  <AlertCard key={item.id} item={item} severity="critical" reorderSent={reorderSent} onReorder={handleReorder} onQuickRestock={handleQuickRestock} />
                 ))}
               </div>
             </div>
@@ -196,7 +199,7 @@ export default function AlertsPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {lowItems.map(item => (
-                  <AlertCard key={item.id} item={item} severity="low" />
+                  <AlertCard key={item.id} item={item} severity="low" reorderSent={reorderSent} onReorder={handleReorder} onQuickRestock={handleQuickRestock} />
                 ))}
               </div>
             </div>

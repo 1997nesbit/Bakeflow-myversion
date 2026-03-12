@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { InventorySidebar } from '@/components/portal-sidebar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InventorySidebar } from '@/components/app-sidebar'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,7 +53,7 @@ export default function StockInPage() {
   const [formInvoice, setFormInvoice] = useState('')
 
   const selectedItem = inventory.find(i => i.id === formItem)
-  const totalCost = parseFloat(formQty || '0') * parseFloat(formCost || '0')
+  const totalCost = Number.parseFloat(formQty || '0') * Number.parseFloat(formCost || '0')
 
   const handleAddStock = () => {
     if (!formItem || !formSupplier || !formQty || !formCost) return
@@ -62,8 +62,8 @@ export default function StockInPage() {
     if (!item) return
 
     const supplier = mockSuppliers.find(s => s.id === formSupplier)
-    const qty = parseFloat(formQty)
-    const cost = parseFloat(formCost)
+    const qty = Number.parseFloat(formQty)
+    const cost = Number.parseFloat(formCost)
 
     const newEntry: StockEntry = {
       id: `SE-${String(entries.length + 1).padStart(3, '0')}`,
@@ -99,7 +99,7 @@ export default function StockInPage() {
   const filteredEntries = entries.filter(e =>
     e.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.supplierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (e.invoiceRef && e.invoiceRef.toLowerCase().includes(searchQuery.toLowerCase()))
+    (e.invoiceRef?.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   const todayEntries = entries.filter(e => e.date === new Date().toISOString().split('T')[0])
@@ -312,7 +312,7 @@ export default function StockInPage() {
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-muted-foreground">New Stock Level</span>
                       <span className="font-bold text-emerald-600">
-                        {selectedItem.quantity + parseFloat(formQty || '0')} {selectedItem.unit}
+                        {selectedItem.quantity + Number.parseFloat(formQty || '0')} {selectedItem.unit}
                       </span>
                     </div>
                   )}

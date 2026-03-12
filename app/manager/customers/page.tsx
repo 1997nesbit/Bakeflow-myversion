@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ManagerSidebar } from '@/components/portal-sidebar'
+import { ManagerSidebar } from '@/components/app-sidebar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { mockCustomers, type CustomerRecord } from '@/lib/mock-data'
-import { Crown, Search, Phone, Mail, ShoppingCart, Star, StarOff, Edit2, Calendar } from 'lucide-react'
+import { Search, Phone, ShoppingCart, Star, StarOff, Calendar } from 'lucide-react'
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerRecord[]>(mockCustomers)
@@ -65,19 +64,31 @@ export default function CustomersPage() {
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customer..." className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
           </div>
           <div className="flex gap-1 rounded-lg border border-white/10 p-0.5">
-            {(['all', 'gold', 'regular'] as const).map(f => (
+            {(['all', 'gold', 'regular'] as const).map(f => {
+            let label: string
+            if (f === 'all') label = 'All'
+            else if (f === 'gold') label = 'Gold'
+            else label = 'Regular'
+            return (
               <button key={f} type="button" onClick={() => setFilterGold(f)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filterGold === f ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70'}`}>
-                {f === 'all' ? 'All' : f === 'gold' ? 'Gold' : 'Regular'}
+                {label}
               </button>
-            ))}
+            )
+          })}
           </div>
         </div>
 
         {/* Customer list */}
         <div className="space-y-2">
           {filtered.map((c) => (
-            <div key={c.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors" onClick={() => setViewCustomer(c)}>
+            <button
+              type="button"
+              key={c.id}
+              className="flex items-center gap-4 w-full text-left rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors"
+              onClick={() => setViewCustomer(c)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewCustomer(c) }}
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 shrink-0 text-sm font-bold text-white/50">
                 {c.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
@@ -99,7 +110,7 @@ export default function CustomersPage() {
               <button type="button" onClick={(e) => { e.stopPropagation(); toggleGold(c.id) }} className="p-2 rounded-lg text-white/30 hover:bg-white/5 shrink-0">
                 {c.isGold ? <Star className="h-4 w-4 text-amber-400 fill-amber-400" /> : <StarOff className="h-4 w-4" />}
               </button>
-            </div>
+            </button>
           ))}
         </div>
 

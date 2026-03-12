@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FrontDeskSidebar } from '@/components/portal-sidebar'
+import { FrontDeskSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -327,7 +327,16 @@ export default function MessagingPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {campaigns.map((campaign) => (
+                {campaigns.map((campaign) => {
+                  let statusLabel: string
+                  if (campaign.status === 'sent') {
+                    statusLabel = 'Sent'
+                  } else if (campaign.status === 'scheduled') {
+                    statusLabel = 'Scheduled'
+                  } else {
+                    statusLabel = 'Draft'
+                  }
+                  return (
                   <div
                     key={campaign.id}
                     className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
@@ -341,11 +350,7 @@ export default function MessagingPage() {
                           <Badge
                             className={`${statusColors[campaign.status]} border-0`}
                           >
-                            {campaign.status === 'sent'
-                              ? 'Sent'
-                              : campaign.status === 'scheduled'
-                              ? 'Scheduled'
-                              : 'Draft'}
+                            {statusLabel}
                           </Badge>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -367,7 +372,8 @@ export default function MessagingPage() {
                       <p className="text-sm text-foreground">{campaign.message}</p>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

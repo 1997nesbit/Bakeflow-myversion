@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { InventorySidebar } from '@/components/portal-sidebar'
+import { InventorySidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,7 +57,7 @@ export default function DailyRolloutPage() {
     const item = inventory.find(i => i.id === formItem)
     if (!item) return
 
-    const qty = parseFloat(formQty)
+    const qty = Number.parseFloat(formQty)
     if (qty > item.quantity) {
       setToast('Not enough stock for this rollout!')
       setTimeout(() => setToast(''), 3000)
@@ -228,7 +228,7 @@ export default function DailyRolloutPage() {
                   onChange={(e) => setFormQty(e.target.value)}
                   placeholder="Amount to give out"
                 />
-                {selectedItem && formQty && parseFloat(formQty) > selectedItem.quantity && (
+                {selectedItem && formQty && Number.parseFloat(formQty) > selectedItem.quantity && (
                   <p className="text-xs text-red-600">Exceeds available stock ({selectedItem.quantity} {selectedItem.unit})</p>
                 )}
               </div>
@@ -251,7 +251,7 @@ export default function DailyRolloutPage() {
                 />
               </div>
 
-              {selectedItem && formQty && parseFloat(formQty) <= selectedItem.quantity && (
+              {selectedItem && formQty && Number.parseFloat(formQty) <= selectedItem.quantity && (
                 <div className="rounded-lg bg-secondary/5 border border-secondary/20 p-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Current Stock</span>
@@ -260,7 +260,7 @@ export default function DailyRolloutPage() {
                   <div className="flex justify-between text-sm mt-1">
                     <span className="text-muted-foreground">After Rollout</span>
                     <span className="font-bold text-secondary">
-                      {(selectedItem.quantity - parseFloat(formQty)).toFixed(1)} {selectedItem.unit}
+                      {(selectedItem.quantity - Number.parseFloat(formQty)).toFixed(1)} {selectedItem.unit}
                     </span>
                   </div>
                 </div>
@@ -270,7 +270,7 @@ export default function DailyRolloutPage() {
               <Button variant="outline" onClick={() => setShowForm(false)} className="bg-transparent">Cancel</Button>
               <Button
                 onClick={handleRollout}
-                disabled={!formItem || !formQty || !formPurpose || !formBy || (selectedItem ? parseFloat(formQty) > selectedItem.quantity : false)}
+                disabled={!formItem || !formQty || !formPurpose || !formBy || (selectedItem ? Number.parseFloat(formQty) > selectedItem.quantity : false)}
                 className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
               >
                 <CheckCircle className="mr-1.5 h-4 w-4" />
