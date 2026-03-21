@@ -580,15 +580,146 @@ WebSocket consumer groups by role:
 | Concern | Solution |
 |---|---|
 | Authentication | JWT — access token: 15 min, refresh token: 7 days |
+| Token storage | **Option C** — access token in JS memory only; refresh token in HttpOnly SameSite=Strict cookie |
+| Token rotation | `ROTATE_REFRESH_TOKENS = True` + `BLACKLIST_AFTER_ROTATION = True` (SimpleJWT) |
+| Token blacklisting | `rest_framework_simplejwt.token_blacklist` app — logout endpoint must call `token.blacklist()` |
 | Role enforcement | `IsRole` permission class on every endpoint, no exceptions |
 | Object-level access | Bakers can only update orders assigned to them |
 | Public endpoint | `/track/{tracking_id}` — rate-limited, returns minimal fields only |
 | SQL injection | ORM only — raw queries in `ReportService` use parameterized SQL |
 | CORS | `django-cors-headers` with explicit frontend origin whitelist |
-| Rate limiting | `django-ratelimit` on login + public tracking endpoint |
+| Rate limiting | `django-ratelimit` on login + public tracking endpoint; `django-axes` for brute-force lockout |
 | Input validation | Serializer layer + service layer — no trust of client data |
 | Audit trail | `OrderStatusHistory` records every transition with actor + timestamp |
 | Secrets | All credentials in environment variables, never in code |
+| Role-aware serializers | Sensitive fields (e.g. `salary`) stripped by role in `get_serializer_class()` |
+| Production hardening | See production settings checklist in `API_INTEGRATION.md` |
+
+### Token storage implementation (Option C)
+
+The frontend stores the access token in a JS module variable only — never in `localStorage` or `sessionStorage`. The refresh token must be delivered as an HttpOnly cookie by Django, not in the JSON response body.
+
+**Login response — required Django config:**
+
+```python
+# accounts/views.py — custom login view (or override SimpleJWT's TokenObtainPairView)
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.conf import settings
+
+class LoginView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            refresh = response.data.pop('refresh')   # remove from JSON body
+            response.set_cookie(
+                key='bakeflow_refresh',
+                value=refresh,
+                httponly=True,
+                secure=True,           # HTTPS only
+                samesite='Strict',
+                max_age=7 * 24 * 3600, # 7 days, matches REFRESH_TOKEN_LIFETIME
+                path='/api/auth/',     # cookie only sent to auth endpoints
+            )
+        return response
+```
+
+**Token refresh — reads from cookie, not request body:**
+
+```python
+# accounts/views.py
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+
+class CookieTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('bakeflow_refresh')
+        if not refresh_token:
+            raise InvalidToken('No refresh token cookie')
+        request.data['refresh'] = refresh_token
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            # ROTATE_REFRESH_TOKENS is True — set the new refresh cookie
+            new_refresh = response.data.pop('refresh')
+            response.set_cookie(
+                key='bakeflow_refresh',
+                value=new_refresh,
+                httponly=True,
+                secure=True,
+                samesite='Strict',
+                max_age=7 * 24 * 3600,
+                path='/api/auth/',
+            )
+        return response
+```
+
+**Logout — blacklists the token and clears the cookie:**
+
+```python
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get('bakeflow_refresh')
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                pass  # already invalid — fine
+        response = Response(status=204)
+        response.delete_cookie('bakeflow_refresh', path='/api/auth/')
+        return response
+```
+
+**SimpleJWT settings:**
+
+```python
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+INSTALLED_APPS = [
+    ...
+    'rest_framework_simplejwt.token_blacklist',  # run: python manage.py migrate
+]
+```
+
+### Brute-force protection (django-axes)
+
+```python
+# pip install django-axes
+INSTALLED_APPS = [..., 'axes']
+
+AXES_FAILURE_LIMIT = 5          # lock after 5 consecutive failures
+AXES_COOLOFF_TIME = 1           # unlock after 1 hour
+AXES_RESET_ON_SUCCESS = True    # reset failure count on successful login
+AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']  # lock by IP + username
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+```
+
+### Role-aware serializers (sensitive fields)
+
+Some fields must be filtered by the requester's role. Never rely solely on endpoint-level permissions — use `get_serializer_class()`:
+
+```python
+# accounts/views.py
+class StaffViewSet(ModelViewSet):
+    def get_serializer_class(self):
+        if self.request.user.role == Role.MANAGER:
+            return StaffDetailSerializer   # includes salary, join_date, status
+        return StaffPublicSerializer       # name, role, avatar_url only
+```
+
+Apply the same pattern anywhere the same endpoint serves multiple roles with different data needs (e.g. order detail for manager vs driver).
 
 ---
 

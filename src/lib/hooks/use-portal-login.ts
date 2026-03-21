@@ -15,8 +15,27 @@ interface UsePortalLoginOptions {
 
 /**
  * Shared login logic for all portals.
- * TODO (Phase 1): Replace the setTimeout body with authService.login() and
- * remove the credentials/storageKey/extraFields options entirely.
+ *
+ * TODO (Phase 1): Replace this hook entirely with the real auth flow:
+ *
+ *   1. Remove the credentials / storageKey / extraFields options — they only
+ *      exist to support the demo auth flow.
+ *
+ *   2. The new hook signature should be:
+ *        usePortalLogin({ redirectPath }: { redirectPath: string })
+ *
+ *   3. Replace the setTimeout body with:
+ *        import { authService } from '@/lib/api/services/auth'
+ *        import { setAccessToken } from '@/lib/api/client'   // exported in Phase 1
+ *
+ *        const data = await authService.login(username, password)
+ *        // data.access  → the short-lived JWT (15 min)
+ *        // refresh token → automatically stored as HttpOnly cookie by Django
+ *        setAccessToken(data.access)
+ *        router.push(redirectPath)
+ *
+ *   4. Wrap the call in try/catch and call handleApiError(err) on failure.
+ *      Set loading(false) in finally.
  */
 export function usePortalLogin({
   credentials,
