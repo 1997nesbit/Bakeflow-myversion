@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { OrderDetail } from '@/components/portals/front-desk/orders/order-detail'
+import { OrderDetail } from '@/components/portals/front-desk/orders/OrderDetail'
 import type { Order, OrderStatus } from '@/types/order'
 import { mockOrders } from '@/data/mock/orders'
 import { statusLabels, statusColors, orderTypeLabels } from '@/data/constants/labels'

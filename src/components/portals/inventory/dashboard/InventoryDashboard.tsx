@@ -3,22 +3,13 @@
 import { useState, useEffect } from 'react'
 import { InventorySidebar } from '@/components/layout/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { InventoryItem } from '@/types/inventory'
 import { mockInventory, mockStockEntries, mockDailyRollouts, mockSuppliers } from '@/data/mock/inventory'
-import {
-  Package,
-  AlertTriangle,
-  TrendingDown,
-  PackagePlus,
-  ScrollText,
-  ArrowRight,
-  DollarSign,
-  BarChart3,
-  Truck,
-} from 'lucide-react'
+import { Package, TrendingDown, PackagePlus, ScrollText, ArrowRight, DollarSign, BarChart3, Truck } from 'lucide-react'
+import { CriticalStockAlert } from './CriticalStockAlert'
+import { StockLevelGrid } from './StockLevelGrid'
 
 export function InventoryDashboard() {
   const [inventory] = useState<InventoryItem[]>(mockInventory)
@@ -41,7 +32,6 @@ export function InventoryDashboard() {
     <div className="min-h-screen bg-background">
       <InventorySidebar />
       <main className="ml-64">
-        {/* Header */}
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -53,14 +43,12 @@ export function InventoryDashboard() {
             <div className="flex gap-2">
               <Link href="/inventory/stock-in">
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <PackagePlus className="mr-1.5 h-4 w-4" />
-                  Add Stock
+                  <PackagePlus className="mr-1.5 h-4 w-4" />Add Stock
                 </Button>
               </Link>
               <Link href="/inventory/rollout">
                 <Button size="sm" variant="outline" className="bg-transparent">
-                  <ScrollText className="mr-1.5 h-4 w-4" />
-                  Rollout
+                  <ScrollText className="mr-1.5 h-4 w-4" />Rollout
                 </Button>
               </Link>
             </div>
@@ -68,31 +56,8 @@ export function InventoryDashboard() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Critical alerts */}
-          {criticalStock.length > 0 && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <p className="font-semibold text-red-800">
-                  {criticalStock.length} item{criticalStock.length > 1 ? 's' : ''} critically low
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {criticalStock.map(item => (
-                  <Badge key={item.id} className="bg-red-100 text-red-800 border-0">
-                    {item.name}: {item.quantity} {item.unit} (min {item.minStock})
-                  </Badge>
-                ))}
-              </div>
-              <Link href="/inventory/alerts" className="inline-block mt-2">
-                <Button size="sm" variant="link" className="text-red-700 p-0 h-auto">
-                  View alerts & reorder <ArrowRight className="ml-1 h-3 w-3" />
-                </Button>
-              </Link>
-            </div>
-          )}
+          <CriticalStockAlert criticalStock={criticalStock} />
 
-          {/* Metric Cards */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
@@ -103,12 +68,9 @@ export function InventoryDashboard() {
                   <p className="text-sm text-muted-foreground">Total Items</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {healthyStock.length} healthy, {lowStock.length} low
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{healthyStock.length} healthy, {lowStock.length} low</p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -118,12 +80,9 @@ export function InventoryDashboard() {
                   <p className="text-sm text-muted-foreground">Low Stock</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">{lowStock.length}</p>
-                <p className="text-xs text-red-600 mt-1">
-                  {criticalStock.length} critical
-                </p>
+                <p className="text-xs text-red-600 mt-1">{criticalStock.length} critical</p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -133,12 +92,9 @@ export function InventoryDashboard() {
                   <p className="text-sm text-muted-foreground">Stock Value</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">TZS {totalValue.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total inventory value
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Total inventory value</p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -148,79 +104,21 @@ export function InventoryDashboard() {
                   <p className="text-sm text-muted-foreground">Today Rollout</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">{todayRollouts.length} items</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  TZS {todayRolloutValue.toLocaleString()} value used
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">TZS {todayRolloutValue.toLocaleString()} value used</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Two column layout */}
           <div className="grid gap-6 lg:grid-cols-5">
-            {/* Stock levels - wider column */}
-            <Card className="border-0 shadow-sm lg:col-span-3">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Stock Levels</CardTitle>
-                  <div className="flex gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-red-500" /> Critical
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-amber-500" /> Low
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> Healthy
-                    </span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {inventory.map(item => {
-                  const pct = Math.min((item.quantity / (item.minStock * 2)) * 100, 100)
-                  const ratio = item.quantity / item.minStock
-                  let color: string
-                  if (ratio < 0.5) {
-                    color = 'bg-red-500'
-                  } else if (ratio < 1) {
-                    color = 'bg-amber-500'
-                  } else {
-                    color = 'bg-emerald-500'
-                  }
-                  return (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <p className="w-36 text-sm font-medium text-foreground truncate">{item.name}</p>
-                      <div className="flex-1">
-                        <div className="h-2.5 w-full rounded-full bg-muted">
-                          <div
-                            className={`h-2.5 rounded-full ${color} transition-all`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                      <p className="w-20 text-right text-xs text-muted-foreground">
-                        {item.quantity} / {item.minStock * 2} {item.unit}
-                      </p>
-                      {ratio < 1 && (
-                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                      )}
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
+            <StockLevelGrid inventory={inventory} />
 
-            {/* Right column */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Today's rollout */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Today&apos;s Rollout</CardTitle>
                     <Link href="/inventory/rollout">
-                      <Button size="sm" variant="ghost" className="text-xs h-7">
-                        View all <ArrowRight className="ml-1 h-3 w-3" />
-                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs h-7">View all <ArrowRight className="ml-1 h-3 w-3" /></Button>
                     </Link>
                   </div>
                 </CardHeader>
@@ -246,15 +144,12 @@ export function InventoryDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Recent stock-in */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Recent Stock-In</CardTitle>
                     <Link href="/inventory/stock-in">
-                      <Button size="sm" variant="ghost" className="text-xs h-7">
-                        View all <ArrowRight className="ml-1 h-3 w-3" />
-                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs h-7">View all <ArrowRight className="ml-1 h-3 w-3" /></Button>
                     </Link>
                   </div>
                 </CardHeader>
@@ -276,7 +171,6 @@ export function InventoryDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Suppliers */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Suppliers</CardTitle>
@@ -291,8 +185,7 @@ export function InventoryDashboard() {
                         </div>
                         <a href={`tel:${s.phone}`}>
                           <Button size="sm" variant="outline" className="text-xs h-7 bg-transparent">
-                            <Truck className="mr-1 h-3 w-3" />
-                            Call
+                            <Truck className="mr-1 h-3 w-3" />Call
                           </Button>
                         </a>
                       </div>
