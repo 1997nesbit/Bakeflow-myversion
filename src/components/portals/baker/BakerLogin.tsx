@@ -11,7 +11,7 @@ export function BakerLogin() {
       subtitle="Bbr Bakeflow Kitchen Access"
       icon={<ChefHat className="h-10 w-10 text-white" />}
       gradient={`linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`}
-      redirectPath="/portal/baker"
+      redirectPath="/baker"
     />
   )
 }

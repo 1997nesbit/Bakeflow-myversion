@@ -16,7 +16,7 @@ const portals = [
     id: 'baker',
     name: 'Baker Portal',
     description: 'Baking queue, timers, quality assurance and decorator handoff',
-    href: '/portal/baker/login',
+    href: '/baker/login',
     icon: ChefHat,
     features: ['Accept incoming orders', 'Bake with live timers', 'Quality assurance checks', 'Post to decorator'],
     ctaClass: 'bg-gradient-to-r from-secondary to-secondary/70',

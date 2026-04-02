@@ -74,7 +74,7 @@ export function BakerDashboard() {
                 </p>
               </div>
             </div>
-            <Link href="/portal/baker/active">
+            <Link href="/baker/active">
               <Button className="text-white border-0" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }}>
                 <Flame className="mr-2 h-4 w-4" />
                 Go to Kitchen

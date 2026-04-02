@@ -1,11 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
 
 interface PortalLoginFormProps {
@@ -113,6 +114,16 @@ export function PortalLoginForm({
           <p className="mt-6 text-xs text-center text-muted-foreground">
             Contact your manager if you need access
           </p>
+
+          <div className="mt-4 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+            >
+              <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-0.5" />
+              Back to Home
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

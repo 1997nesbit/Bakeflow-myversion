@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('email', models.EmailField(max_length=254, unique=True)),
                 ('phone', models.CharField(max_length=20, unique=True)),
                 ('name', models.CharField(max_length=150)),
-                ('role', models.CharField(choices=[('manager', 'Manager'), ('front_desk', 'Front Desk'), ('baker', 'Baker'), ('decorator', 'Decorator'), ('packing', 'Packing'), ('driver', 'Driver'), ('inventory_clerk', 'Inventory Clerk')], max_length=30)),
+                ('role', models.CharField(choices=[('manager', 'Manager'), ('front_desk', 'Front Desk'), ('baker', 'Baker'), ('driver', 'Driver'), ('inventory_clerk', 'Inventory Clerk')], max_length=30)),
                 ('status', models.CharField(choices=[('active', 'Active'), ('inactive', 'Inactive')], default='active', max_length=10)),
                 ('salary', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
                 ('join_date', models.DateField(auto_now_add=True)),

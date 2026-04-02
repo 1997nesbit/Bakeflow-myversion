@@ -24,7 +24,7 @@ export function QAQueuePanel({ orders }: Props) {
               {orders.length}
             </Badge>
           </div>
-          <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
+          <Link href="/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
             Inspect
           </Link>
         </div>

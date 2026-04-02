@@ -25,14 +25,6 @@ class IsBaker(IsRole):
     allowed_roles = ['baker']
 
 
-class IsDecorator(IsRole):
-    allowed_roles = ['decorator']
-
-
-class IsPacking(IsRole):
-    allowed_roles = ['packing']
-
-
 class IsDriver(IsRole):
     allowed_roles = ['driver']
 

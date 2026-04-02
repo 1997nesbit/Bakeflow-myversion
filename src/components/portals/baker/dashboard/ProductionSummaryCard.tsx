@@ -25,7 +25,7 @@ export function ProductionSummaryCard({ batches }: Props) {
               {totalBaked} baked
             </Badge>
           </div>
-          <Link href="/portal/baker/production" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
+          <Link href="/baker/production" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
             Manage
           </Link>
         </div>
@@ -34,7 +34,7 @@ export function ProductionSummaryCard({ batches }: Props) {
           <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
             <Layers className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
             <p className="text-sm text-muted-foreground">No batches logged yet today</p>
-            <Link href="/portal/baker/production">
+            <Link href="/baker/production">
               <Button size="sm" variant="outline" className="mt-3 bg-transparent text-xs" style={{ borderColor: '#e66386', color: '#e66386' }}>
                 Log First Batch
               </Button>
@@ -66,7 +66,7 @@ export function ProductionSummaryCard({ batches }: Props) {
               )
             })}
             {batches.length > 5 && (
-              <Link href="/portal/baker/production" className="block text-center text-xs font-medium py-2 hover:underline" style={{ color: '#e66386' }}>
+              <Link href="/baker/production" className="block text-center text-xs font-medium py-2 hover:underline" style={{ color: '#e66386' }}>
                 View all {batches.length} batches
               </Link>
             )}

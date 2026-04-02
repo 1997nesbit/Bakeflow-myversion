@@ -21,7 +21,7 @@ export function BakingProgressPanel({ orders, getElapsed }: Props) {
             <Flame className="h-4 w-4" style={{ color: '#CA0123' }} />
             <h3 className="text-sm font-semibold text-foreground">Active Baking</h3>
           </div>
-          <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
+          <Link href="/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#CA0123' }}>
             View All
           </Link>
         </div>

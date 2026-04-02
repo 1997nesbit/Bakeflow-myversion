@@ -19,7 +19,7 @@ export function DashboardAlertBanners({ overdueCount, incomingCount }: Props) {
             <p className="text-sm font-semibold text-white">
               {overdueCount} order{overdueCount > 1 ? 's' : ''} overdue!
             </p>
-            <Link href="/portal/baker/active" className="ml-auto">
+            <Link href="/baker/active" className="ml-auto">
               <Button size="sm" variant="secondary" className="bg-white text-[#CA0123] hover:bg-red-50 border-0">
                 View Now
               </Button>
@@ -34,7 +34,7 @@ export function DashboardAlertBanners({ overdueCount, incomingCount }: Props) {
             <p className="text-sm font-semibold text-white">
               {incomingCount} new order{incomingCount > 1 ? 's' : ''} from Front Desk -- any baker can accept
             </p>
-            <Link href="/portal/baker/active" className="ml-auto">
+            <Link href="/baker/active" className="ml-auto">
               <Button size="sm" className="bg-white text-[#e66386] hover:bg-pink-50 border-0">
                 Accept
               </Button>

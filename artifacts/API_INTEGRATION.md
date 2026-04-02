@@ -46,16 +46,17 @@ The service stubs in `src/lib/api/services/` already have the correct `apiClient
 
 7. **`.env.local`** (copy from `.env.local.example`) — Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api`.
 
-**Phase 1 checklist — do not mark done until all pass:**
-- [ ] `npm install axios jwt-decode` — both packages required before activating `client.ts`
-- [ ] Django login endpoint returns `{ access }` in JSON body and sets `bakeflow_refresh` as HttpOnly SameSite=Strict cookie — see `BACKEND_ARCHITECTURE.md §8` for the full Django view code
-- [ ] Login works on all portals; access token stored in JS memory only (not in localStorage or DevTools Application storage)
-- [ ] Page refresh restores the session silently — `initAuth()` in root layout exchanges the cookie for a fresh access token without requiring re-login
-- [ ] Proactive refresh fires 1 minute before access token expiry — verified by checking the timeout in the browser debugger
-- [ ] 401 reactive fallback works — if proactive refresh misses, the interceptor retries the original request after a silent refresh
-- [ ] Logout calls `/auth/logout/`, server blacklists the token, cookie is cleared — verified by checking that the refresh cookie is absent after logout
-- [ ] Role guards decode the JWT and validate the `role` claim matches the portal — wrong-role tokens redirect to the portal login
-- [ ] **Install `django-axes`** on the backend for brute-force lockout — see `BACKEND_ARCHITECTURE.md §8`. Test that 5 consecutive failed logins lock the IP/username combination.
+**Phase 1 checklist — COMPLETE ✅ (2026-04-02)**
+- [x] `npm install axios jwt-decode` — both packages required before activating `client.ts`
+- [x] Django login endpoint returns `{ access }` in JSON body and sets `bakeflow_refresh` as HttpOnly SameSite=Strict cookie
+- [x] Login accepts `{ username, password }` — username resolved by email then phone
+- [x] Login works on all portals; access token stored in JS memory only (not in localStorage or DevTools Application storage)
+- [x] Page refresh restores the session silently — `AuthBootstrap` component calls `initAuth()` on mount
+- [x] Proactive refresh fires 1 minute before access token expiry
+- [x] 401 reactive fallback works — interceptor retries the original request after a silent refresh
+- [x] Logout calls `/auth/logout/`, server blacklists the token, cookie is cleared
+- [x] Role guards decode the JWT and validate the `role` claim matches the portal — wrong-role tokens redirect to the portal login
+- [x] `django-axes` installed — 5 consecutive failed logins lock the IP/username combination
 
 ---
 

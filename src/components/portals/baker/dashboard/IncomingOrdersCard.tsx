@@ -26,7 +26,7 @@ export function IncomingOrdersCard({ orders }: Props) {
               </Badge>
             )}
           </div>
-          <Link href="/portal/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
+          <Link href="/baker/active" className="text-xs font-medium hover:underline" style={{ color: '#e66386' }}>
             View All
           </Link>
         </div>
@@ -65,7 +65,7 @@ export function IncomingOrdersCard({ orders }: Props) {
                     <Clock className="h-3 w-3" />
                     Est. {order.estimatedMinutes}m
                   </span>
-                  <Link href="/portal/baker/active">
+                  <Link href="/baker/active">
                     <Button size="sm" className="h-7 text-xs text-white border-0" style={{ background: '#e66386' }}>
                       Accept
                     </Button>

@@ -8,8 +8,6 @@ class Role(models.TextChoices):
     MANAGER          = 'manager',         'Manager'
     FRONT_DESK       = 'front_desk',      'Front Desk'
     BAKER            = 'baker',           'Baker'
-    DECORATOR        = 'decorator',       'Decorator'
-    PACKING          = 'packing',         'Packing'
     DRIVER           = 'driver',          'Driver'
     INVENTORY_CLERK  = 'inventory_clerk', 'Inventory Clerk'
 

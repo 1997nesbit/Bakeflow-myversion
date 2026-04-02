@@ -1,6 +1,7 @@
 'use client'
 
-import { ChefHat, Eye, EyeOff } from 'lucide-react'
+import { ChefHat, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
 
 export function ManagerLogin() {
@@ -66,6 +67,16 @@ export function ManagerLogin() {
         <p className="mt-4 text-center text-xs text-white/25">
           Contact your manager for access
         </p>
+
+        <div className="mt-3 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors group"
+          >
+            <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-0.5" />
+            Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   )

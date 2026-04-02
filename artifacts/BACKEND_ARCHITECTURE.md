@@ -91,10 +91,9 @@ class Role(TextChoices):
     MANAGER         = 'manager'
     FRONT_DESK      = 'front_desk'
     BAKER           = 'baker'
-    DECORATOR       = 'decorator'
-    PACKING         = 'packing'
     DRIVER          = 'driver'
     INVENTORY_CLERK = 'inventory_clerk'
+    # DECORATOR and PACKING removed 2026-04-02 — simplified role set
 
 class User(AbstractBaseUser, PermissionsMixin):
     id          = UUIDField(primary_key=True, default=uuid4)

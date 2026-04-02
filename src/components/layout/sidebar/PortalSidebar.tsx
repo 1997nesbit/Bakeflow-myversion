@@ -74,10 +74,10 @@ export const inventoryNav: NavItem[] = [
 ]
 
 export const bakerNav: NavItem[] = [
-  { name: 'Dashboard',        href: '/portal/baker',             icon: LayoutDashboard },
-  { name: 'Daily Production', href: '/portal/baker/production',  icon: Layers },
-  { name: 'Active Orders',    href: '/portal/baker/active',      icon: Flame },
-  { name: 'History',          href: '/portal/baker/history',     icon: History },
+  { name: 'Dashboard',        href: '/baker',             icon: LayoutDashboard },
+  { name: 'Daily Production', href: '/baker/production',  icon: Layers },
+  { name: 'Active Orders',    href: '/baker/active',      icon: Flame },
+  { name: 'History',          href: '/baker/history',     icon: History },
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -219,10 +219,9 @@ export function BakerSidebar() {
       portalName="Baker Portal"
       roleLabel="Baker / QA"
       nav={bakerNav}
-      authConfig={{ expectedRole: 'baker', loginPath: '/portal/baker/login', defaultName: 'Baker' }}
-      variant="gradient"
-      gradient="linear-gradient(to bottom, #CA0123, #e66386)"
-      profilePlacement="top"
+      authConfig={{ expectedRole: 'baker', loginPath: '/baker/login', defaultName: 'Baker' }}
+      variant="light"
+      profilePlacement="bottom"
     />
   )
 }
