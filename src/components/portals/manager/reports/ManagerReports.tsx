@@ -14,7 +14,8 @@ import { OrdersTab } from './OrdersTab'
 import { ExpensesTab } from './ExpensesTab'
 import { StaffTab } from './StaffTab'
 
-const PIE_COLORS = ['#CA0123', '#e66386', '#f89bad', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#6366f1', '#ec4899']
+// Recharts requires literal hex values — these match --manager-accent and --primary respectively
+const PIE_COLORS = ['#CA0123', '#e06080', '#f89bad', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#6366f1', '#ec4899']
 
 export function ManagerReports() {
   const [tab, setTab] = useState<'overview' | 'orders' | 'expenses' | 'staff'>('overview')
@@ -62,7 +63,7 @@ export function ManagerReports() {
   const activeStaff = mockStaff.filter(s => s.status === 'active')
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { User, ChevronDown, LayoutGrid, LogOut } from 'lucide-react'
+import { User, ChevronDown, LogOut, Settings, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface SidebarFooterProps {
@@ -37,20 +37,28 @@ export function SidebarFooter({ isLight, userName, roleLabel, logout }: Readonly
         </button>
 
         {profileOpen && (
-          <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-white/20 bg-white p-1 shadow-lg">
+          <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-rose-100 bg-white p-1 shadow-lg">
             <Link
-              href="/"
+              href="#"
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-rose-50 hover:text-rose-700"
             >
-              <LayoutGrid className="h-4 w-4" />
-              All Portals
+              <UserCircle className="h-4 w-4" />
+              Profile
             </Link>
+            <Link
+              href="#"
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+            <div className="my-1 border-t border-rose-100" />
             <button
               onClick={logout}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />
-              Log Out
+              Log out
             </button>
           </div>
         )}

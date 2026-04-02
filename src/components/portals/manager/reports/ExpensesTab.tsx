@@ -25,7 +25,7 @@ export function ExpensesTab({ bizExpenseData, stockExpenseData, bizTotal, stockT
         </div>
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
           <p className="text-xs text-white/40 mb-1">Total Expenditure</p>
-          <p className="text-xl font-bold text-[#e66386]">TZS {totalExpenses.toLocaleString()}</p>
+          <p className="text-xl font-bold text-primary">TZS {totalExpenses.toLocaleString()}</p>
         </div>
       </div>
 

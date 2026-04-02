@@ -1,8 +1,3 @@
-// ---- API CLIENT ----
-// TODO (Phase 1): Install dependencies:
-//   npm install axios jwt-decode
-// TODO (Phase 1): Populate NEXT_PUBLIC_API_URL in .env.local
-//
 // Auth strategy: Option C — in-memory access token + HttpOnly cookie refresh token.
 //
 //   Access token  → stored only in the module-level `accessToken` variable.
@@ -12,23 +7,7 @@
 //   Refresh token → lives exclusively in an HttpOnly SameSite=Strict cookie
 //                   set by the Django backend on login and refresh responses.
 //                   JS cannot read it at all. XSS cannot steal it.
-//
-// Why this matters:
-//   localStorage tokens can be stolen by any XSS script on the page.
-//   HttpOnly cookies are invisible to JS entirely.
-//   This approach gives us the security of cookies without CSRF risk
-//   (SameSite=Strict means the cookie is never sent cross-origin).
-//
-// Django must be configured to:
-//   - Return access token in the JSON response body (standard SimpleJWT)
-//   - Set the refresh token as Set-Cookie: bakeflow_refresh=<token>; HttpOnly; SameSite=Strict; Secure
-//   See BACKEND_ARCHITECTURE.md §8 for the full Django config.
 
-// ─── PLACEHOLDER (active during mock phase) ──────────────────────────────────
-// The mock services import directly from @/data/mock — this client is not yet used.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/*
 import axios from 'axios'
 import { jwtDecode } from 'jwt-decode'
 
@@ -49,7 +28,7 @@ export function getAccessToken(): string | null {
   return accessToken
 }
 
-function setAccessToken(token: string | null): void {
+export function setAccessToken(token: string | null): void {
   accessToken = token
   if (proactiveRefreshTimer) {
     clearTimeout(proactiveRefreshTimer)
@@ -99,20 +78,15 @@ async function silentRefresh(): Promise<boolean> {
 }
 
 // ── initAuth ─────────────────────────────────────────────────────────────────
-// Call once on app startup (root layout useEffect) to restore auth state.
+// Call once on app startup (root layout) to restore auth state.
 // If the refresh cookie is present and valid, the user is silently re-authed.
-// Returns true if a valid session was restored, false if login is required.
-//
-// Usage in src/app/layout.tsx:
-//   useEffect(() => { initAuth() }, [])
 
 export async function initAuth(): Promise<boolean> {
   return silentRefresh()
 }
 
 // ── clearAuth ────────────────────────────────────────────────────────────────
-// Call after a successful logout API call. The backend's logout endpoint must
-// also blacklist the refresh token and clear the cookie via Set-Cookie.
+// Call after logout. The backend also blacklists the token and clears the cookie.
 
 export function clearAuth(): void {
   setAccessToken(null)
@@ -139,8 +113,7 @@ apiClient.interceptors.request.use((config) => {
 
 // ── Response interceptor: reactive 401 fallback ──────────────────────────────
 // The proactive refresh should prevent most 401s. This is the safety net for
-// when the access token expires before the scheduled refresh fires (e.g. device
-// was sleeping, tab was backgrounded for a long time).
+// when the access token expires before the scheduled refresh fires.
 
 apiClient.interceptors.response.use(
   (response) => response,
@@ -164,6 +137,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
-*/
-
-export {}

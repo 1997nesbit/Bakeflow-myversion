@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
-import type { DemoCredential } from '@/config/demo-credentials'
 
 interface PortalLoginFormProps {
   /** Page title, e.g. "Front Desk" */
@@ -18,37 +17,24 @@ interface PortalLoginFormProps {
   icon: ReactNode
   /** CSS gradient string for the icon circle and submit button */
   gradient: string
-  /** Demo credentials to validate against */
-  credentials: DemoCredential[]
-  /** localStorage key to write auth payload to */
-  storageKey: string
   /** Path to redirect to on successful login */
   redirectPath: string
-  /** Extra credential fields to persist (e.g. 'role') */
-  extraFields?: string[]
 }
 
-/**
- * Shared portal login form used by Front Desk, Baker, and Inventory portals.
- * Swap usePortalLogin internals for authService.login() in Phase 1.
- */
 export function PortalLoginForm({
   title,
   subtitle,
   icon,
   gradient,
-  credentials,
-  storageKey,
   redirectPath,
-  extraFields,
 }: PortalLoginFormProps) {
   const {
     username, setUsername,
     password, setPassword,
     showPassword, setShowPassword,
-    error, loading,
+    loading,
     handleLogin,
-  } = usePortalLogin({ credentials, storageKey, redirectPath, extraFields })
+  } = usePortalLogin({ redirectPath })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdf2f4] via-white to-[#fce7ea]">
@@ -104,12 +90,6 @@ export function PortalLoginForm({
               </div>
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 text-center">
-                {error}
-              </p>
-            )}
-
             <Button
               type="submit"
               disabled={loading}
@@ -130,20 +110,7 @@ export function PortalLoginForm({
             </Button>
           </form>
 
-          <div className="mt-6 rounded-lg bg-accent/50 border border-border p-3">
-            <p className="text-xs font-medium text-foreground mb-2">Demo Credentials:</p>
-            <div className="space-y-1">
-              {credentials.map((c) => (
-                <p key={c.username} className="text-xs text-muted-foreground">
-                  <span className="font-mono font-medium text-foreground">{c.username}</span>
-                  {' / '}
-                  <span className="font-mono font-medium text-foreground">{c.password}</span>
-                </p>
-              ))}
-            </div>
-          </div>
-
-          <p className="mt-4 text-xs text-center text-muted-foreground">
+          <p className="mt-6 text-xs text-center text-muted-foreground">
             Contact your manager if you need access
           </p>
         </CardContent>

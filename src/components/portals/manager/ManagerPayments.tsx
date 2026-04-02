@@ -42,7 +42,7 @@ export function ManagerPayments() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">

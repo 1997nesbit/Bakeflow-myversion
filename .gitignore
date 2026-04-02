@@ -12,3 +12,19 @@ node_modules/
 .DS_Store
 
 CLAUDE.md
+
+# Django backend
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/migrations/__pycache__/
+backend/staticfiles/
+backend/media/
+
+# Python virtual environment (at repo root, created by VSCode)
+.venv/
+.next/
+.vscode/
+.env
+.env.local

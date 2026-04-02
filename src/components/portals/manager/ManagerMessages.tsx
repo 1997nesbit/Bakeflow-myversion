@@ -73,7 +73,7 @@ export function ManagerMessages() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
@@ -123,7 +123,7 @@ export function ManagerMessages() {
                   </div>
                 </div>
 
-                <Button onClick={handleSend} disabled={!message.trim()} className="bg-[#CA0123] hover:bg-[#a8011d] text-white">
+                <Button onClick={handleSend} disabled={!message.trim()} className="bg-manager-accent hover:bg-manager-accent/85 text-white">
                   <Send className="h-4 w-4 mr-2" /> Send Message
                 </Button>
               </div>

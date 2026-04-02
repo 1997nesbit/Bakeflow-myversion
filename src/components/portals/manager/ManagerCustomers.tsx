@@ -30,7 +30,7 @@ export function ManagerCustomers() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
@@ -83,9 +83,10 @@ export function ManagerCustomers() {
         {/* Customer list */}
         <div className="space-y-2">
           {filtered.map((c) => (
-            <button
-              type="button"
+            <div
               key={c.id}
+              role="button"
+              tabIndex={0}
               className="flex items-center gap-4 w-full text-left rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors"
               onClick={() => setViewCustomer(c)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewCustomer(c) }}
@@ -111,13 +112,13 @@ export function ManagerCustomers() {
               <button type="button" onClick={(e) => { e.stopPropagation(); toggleGold(c.id) }} className="p-2 rounded-lg text-white/30 hover:bg-white/5 shrink-0">
                 {c.isGold ? <Star className="h-4 w-4 text-amber-400 fill-amber-400" /> : <StarOff className="h-4 w-4" />}
               </button>
-            </button>
+            </div>
           ))}
         </div>
 
         {/* Detail Dialog */}
         <Dialog open={!!viewCustomer} onOpenChange={() => setViewCustomer(null)}>
-          <DialogContent className="bg-[#1a0a0e] border-white/10 text-white sm:max-w-sm">
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-sm">
             <DialogHeader><DialogTitle>Customer Details</DialogTitle></DialogHeader>
             {viewCustomer && (
               <div className="space-y-4">

@@ -2,20 +2,15 @@
 
 import { ChefHat, Eye, EyeOff } from 'lucide-react'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
-import { MANAGER_CREDENTIALS, AUTH_STORAGE_KEYS } from '@/config/demo-credentials'
 
 export function ManagerLogin() {
   const {
     username, setUsername,
     password, setPassword,
     showPassword, setShowPassword,
-    error,
+    loading,
     handleLogin,
-  } = usePortalLogin({
-    credentials: MANAGER_CREDENTIALS,
-    storageKey: AUTH_STORAGE_KEYS.manager,
-    redirectPath: '/manager',
-  })
+  } = usePortalLogin({ redirectPath: '/manager' })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-manager-bg">
@@ -29,8 +24,6 @@ export function ManagerLogin() {
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm space-y-4">
-          {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-
           <div>
             <label htmlFor="username" className="text-xs font-medium text-white/60 mb-1 block">Username</label>
             <input
@@ -71,7 +64,7 @@ export function ManagerLogin() {
         </div>
 
         <p className="mt-4 text-center text-xs text-white/25">
-          Demo: {MANAGER_CREDENTIALS[0].username} / {MANAGER_CREDENTIALS[0].password}
+          Contact your manager for access
         </p>
       </div>
     </div>

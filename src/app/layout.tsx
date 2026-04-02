@@ -2,6 +2,8 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
+import { AuthBootstrap } from '@/components/shared/AuthBootstrap'
+import { ThemeProvider } from '@/components/layout/theme-provider'
 
 import './globals.css'
 
@@ -26,10 +28,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased`}>
-        {children}
-        <Toaster richColors closeButton />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <AuthBootstrap />
+          {children}
+          <Toaster richColors closeButton />
+        </ThemeProvider>
       </body>
     </html>
   )

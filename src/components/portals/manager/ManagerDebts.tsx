@@ -38,7 +38,7 @@ export function ManagerDebts() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
@@ -50,7 +50,7 @@ export function ManagerDebts() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#CA0123]/10"><Banknote className="h-4 w-4 text-[#e66386]" /></div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-manager-accent/10"><Banknote className="h-4 w-4 text-primary" /></div>
               <span className="text-xs text-white/40">Total Outstanding</span>
             </div>
             <p className="text-xl font-bold text-white">TZS {totalDebt.toLocaleString()}</p>
@@ -95,7 +95,7 @@ export function ManagerDebts() {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-lg font-bold text-[#e66386]">TZS {d.balance.toLocaleString()}</p>
+                <p className="text-lg font-bold text-primary">TZS {d.balance.toLocaleString()}</p>
                 <Button size="sm" className="mt-1 bg-green-600 hover:bg-green-700 text-white text-xs h-7" onClick={() => { setPayDebt(d); setPayAmount(String(d.balance)) }}>
                   Record Payment
                 </Button>
@@ -106,7 +106,7 @@ export function ManagerDebts() {
 
         {/* Payment Dialog */}
         <Dialog open={!!payDebt} onOpenChange={() => setPayDebt(null)}>
-          <DialogContent className="bg-[#1a0a0e] border-white/10 text-white sm:max-w-sm">
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-sm">
             <DialogHeader><DialogTitle>Record Debt Payment</DialogTitle></DialogHeader>
             {payDebt && (
               <div className="space-y-3">

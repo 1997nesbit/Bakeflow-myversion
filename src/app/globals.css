@@ -35,6 +35,8 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   --color-manager-bg: hsl(var(--manager-bg));
   --color-manager-surface: hsl(var(--manager-surface));
+  --color-manager-card: hsl(var(--manager-card));
+  --color-manager-accent: hsl(var(--manager-accent));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -76,6 +78,8 @@
     --radius: 0.75rem;
     --manager-bg: 350 40% 4%;
     --manager-surface: 350 40% 8%;
+    --manager-card: 350 40% 6%;
+    --manager-accent: 350 98% 40%;
     --sidebar-background: 350 72% 65%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
@@ -124,6 +128,11 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   body {
     @apply bg-background text-foreground;

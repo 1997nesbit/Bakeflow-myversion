@@ -2,95 +2,35 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { DemoCredential } from '@/config/demo-credentials'
-import { DEMO_LOGIN_DELAY_MS } from '@/config/constants'
+import { authService } from '@/lib/api/services/auth'
+import { setAccessToken } from '@/lib/api/client'
+import { handleApiError } from '@/lib/utils/handle-error'
 
-interface UsePortalLoginOptions {
-  credentials: DemoCredential[]
-  storageKey: string
-  redirectPath: string
-  /** Extra credential fields to persist in localStorage (e.g. 'role'). */
-  extraFields?: string[]
-}
-
-/**
- * Shared login logic for all portals.
- *
- * TODO (Phase 1): Replace this hook entirely with the real auth flow:
- *
- *   1. Remove the credentials / storageKey / extraFields options — they only
- *      exist to support the demo auth flow.
- *
- *   2. The new hook signature should be:
- *        usePortalLogin({ redirectPath }: { redirectPath: string })
- *
- *   3. Replace the setTimeout body with:
- *        import { authService } from '@/lib/api/services/auth'
- *        import { setAccessToken } from '@/lib/api/client'   // exported in Phase 1
- *
- *        const data = await authService.login(username, password)
- *        // data.access  → the short-lived JWT (15 min)
- *        // refresh token → automatically stored as HttpOnly cookie by Django
- *        setAccessToken(data.access)
- *        router.push(redirectPath)
- *
- *   4. Wrap the call in try/catch and call handleApiError(err) on failure.
- *      Set loading(false) in finally.
- */
-export function usePortalLogin({
-  credentials,
-  storageKey,
-  redirectPath,
-  extraFields = [],
-}: UsePortalLoginOptions) {
+export function usePortalLogin({ redirectPath }: { redirectPath: string }) {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault()
     setLoading(true)
-    setError('')
 
-    // TODO (Phase 1): Replace with:
-    //   const tokens = await authService.login({ username, password })
-    //   store tokens, redirect
-    setTimeout(() => {
-      const match = credentials.find(
-        (c) => c.username === username.toLowerCase() && c.password === password,
-      )
-
-      if (match) {
-        const payload: Record<string, string> = {
-          name: match.displayName,
-          username: match.username,
-          loggedInAt: new Date().toISOString(),
-        }
-        extraFields.forEach((field) => {
-          if (match[field as keyof DemoCredential]) {
-            payload[field] = match[field as keyof DemoCredential] as string
-          }
-        })
-        localStorage.setItem(storageKey, JSON.stringify(payload))
-        router.push(redirectPath)
-      } else if (username && password) {
-        setError('Invalid username or password')
-      } else {
-        setError('Please enter your credentials')
-      }
-
+    try {
+      const data = await authService.login({ username, password })
+      setAccessToken(data.access)
+      router.push(redirectPath)
+    } catch (err) {
       setLoading(false)
-    }, DEMO_LOGIN_DELAY_MS)
+      handleApiError(err)
+    }
   }
 
   return {
     username, setUsername,
     password, setPassword,
     showPassword, setShowPassword,
-    error,
     loading,
     handleLogin,
   }

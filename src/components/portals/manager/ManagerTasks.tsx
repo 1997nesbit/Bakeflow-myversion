@@ -58,7 +58,7 @@ export function ManagerTasks() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="flex items-center justify-between mb-6">
@@ -66,7 +66,7 @@ export function ManagerTasks() {
             <h1 className="text-2xl font-bold text-white">Tasks</h1>
             <p className="text-sm text-white/40">{activeTasks.length} active, {completedTasks.length} completed</p>
           </div>
-          <Button onClick={() => setShowAdd(true)} className="bg-[#CA0123] hover:bg-[#a8011d] text-white">
+          <Button onClick={() => setShowAdd(true)} className="bg-manager-accent hover:bg-manager-accent/85 text-white">
             <Plus className="h-4 w-4 mr-2" /> Assign Task
           </Button>
         </div>
@@ -130,7 +130,7 @@ export function ManagerTasks() {
 
         {/* Add Dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent className="bg-[#1a0a0e] border-white/10 text-white sm:max-w-md">
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-md">
             <DialogHeader><DialogTitle>Assign New Task</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label className="text-white/60">Task Title</Label><Input value={fTitle} onChange={(e) => setFTitle(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" placeholder="e.g. Clean walk-in fridge" /></div>
@@ -159,7 +159,7 @@ export function ManagerTasks() {
                 </Select>
               </div>
               <div><Label className="text-white/60">Due Date</Label><Input type="date" value={fDue} onChange={(e) => setFDue(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-              <Button onClick={handleAdd} className="w-full bg-[#CA0123] hover:bg-[#a8011d] text-white">Assign Task</Button>
+              <Button onClick={handleAdd} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Assign Task</Button>
             </div>
           </DialogContent>
         </Dialog>

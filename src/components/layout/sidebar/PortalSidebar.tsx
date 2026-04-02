@@ -34,7 +34,7 @@ export interface PortalSidebarProps {
   roleLabel: string
   nav: NavItem[]
   authConfig: RoleAuthConfig
-  variant?: 'light' | 'gradient'
+  variant?: 'light' | 'gradient' | 'dark'
   gradient?: string
   profilePlacement?: 'top' | 'bottom'
 }
@@ -112,16 +112,21 @@ export function PortalSidebar({
   const pathname = usePathname()
   const { userName, logout } = useRoleAuth(authConfig)
   const isLight = variant === 'light'
+  const isDark = variant === 'dark'
 
   return (
     <aside
-      className={cn('fixed left-0 top-0 z-40 h-screen w-64', isLight && 'bg-white border-r border-rose-100 shadow-sm')}
-      style={isLight ? undefined : { background: gradient }}
+      className={cn(
+        'fixed left-0 top-0 z-40 h-screen w-64',
+        isLight && 'bg-white border-r border-rose-100 shadow-sm',
+        isDark && 'bg-manager-bg',
+      )}
+      style={!isLight && !isDark ? { background: gradient } : undefined}
     >
       <div className="flex h-full flex-col">
         <div
           className={cn('flex h-16 shrink-0 items-center gap-3 px-5', isLight ? 'border-b border-rose-100' : 'border-b border-white/20')}
-          style={isLight ? { background: HEADER_GRADIENT } : undefined}
+          style={isLight || isDark ? { background: HEADER_GRADIENT } : undefined}
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
             <ChefHat className="h-5 w-5 text-white" />
@@ -175,9 +180,9 @@ export function ManagerSidebar() {
       portalName="Manager Portal"
       roleLabel="Administrator"
       nav={managerNav}
-      authConfig={{ storageKey: 'bbr_manager_auth', loginPath: '/manager/login', defaultName: 'Manager' }}
-      variant="light"
-      profilePlacement="top"
+      authConfig={{ expectedRole: 'manager', loginPath: '/manager/login', defaultName: 'Manager' }}
+      variant="dark"
+      profilePlacement="bottom"
     />
   )
 }
@@ -188,7 +193,7 @@ export function FrontDeskSidebar() {
       portalName="Front Desk"
       roleLabel="Front Desk Agent"
       nav={frontDeskNav}
-      authConfig={{ storageKey: 'bbr_frontdesk_user', loginPath: '/', defaultName: 'Front Desk', requireAuth: false }}
+      authConfig={{ expectedRole: 'front_desk', loginPath: '/', defaultName: 'Front Desk', requireAuth: false }}
       variant="gradient"
       profilePlacement="bottom"
     />
@@ -201,7 +206,7 @@ export function InventorySidebar() {
       portalName="Inventory"
       roleLabel="Inventory Clerk"
       nav={inventoryNav}
-      authConfig={{ storageKey: 'bbr_inventory_user', loginPath: '/', defaultName: 'Store Clerk', requireAuth: false }}
+      authConfig={{ expectedRole: 'inventory_clerk', loginPath: '/', defaultName: 'Store Clerk', requireAuth: false }}
       variant="gradient"
       profilePlacement="bottom"
     />
@@ -214,7 +219,7 @@ export function BakerSidebar() {
       portalName="Baker Portal"
       roleLabel="Baker / QA"
       nav={bakerNav}
-      authConfig={{ storageKey: 'baker_auth', loginPath: '/portal/baker/login', defaultName: 'Baker' }}
+      authConfig={{ expectedRole: 'baker', loginPath: '/portal/baker/login', defaultName: 'Baker' }}
       variant="gradient"
       gradient="linear-gradient(to bottom, #CA0123, #e66386)"
       profilePlacement="top"

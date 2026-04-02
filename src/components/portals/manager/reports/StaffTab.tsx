@@ -67,10 +67,10 @@ export function StaffTab({ staffByRole, activeStaffCount, monthlyPayroll, totalC
             <div className="border-t border-white/5 pt-3">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-xs text-white/60 font-medium">Sell-Through Rate</span>
-                <span className="text-sm font-bold text-[#e66386]">{sellThrough}%</span>
+                <span className="text-sm font-bold text-primary">{sellThrough}%</span>
               </div>
               <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                <div className="h-2 rounded-full bg-gradient-to-r from-[#CA0123] to-[#e66386]" style={{ width: `${sellThrough}%` }} />
+                <div className="h-2 rounded-full bg-gradient-to-r from-manager-accent to-primary" style={{ width: `${sellThrough}%` }} />
               </div>
             </div>
             <div className="border-t border-white/5 pt-3 space-y-2">
@@ -83,7 +83,7 @@ export function StaffTab({ staffByRole, activeStaffCount, monthlyPayroll, totalC
                   <div key={cat} className="flex items-center gap-2">
                     <span className="text-xs text-white/50 w-14 capitalize">{cat}</span>
                     <div className="flex-1 h-1.5 rounded-full bg-white/5">
-                      <div className="h-1.5 rounded-full bg-[#e66386]" style={{ width: `${baked > 0 ? ((baked - rem) / baked * 100) : 0}%` }} />
+                      <div className="h-1.5 rounded-full bg-primary" style={{ width: `${baked > 0 ? ((baked - rem) / baked * 100) : 0}%` }} />
                     </div>
                     <span className="text-[11px] text-white/40 w-16 text-right">{baked - rem}/{baked}</span>
                   </div>

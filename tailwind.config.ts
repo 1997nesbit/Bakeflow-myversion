@@ -67,6 +67,8 @@ const config: Config = {
         manager: {
           bg: 'hsl(var(--manager-bg))',
           surface: 'hsl(var(--manager-surface))',
+          card: 'hsl(var(--manager-card))',
+          accent: 'hsl(var(--manager-accent))',
         },
       },
       borderRadius: {

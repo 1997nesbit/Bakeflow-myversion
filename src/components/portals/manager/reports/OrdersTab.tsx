@@ -22,7 +22,7 @@ export function OrdersTab({ statusDistribution }: OrdersTabProps) {
         </div>
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
           <p className="text-xs text-white/40 mb-1">Custom Orders</p>
-          <p className="text-xl font-bold text-[#e66386]">{customOrders}</p>
+          <p className="text-xl font-bold text-primary">{customOrders}</p>
         </div>
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
           <p className="text-xs text-white/40 mb-1">Delivery</p>

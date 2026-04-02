@@ -55,7 +55,7 @@ export function ManagerOrderHistory() {
   const totalOutstanding = allOrders.reduce((s, o) => s + (o.totalPrice - o.amountPaid), 0)
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="mb-6">
@@ -79,7 +79,7 @@ export function ManagerOrderHistory() {
           </div>
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
             <p className="text-xs text-white/40 mb-1">Custom Cakes</p>
-            <p className="text-xl font-bold text-[#e66386]">{allOrders.filter(o => o.orderType === 'custom').length}</p>
+            <p className="text-xl font-bold text-primary">{allOrders.filter(o => o.orderType === 'custom').length}</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export function ManagerOrderHistory() {
           <div className="flex gap-1.5">
             {(['all', 'menu', 'custom'] as const).map(t => (
               <button key={t} type="button" onClick={() => setTypeFilter(t)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${typeFilter === t ? 'bg-[#CA0123] text-white' : 'bg-white/5 text-white/50 hover:text-white/80'}`}>
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${typeFilter === t ? 'bg-manager-accent text-white' : 'bg-white/5 text-white/50 hover:text-white/80'}`}>
                 {t === 'all' ? 'All Types' : t === 'menu' ? 'Menu' : 'Custom'}
               </button>
             ))}
@@ -100,7 +100,7 @@ export function ManagerOrderHistory() {
           <div className="flex gap-1.5">
             {['all', 'pending', 'paid', 'baker', 'ready', 'dispatched'].map(s => (
               <button key={s} type="button" onClick={() => setStatusFilter(s)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === s ? 'bg-[#CA0123] text-white' : 'bg-white/5 text-white/50 hover:text-white/80'}`}>
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === s ? 'bg-manager-accent text-white' : 'bg-white/5 text-white/50 hover:text-white/80'}`}>
                 {s === 'all' ? 'All Status' : statusLabels[s] || s}
               </button>
             ))}
@@ -123,7 +123,7 @@ export function ManagerOrderHistory() {
               <div className="flex items-start gap-4">
                 {/* Icon */}
                 <div className="mt-0.5 shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-white/5">
-                  {order.orderType === 'custom' ? <Cake className="h-4 w-4 text-[#e66386]" /> : <ShoppingBag className="h-4 w-4 text-white/40" />}
+                  {order.orderType === 'custom' ? <Cake className="h-4 w-4 text-primary" /> : <ShoppingBag className="h-4 w-4 text-white/40" />}
                 </div>
 
                 {/* Main Content */}
@@ -135,7 +135,7 @@ export function ManagerOrderHistory() {
                     <Badge className={`text-[10px] px-1.5 py-0 border-0 ${payColor[order.paymentStatus]}`}>
                       {order.paymentStatus === 'paid' ? 'Paid' : order.paymentStatus === 'deposit' ? 'Deposit' : 'Unpaid'}
                     </Badge>
-                    {order.orderType === 'custom' && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-[#CA0123]/20 text-[#e66386]">Custom</Badge>}
+                    {order.orderType === 'custom' && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-manager-accent/20 text-primary">Custom</Badge>}
                     {order.isGoldCustomer && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-yellow-500/20 text-yellow-300">Gold</Badge>}
                   </div>
 

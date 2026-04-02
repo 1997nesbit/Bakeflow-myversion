@@ -54,7 +54,7 @@ export function ManagerAccounts() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0709]">
+    <div className="min-h-screen bg-manager-bg">
       <ManagerSidebar />
       <main className="ml-64 p-6">
         <div className="flex items-center justify-between mb-6">
@@ -62,7 +62,7 @@ export function ManagerAccounts() {
             <h1 className="text-2xl font-bold text-white">Account Management</h1>
             <p className="text-sm text-white/40">Business expenses and financial accounts</p>
           </div>
-          <Button onClick={() => setShowAdd(true)} className="bg-[#CA0123] hover:bg-[#a8011d] text-white">
+          <Button onClick={() => setShowAdd(true)} className="bg-manager-accent hover:bg-manager-accent/85 text-white">
             <Plus className="h-4 w-4 mr-2" /> Record Expense
           </Button>
         </div>
@@ -71,7 +71,7 @@ export function ManagerAccounts() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#CA0123]/10"><TrendingDown className="h-4 w-4 text-[#e66386]" /></div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-manager-accent/10"><TrendingDown className="h-4 w-4 text-primary" /></div>
               <span className="text-xs text-white/40">Total Business Expenses</span>
             </div>
             <p className="text-xl font-bold text-white">TZS {totalAll.toLocaleString()}</p>
@@ -125,14 +125,14 @@ export function ManagerAccounts() {
                   {e.receiptRef && <span>Ref: {e.receiptRef}</span>}
                 </div>
               </div>
-              <p className="text-sm font-bold text-[#e66386] shrink-0">TZS {e.amount.toLocaleString()}</p>
+              <p className="text-sm font-bold text-primary shrink-0">TZS {e.amount.toLocaleString()}</p>
             </div>
           ))}
         </div>
 
         {/* Add Dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent className="bg-[#1a0a0e] border-white/10 text-white sm:max-w-md">
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-md">
             <DialogHeader><DialogTitle>Record Business Expense</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label className="text-white/60">Title</Label><Input value={fTitle} onChange={(e) => setFTitle(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" placeholder="e.g. Shop Rent - March" /></div>
@@ -158,7 +158,7 @@ export function ManagerAccounts() {
                 <input type="checkbox" checked={fRecurring} onChange={(e) => setFRecurring(e.target.checked)} className="rounded border-white/20" />
                 <span className="text-sm text-white/60">Recurring expense</span>
               </label>
-              <Button onClick={handleAdd} className="w-full bg-[#CA0123] hover:bg-[#a8011d] text-white">Save Expense</Button>
+              <Button onClick={handleAdd} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Save Expense</Button>
             </div>
           </DialogContent>
         </Dialog>
