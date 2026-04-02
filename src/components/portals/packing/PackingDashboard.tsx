@@ -1,27 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Order } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { orderTypeLabels } from '@/data/constants/labels'
 import { PackageCheck, Clock, Calendar, MapPin, ArrowRight, Truck, Send } from 'lucide-react'
 
 export function PackingDashboard() {
-  const [orders, setOrders] = useState<Order[]>(
-    mockOrders.filter((o) => o.status === 'packing')
-  )
-  const handleCompleteAndSendToFrontDesk = (orderId: string) => {
-    setOrders(
-      orders.map((order) =>
-        order.id === orderId ? { ...order, status: 'ready' as Order['status'] } : order
-      )
-    )
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const handleCompleteAndSendToFrontDesk = async (orderId: string) => {
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, status: 'ready' as Order['status'] } : o))
     toast.success('Order packed and sent to Front Desk!')
+    try {
+      await ordersService.markReady(orderId)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const packingOrders = orders.filter(o => o.status === 'packing')
@@ -68,7 +79,7 @@ export function PackingDashboard() {
                         {order.id}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {order.customerName}
+                        {order.customer.name}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">

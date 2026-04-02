@@ -69,7 +69,7 @@ export function DashboardMetricCards({
           </div>
           <p className="text-3xl font-bold text-foreground">{goldCustomerOrders.length}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {goldCustomerOrders.length > 0 ? goldCustomerOrders.slice(0, 2).map(o => o.customerName).join(', ') : 'No gold orders today'}
+            {goldCustomerOrders.length > 0 ? goldCustomerOrders.slice(0, 2).map(o => o.customer.name).join(', ') : 'No gold orders today'}
           </p>
         </CardContent>
       </Card>

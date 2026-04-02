@@ -445,6 +445,7 @@ ORDERS
 
 MENU ITEMS
   GET    /api/menu/                          list active menu items
+  GET    /api/menu/categories/               ordered list of distinct category slugs e.g. ["cake","bread","pastry"]
   POST   /api/menu/                          create (manager only)
   PATCH  /api/menu/{id}/
 

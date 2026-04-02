@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import type { Order } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { daysUntilDue, minutesSincePosted } from '@/lib/utils/date'
 import { Bell, PlusCircle } from 'lucide-react'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -17,7 +18,7 @@ import { KitchenTracker } from './KitchenTracker'
 import { DepositTracker } from './DepositTracker'
 
 export function FrontDeskDashboard() {
-  const [orders] = useState<Order[]>(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
 
@@ -26,6 +27,14 @@ export function FrontDeskDashboard() {
     setCurrentTime(new Date())
     const interval = setInterval(() => setCurrentTime(new Date()), 30000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
   }, [])
 
   const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
@@ -37,7 +46,7 @@ export function FrontDeskDashboard() {
   const readyOrders = orders.filter(o => o.status === 'ready')
   const dispatchedOrders = orders.filter(o => o.status === 'dispatched')
   const completedOrders = orders.filter(o => o.status === 'delivered')
-  const goldCustomerOrders = orders.filter(o => o.isGoldCustomer)
+  const goldCustomerOrders = orders.filter(o => o.customer.isGold)
 
   const overdueOrders = mounted ? orders.filter(o => {
     if (!['baker', 'decorator'].includes(o.status) || !o.postedToBakerAt) return false

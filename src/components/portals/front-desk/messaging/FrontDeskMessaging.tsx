@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { MessageSquare, Users, Clock, CheckCircle, Plus } from 'lucide-react'
 import { NewCampaignForm } from './NewCampaignForm'
 import { CampaignHistoryItem } from './CampaignHistoryItem'
@@ -43,9 +45,18 @@ export function FrontDeskMessaging() {
   const [campaignMessage, setCampaignMessage] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const uniqueCustomers = Array.from(
-    new Map(mockOrders.map((o) => [o.customerPhone, { name: o.customerName, phone: o.customerPhone }])).values()
+    new Map(orders.map((o) => [o.customer.phone, { name: o.customer.name, phone: o.customer.phone }])).values()
   )
 
   const handleTemplateSelect = (templateId: string) => {

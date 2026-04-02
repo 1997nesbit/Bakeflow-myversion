@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Order } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { orderTypeLabels } from '@/data/constants/labels'
 import {
   Truck,
@@ -29,11 +30,17 @@ interface DriverOrder extends Order {
 }
 
 export function DriverDashboard() {
-  const [orders, setOrders] = useState<DriverOrder[]>(
-    mockOrders
-      .filter((o) => (o.status === 'dispatched' || o.status === 'ready') && o.deliveryType === 'delivery')
-      .map((o) => ({ ...o, driverStatus: 'pending' as DriverOrderStatus }))
-  )
+  const [orders, setOrders] = useState<DriverOrder[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(
+        res.results.map(o => ({ ...o, driverStatus: 'pending' as DriverOrderStatus }))
+      ))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
   const pendingOrders = orders.filter((o) => o.driverStatus === 'pending')
   const acceptedOrders = orders.filter((o) => o.driverStatus === 'accepted')
   const deliveredOrders = orders.filter((o) => o.driverStatus === 'delivered')
@@ -50,11 +57,16 @@ export function DriverDashboard() {
     toast.success('Delivery declined. Front desk has been notified.')
   }
 
-  const handleDelivered = (orderId: string) => {
-    setOrders(
-      orders.map((o) => (o.id === orderId ? { ...o, driverStatus: 'delivered' } : o))
-    )
+  const handleDelivered = async (orderId: string) => {
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, driverStatus: 'delivered' } : o))
     toast.success('Marked as delivered! Front desk updated.')
+    try {
+      await ordersService.markDelivered(orderId)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   return (
@@ -101,7 +113,7 @@ export function DriverDashboard() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-bold text-foreground">{order.id}</p>
-                        <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                        <p className="text-sm text-muted-foreground">{order.customer.name}</p>
                       </div>
                       <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">Pending</Badge>
                     </div>
@@ -115,7 +127,7 @@ export function DriverDashboard() {
                       </p>
                       <p className="font-semibold text-foreground">{order.deliveryAddress}</p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5" />{order.customerPhone}
+                        <Phone className="h-3.5 w-3.5" />{order.customer.phone}
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>
@@ -168,7 +180,7 @@ export function DriverDashboard() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-bold text-foreground">{order.id}</p>
-                        <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                        <p className="text-sm text-muted-foreground">{order.customer.name}</p>
                       </div>
                       <Badge className="bg-blue-100 text-blue-800 border-0 text-xs">
                         <Truck className="mr-1 h-3 w-3" />
@@ -182,7 +194,7 @@ export function DriverDashboard() {
                         <span className="font-medium">{order.deliveryAddress}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5" />{order.customerPhone}
+                        <Phone className="h-3.5 w-3.5" />{order.customer.phone}
                       </div>
                     </div>
 
@@ -226,7 +238,7 @@ export function DriverDashboard() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                        <p className="text-xs text-muted-foreground">{order.customerName}</p>
+                        <p className="text-xs text-muted-foreground">{order.customer.name}</p>
                       </div>
                       <Badge className="bg-green-100 text-green-800 border-0 text-xs">
                         <CheckCircle className="mr-1 h-3 w-3" />

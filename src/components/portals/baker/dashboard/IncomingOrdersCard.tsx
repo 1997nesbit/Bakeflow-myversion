@@ -44,7 +44,7 @@ export function IncomingOrdersCard({ orders }: Props) {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                    <p className="text-xs text-muted-foreground">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground">{order.customer.name}</p>
                   </div>
                   <Badge variant="outline" className="text-[10px] bg-transparent">
                     {orderTypeLabels[order.orderType]}

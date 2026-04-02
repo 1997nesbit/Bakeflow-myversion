@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BakerSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
-import { mockOrders } from '@/data/mock/orders'
-import { mockDailyBatches } from '@/data/mock/production'
+import type { Order } from '@/types/order'
+import type { DailyBatchItem } from '@/types/production'
+import { ordersService, productionService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { minutesSincePosted } from '@/lib/utils/date'
 import { ChefHat, Flame, Users } from 'lucide-react'
 import Link from 'next/link'
@@ -20,6 +22,8 @@ export function BakerDashboard() {
   const [mounted, setMounted] = useState(false)
   const [, setTick] = useState(0)
   const [bakerName, setBakerName] = useState('Baker')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [batches, setBatches] = useState<DailyBatchItem[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -34,14 +38,25 @@ export function BakerDashboard() {
     } catch { /* ignore */ }
   }, [])
 
-  const incomingOrders = mockOrders.filter(o => o.status === 'baker' && !o.postedToBakerAt)
-  const bakingOrders = mockOrders.filter(o => o.status === 'baker' && o.postedToBakerAt)
-  const qaOrders = mockOrders.filter(o => o.status === 'quality')
-  const sentToDecorator = mockOrders.filter(o =>
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    productionService.getBatches({ signal: controller.signal })
+      .then(res => setBatches(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const incomingOrders = orders.filter(o => o.status === 'baker' && !o.assignedTo)
+  const bakingOrders = orders.filter(o => o.status === 'baker' && !!o.assignedTo)
+  const qaOrders = orders.filter(o => o.status === 'quality')
+  const sentToDecorator = orders.filter(o =>
     ['decorator', 'packing', 'ready', 'dispatched', 'delivered'].includes(o.status)
   )
   const overdueOrders = mounted
-    ? bakingOrders.filter(o => o.postedToBakerAt && minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes)
+    ? bakingOrders.filter(o => o.postedToBakerAt && minutesSincePosted(o.postedToBakerAt) > o.estimatedMinutes) // eslint-disable-line @typescript-eslint/no-unnecessary-condition
     : []
 
   const getElapsed = useCallback(
@@ -87,7 +102,7 @@ export function BakerDashboard() {
             bakingCount={bakingOrders.length}
             qaCount={qaOrders.length}
             sentOutCount={sentToDecorator.length}
-            batchCount={mockDailyBatches.length}
+            batchCount={batches.length}
           />
 
           <WorkflowDiagram
@@ -98,7 +113,7 @@ export function BakerDashboard() {
           />
 
           <div className="grid lg:grid-cols-2 gap-6">
-            <ProductionSummaryCard batches={mockDailyBatches} />
+            <ProductionSummaryCard batches={batches} />
             <IncomingOrdersCard orders={incomingOrders} />
           </div>
 

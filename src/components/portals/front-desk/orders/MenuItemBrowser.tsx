@@ -8,12 +8,13 @@ import type { MenuItem, OrderItem } from '@/types/order'
 interface MenuItemBrowserProps {
   filteredMenu: MenuItem[]
   menuFilter: string
+  categories: string[]
   items: OrderItem[]
   onFilterChange: (filter: string) => void
   onAddItem: (item: MenuItem) => void
 }
 
-export function MenuItemBrowser({ filteredMenu, menuFilter, items, onFilterChange, onAddItem }: MenuItemBrowserProps) {
+export function MenuItemBrowser({ filteredMenu, menuFilter, categories, items, onFilterChange, onAddItem }: MenuItemBrowserProps) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -21,7 +22,7 @@ export function MenuItemBrowser({ filteredMenu, menuFilter, items, onFilterChang
         Menu Items
       </h3>
       <div className="flex flex-wrap gap-2">
-        {['all', 'cake', 'bread', 'pastry', 'snack'].map((cat) => (
+        {['all', ...categories].map((cat) => (
           <Button
             key={cat}
             type="button"
@@ -34,7 +35,7 @@ export function MenuItemBrowser({ filteredMenu, menuFilter, items, onFilterChang
           </Button>
         ))}
       </div>
-      <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-1">
+      <div className="grid gap-2">
         {filteredMenu.map((item) => {
           const inCart = items.find((i) => i.name === item.name && !i.isCustom)
           return (

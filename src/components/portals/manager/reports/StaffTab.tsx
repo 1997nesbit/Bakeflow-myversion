@@ -1,6 +1,6 @@
 'use client'
 
-import { mockDailyBatches } from '@/data/mock/production'
+import type { DailyBatchItem } from '@/types/production'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 interface StaffTabProps {
@@ -12,9 +12,10 @@ interface StaffTabProps {
   totalBaked: number
   totalRemaining: number
   sellThrough: number
+  batches: DailyBatchItem[]
 }
 
-export function StaffTab({ staffByRole, activeStaffCount, monthlyPayroll, totalCustomers, goldCustomers, totalBaked, totalRemaining, sellThrough }: StaffTabProps) {
+export function StaffTab({ staffByRole, activeStaffCount, monthlyPayroll, totalCustomers, goldCustomers, totalBaked, totalRemaining, sellThrough, batches }: StaffTabProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-4">
@@ -76,7 +77,7 @@ export function StaffTab({ staffByRole, activeStaffCount, monthlyPayroll, totalC
             <div className="border-t border-white/5 pt-3 space-y-2">
               <p className="text-[10px] text-white/30 uppercase tracking-wider">By Category</p>
               {['bread', 'pastry', 'snack'].map(cat => {
-                const items = mockDailyBatches.filter(b => b.category === cat)
+                const items = batches.filter(b => b.category === cat)
                 const baked = items.reduce((s, b) => s + b.quantityBaked, 0)
                 const rem = items.reduce((s, b) => s + b.quantityRemaining, 0)
                 return (

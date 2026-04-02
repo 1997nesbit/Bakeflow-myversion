@@ -55,15 +55,15 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
         <div className="space-y-2">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Customer</h3>
           <div className="rounded-lg bg-accent p-4 space-y-2">
-            <p className="font-semibold text-foreground">{order.customerName}</p>
+            <p className="font-semibold text-foreground">{order.customer.name}</p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
-              <span>{order.customerPhone}</span>
+              <span>{order.customer.phone}</span>
             </div>
-            {order.customerEmail && (
+            {order.customer.email && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>{order.customerEmail}</span>
+                <span>{order.customer.email}</span>
               </div>
             )}
           </div>

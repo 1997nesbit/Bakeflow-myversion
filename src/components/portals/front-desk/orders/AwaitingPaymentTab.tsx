@@ -58,8 +58,8 @@ export function AwaitingPaymentTab({
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{order.customerName}</p>
-                    <p className="text-xs text-muted-foreground">{order.customerPhone}</p>
+                    <p className="text-sm text-muted-foreground">{order.customer.name}</p>
+                    <p className="text-xs text-muted-foreground">{order.customer.phone}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xl font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</p>
@@ -98,8 +98,8 @@ export function AwaitingPaymentTab({
                       <MessageSquare className="mr-1 h-3.5 w-3.5" /> Remind
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 bg-transparent" onClick={() => {
-                      if (order.customerPhone) window.open(`tel:${order.customerPhone}`, '_self')
-                      toast.info(`Calling ${order.customerName}...`)
+                      if (order.customer.phone) window.open(`tel:${order.customer.phone}`, '_self')
+                      toast.info(`Calling ${order.customer.name}...`)
                     }}>
                       <Phone className="mr-1 h-3.5 w-3.5" /> Call
                     </Button>

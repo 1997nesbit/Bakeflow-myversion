@@ -49,7 +49,7 @@ export function TrackingTab({
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-semibold text-foreground">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                      <p className="text-sm text-muted-foreground">{order.customer.name}</p>
                     </div>
                     {order.driverAccepted ? (
                       <Badge className="bg-green-100 text-green-800 border-0 text-xs">
@@ -112,7 +112,7 @@ export function TrackingTab({
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="font-semibold text-sm text-foreground">{order.id} - {order.customerName}</p>
+                        <p className="font-semibold text-sm text-foreground">{order.id} - {order.customer.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{order.items.map(i => i.name).join(', ')}</p>
                       </div>
                       <Badge className={`${statusColors[order.status]} border-0 text-xs shrink-0`}>{statusLabels[order.status]}</Badge>

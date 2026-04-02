@@ -6,18 +6,27 @@ import { BakerSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { DailyBatchItem } from '@/types/production'
-import { mockDailyBatches } from '@/data/mock/production'
+import { productionService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { Layers, Plus, ChefHat, Flame, CheckCircle } from 'lucide-react'
 import { AddBatchForm } from './AddBatchForm'
 import { CategorySummaryGrid } from './CategorySummaryGrid'
 import { BatchCard } from './BatchCard'
 
 export function BakerProduction() {
-  const [batches, setBatches] = useState<DailyBatchItem[]>(mockDailyBatches)
+  const [batches, setBatches] = useState<DailyBatchItem[]>([])
   const [showForm, setShowForm] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    productionService.getBatches({ signal: controller.signal })
+      .then(res => setBatches(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const handleAddBatch = (batch: DailyBatchItem) => {
     setBatches(prev => [batch, ...prev])

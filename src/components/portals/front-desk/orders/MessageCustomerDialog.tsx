@@ -51,8 +51,8 @@ export function MessageCustomerDialog({
         {order && (
           <div className="space-y-4">
             <div className="rounded-lg bg-accent p-3">
-              <p className="font-medium text-foreground">{order.customerName}</p>
-              <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
+              <p className="font-medium text-foreground">{order.customer.name}</p>
+              <p className="text-sm text-muted-foreground">{order.customer.phone}</p>
             </div>
             <div className="space-y-2">
               <label htmlFor="customer-message" className="text-sm font-medium text-foreground">
@@ -88,7 +88,7 @@ export function MessageCustomerDialog({
                 className="text-xs bg-transparent justify-start"
                 onClick={() =>
                   setMessageText(
-                    `Hi ${order.customerName}, your order ${order.id} is ready for pickup! Track here: ${getTrackingUrl(order.trackingId)}`
+                    `Hi ${order.customer.name}, your order ${order.id} is ready for pickup! Track here: ${getTrackingUrl(order.trackingId)}`
                   )
                 }
               >
@@ -100,7 +100,7 @@ export function MessageCustomerDialog({
                 className="text-xs bg-transparent justify-start"
                 onClick={() =>
                   setMessageText(
-                    `Hi ${order.customerName}, your order ${order.id} is out for delivery! Track live: ${getTrackingUrl(order.trackingId)}`
+                    `Hi ${order.customer.name}, your order ${order.id} is out for delivery! Track live: ${getTrackingUrl(order.trackingId)}`
                   )
                 }
               >
@@ -112,7 +112,7 @@ export function MessageCustomerDialog({
                 className="text-xs bg-transparent justify-start"
                 onClick={() =>
                   setMessageText(
-                    `Hi ${order.customerName}, we are waiting for your payment of TZS ${order.totalPrice.toLocaleString()} for order ${order.id}. Please confirm. Track: ${getTrackingUrl(order.trackingId)}`
+                    `Hi ${order.customer.name}, we are waiting for your payment of TZS ${order.totalPrice.toLocaleString()} for order ${order.id}. Please confirm. Track: ${getTrackingUrl(order.trackingId)}`
                   )
                 }
               >
@@ -124,7 +124,7 @@ export function MessageCustomerDialog({
                 className="text-xs bg-transparent justify-start"
                 onClick={() =>
                   setMessageText(
-                    `Hi ${order.customerName}, your order has a balance of TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}. Track: ${getTrackingUrl(order.trackingId)}`
+                    `Hi ${order.customer.name}, your order has a balance of TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}. Track: ${getTrackingUrl(order.trackingId)}`
                   )
                 }
               >

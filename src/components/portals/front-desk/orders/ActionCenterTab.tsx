@@ -65,7 +65,7 @@ export function ActionCenterTab({
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                      <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs shrink-0">
                       <CreditCard className="mr-1 h-3 w-3" />
@@ -117,7 +117,7 @@ export function ActionCenterTab({
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                      <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-blue-100 text-blue-800 border-0 text-xs shrink-0">
                       <Truck className="mr-1 h-3 w-3" /> Delivery
@@ -129,7 +129,7 @@ export function ActionCenterTab({
                       <span className="font-medium">{order.deliveryAddress}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Phone className="h-3 w-3" />{order.customerPhone}
+                      <Phone className="h-3 w-3" />{order.customer.phone}
                     </div>
                   </div>
                   <button
@@ -171,7 +171,7 @@ export function ActionCenterTab({
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-foreground">{order.id}</p>
-                      <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-green-100 text-green-800 border-0 text-xs shrink-0">
                       <Package className="mr-1 h-3 w-3" /> Pickup
@@ -189,8 +189,8 @@ export function ActionCenterTab({
                   </button>
                   <div className="flex flex-col gap-2">
                     <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={() => {
-                      if (order.customerPhone) window.open(`tel:${order.customerPhone}`, '_self')
-                      toast.info(`Calling ${order.customerName}...`)
+                      if (order.customer.phone) window.open(`tel:${order.customer.phone}`, '_self')
+                      toast.info(`Calling ${order.customer.name}...`)
                     }}>
                       <Phone className="mr-1 h-3.5 w-3.5" /> Call Customer
                     </Button>

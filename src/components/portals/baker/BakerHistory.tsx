@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BakerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, statusColors, orderTypeLabels } from '@/data/constants/labels'
 import {
   History,
@@ -21,16 +23,24 @@ import {
 
 export function BakerHistory() {
   const [query, setQuery] = useState('')
+  const [allOrders, setAllOrders] = useState<Order[]>([])
 
-  const completedOrders = mockOrders.filter((o) =>
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setAllOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const completedOrders = allOrders.filter(o =>
     ['decorator', 'packing', 'ready', 'dispatched', 'delivered'].includes(o.status)
   )
 
-  const filtered = completedOrders.filter(
-    (o) =>
-      o.id.toLowerCase().includes(query.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(query.toLowerCase()) ||
-      o.items.some((item) => item.name.toLowerCase().includes(query.toLowerCase()))
+  const filtered = completedOrders.filter(o =>
+    o.id.toLowerCase().includes(query.toLowerCase()) ||
+    o.customer.name.toLowerCase().includes(query.toLowerCase()) ||
+    o.items.some(item => item.name.toLowerCase().includes(query.toLowerCase()))
   )
 
   const totalCustom = completedOrders.filter((o) => o.orderType === 'custom').length
@@ -127,7 +137,7 @@ export function BakerHistory() {
                         <Badge variant="outline" className="text-[10px] bg-transparent">{orderTypeLabels[order.orderType]}</Badge>
                         <Badge className={`text-[10px] border-0 ${statusColors[order.status]}`}>{statusLabels[order.status]}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                      <p className="text-sm text-muted-foreground">{order.customer.name}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {order.items.map((item, idx) => (
                           <span key={idx} className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">

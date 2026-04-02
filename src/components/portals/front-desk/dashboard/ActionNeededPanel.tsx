@@ -46,8 +46,8 @@ export function ActionNeededPanel({ paidReadyToPost, readyOrders, pendingPayment
                   <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] px-1.5 py-0">Post to Baker</Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-                  {order.isGoldCustomer && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
-                  {order.customerName} - {order.items.map(i => i.name).join(', ')}
+                  {order.customer.isGold && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
+                  {order.customer.name} - {order.items.map(i => i.name).join(', ')}
                 </p>
               </div>
               <Link href="/front-desk/orders">
@@ -66,7 +66,7 @@ export function ActionNeededPanel({ paidReadyToPost, readyOrders, pendingPayment
                   <span className="text-xs font-bold text-foreground">{order.id}</span>
                   <Badge className="bg-sky-100 text-sky-700 border-0 text-[10px] px-1.5 py-0">Send to Driver</Badge>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.deliveryAddress}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{order.customer.name} - {order.deliveryAddress}</p>
               </div>
               <Link href="/front-desk/orders">
                 <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">Dispatch</Button>
@@ -84,7 +84,7 @@ export function ActionNeededPanel({ paidReadyToPost, readyOrders, pendingPayment
                   <span className="text-xs font-bold text-foreground">{order.id}</span>
                   <Badge className="bg-green-100 text-green-700 border-0 text-[10px] px-1.5 py-0">Call / Text</Badge>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - {order.customerPhone}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{order.customer.name} - {order.customer.phone}</p>
               </div>
               <Link href="/front-desk/orders">
                 <Button size="sm" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs h-8 px-3">Handle</Button>
@@ -102,7 +102,7 @@ export function ActionNeededPanel({ paidReadyToPost, readyOrders, pendingPayment
                   <span className="text-xs font-bold text-foreground">{order.id}</span>
                   <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] px-1.5 py-0">Awaiting Payment</Badge>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">{order.customerName} - TZS {order.totalPrice.toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{order.customer.name} - TZS {order.totalPrice.toLocaleString()}</p>
               </div>
               <Link href="/front-desk/orders">
                 <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 bg-transparent text-xs h-8 px-3">Confirm</Button>

@@ -30,8 +30,10 @@ src/
 │   │   ├── driver/
 │   │   └── packing/
 │   ├── shared/                   # Cross-portal reusable components
-│   │   ├── PortalLoginForm.tsx   # Generic login card used by all portals
-│   │   └── PortalErrorBoundary.tsx
+│   │   ├── PortalLoginForm.tsx       # Generic login card used by all portals
+│   │   ├── PortalErrorBoundary.tsx
+│   │   ├── MenuManagement.tsx        # Menu item + category management page (manager + front-desk)
+│   │   └── MenuItemFormDialog.tsx    # Add/edit menu item dialog; used by MenuManagement
 │   ├── layout/                   # Sidebars, nav
 │   └── ui/                       # shadcn/ui primitives (do not edit)
 │

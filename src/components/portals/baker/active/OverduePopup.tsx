@@ -22,7 +22,7 @@ export function OverduePopup({ order, onClose }: Props) {
           <h2 className="text-xl font-bold text-balance" style={{ color: '#CA0123' }}>Order Overdue!</h2>
           <p className="text-sm text-muted-foreground">
             Order <span className="font-bold text-foreground">{order.id}</span> for{' '}
-            <span className="font-bold text-foreground">{order.customerName}</span>{' '}
+            <span className="font-bold text-foreground">{order.customer.name}</span>{' '}
             exceeded its estimated time of <span className="font-bold">{order.estimatedMinutes} min</span>.
           </p>
           <Button className="w-full text-white border-0" style={{ background: '#CA0123' }} onClick={onClose}>

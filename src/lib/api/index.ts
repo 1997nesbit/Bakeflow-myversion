@@ -9,6 +9,7 @@ export { staffService } from './services/staff'
 export { tasksService } from './services/tasks'
 export { reportsService } from './services/reports'
 export { messagingService } from './services/messaging'
+export { menuService } from './services/menu'
 
 export type { LoginCredentials, AuthTokens, AuthUser } from './services/auth'
 export type { DailySummary, RevenuePoint, ExpenseBreakdown } from './services/reports'

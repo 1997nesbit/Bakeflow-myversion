@@ -44,7 +44,7 @@ export function BakingProgressPanel({ orders, getElapsed }: Props) {
                       {order.id.split('-')[1]}
                     </span>
                     <div>
-                      <p className="font-medium text-sm text-foreground leading-tight">{order.customerName}</p>
+                      <p className="font-medium text-sm text-foreground leading-tight">{order.customer.name}</p>
                       <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                         {order.items.map(i => i.name).join(', ')}
                       </p>

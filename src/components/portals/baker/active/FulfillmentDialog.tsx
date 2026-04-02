@@ -29,7 +29,7 @@ export function FulfillmentDialog({ order, findMatchingBatches, onAccept, onClos
               <div>
                 <h2 className="text-base font-bold text-foreground">How to fulfill {order.id}?</h2>
                 <p className="text-xs text-muted-foreground">
-                  {order.customerName} -- {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                  {order.customer.name} -- {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}
                 </p>
               </div>
             </div>

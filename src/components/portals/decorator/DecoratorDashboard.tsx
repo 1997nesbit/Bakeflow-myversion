@@ -1,29 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Order } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { orderTypeLabels } from '@/data/constants/labels'
 import { Palette, Clock, Calendar, FileText, ArrowRight, CheckCircle } from 'lucide-react'
 
 export function DecoratorDashboard() {
-  const [orders, setOrders] = useState<Order[]>(
-    mockOrders.filter((o) => o.status === 'decorator')
-  )
+  const [orders, setOrders] = useState<Order[]>([])
   const [showCompleted, setShowCompleted] = useState(false)
 
-  const handleCompleteOrder = (orderId: string) => {
-    setOrders(
-      orders.map((order) =>
-        order.id === orderId ? { ...order, status: 'quality' as Order['status'] } : order
-      )
-    )
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const handleCompleteOrder = async (orderId: string) => {
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, status: 'packing' as Order['status'] } : o))
     setShowCompleted(true)
     setTimeout(() => setShowCompleted(false), 2000)
+    try {
+      await ordersService.markPacking(orderId)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   return (
@@ -61,7 +71,7 @@ export function DecoratorDashboard() {
                         {order.id}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {order.customerName}
+                        {order.customer.name}
                       </p>
                     </div>
                     <Badge className="bg-primary text-primary-foreground border-0">

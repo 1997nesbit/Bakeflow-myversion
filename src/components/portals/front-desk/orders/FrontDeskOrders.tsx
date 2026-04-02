@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { OrderForm } from '@/components/portals/front-desk/orders/OrderForm'
 import { OrderDetail } from '@/components/portals/front-desk/orders/OrderDetail'
 import { OrderAlertsBar } from '@/components/portals/front-desk/orders/OrderAlertsBar'
 import { PaymentConfirmDialog } from '@/components/portals/front-desk/orders/PaymentConfirmDialog'
@@ -13,14 +13,14 @@ import { MessageCustomerDialog } from '@/components/portals/front-desk/orders/Me
 import { ActionCenterTab } from '@/components/portals/front-desk/orders/ActionCenterTab'
 import { AwaitingPaymentTab } from '@/components/portals/front-desk/orders/AwaitingPaymentTab'
 import { TrackingTab } from '@/components/portals/front-desk/orders/TrackingTab'
-import type { Order, OrderStatus, OverdueAlert, NewOrderData } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order, OrderStatus, OverdueAlert } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { daysUntilDue, minutesSincePosted } from '@/lib/utils/date'
-import { Plus, Clock, Timer, Banknote } from 'lucide-react'
+import { Plus, Cake, Clock, Timer, Banknote } from 'lucide-react'
 
 export function FrontDeskOrders() {
-  const [orders, setOrders] = useState<Order[]>(mockOrders)
-  const [showNewOrder, setShowNewOrder] = useState(false)
+  const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [activeTab, setActiveTab] = useState('actions')
   const [mounted, setMounted] = useState(false)
@@ -38,6 +38,14 @@ export function FrontDeskOrders() {
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const getTrackingUrl = useCallback((trackingId: string) => {
     return typeof globalThis.window !== 'undefined'
@@ -101,49 +109,25 @@ export function FrontDeskOrders() {
   const dispatchedOrders = orders.filter(o => o.status === 'dispatched')
   const inKitchenOrders = orders.filter(o => ['baker', 'decorator', 'quality', 'packing'].includes(o.status))
 
-  const handleNewOrder = (data: NewOrderData) => {
-    const newOrder: Order = {
-      id: `ORD-${String(orders.length + 1).padStart(3, '0')}`,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      customerEmail: data.customerEmail,
-      orderType: data.orderType,
-      items: data.items,
-      status: data.paymentStatus === 'unpaid' ? 'pending' : 'paid',
-      specialNotes: data.specialNotes,
-      pickupDate: data.pickupDate,
-      pickupTime: data.pickupTime,
-      deliveryType: data.deliveryType,
-      deliveryAddress: data.deliveryAddress,
-      totalPrice: data.totalPrice,
-      amountPaid: data.amountPaid,
-      paymentStatus: data.paymentStatus,
-      isAdvanceOrder: data.isAdvanceOrder,
-      estimatedMinutes: data.estimatedMinutes,
-      paymentTerms: data.paymentTerms,
-      trackingId: data.trackingId,
-      createdAt: new Date().toISOString(),
-    }
-    setOrders([newOrder, ...orders])
-    setShowNewOrder(false)
-    if (data.paymentStatus === 'unpaid') {
-      toast.warning(`Order ${newOrder.id} saved. Awaiting payment of TZS ${data.totalPrice.toLocaleString()}`)
-    } else {
-      toast.success(`Order ${newOrder.id} created! Payment: TZS ${data.amountPaid.toLocaleString()}`)
-    }
-  }
-
   const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
     setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
     setSelectedOrder(null)
   }
 
-  const handlePostToBaker = (orderId: string) => {
-    setOrders(orders.map(o =>
+  const handlePostToBaker = async (orderId: string) => {
+    const prev = orders
+    setOrders(p => p.map(o =>
       o.id === orderId ? { ...o, status: 'baker' as OrderStatus, postedToBakerAt: new Date().toISOString() } : o
     ))
     setSelectedOrder(null)
-    toast.success('Order posted to Baker Portal with timer started.')
+    toast.success('Order posted to Baker Portal.')
+    try {
+      const updated = await ordersService.postToBaker(orderId)
+      setOrders(p => p.map(o => o.id === orderId ? updated : o))
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleDispatchToDriver = (orderId: string) => {
@@ -158,15 +142,25 @@ export function FrontDeskOrders() {
     toast.success('Order marked as picked up!')
   }
 
-  const handleConfirmPayment = (orderId: string, paymentType: 'full' | 'deposit') => {
-    setOrders(orders.map(o => {
+  const handleConfirmPayment = async (orderId: string, paymentType: 'full' | 'deposit') => {
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+    const amount = paymentType === 'full' ? order.totalPrice : Math.ceil(order.totalPrice / 2)
+    const prev = orders
+    setOrders(p => p.map(o => {
       if (o.id !== orderId) return o
-      const amountPaid = paymentType === 'full' ? o.totalPrice : Math.ceil(o.totalPrice / 2)
-      return { ...o, status: 'paid' as OrderStatus, amountPaid, paymentStatus: paymentType === 'full' ? 'paid' as const : 'deposit' as const }
+      return { ...o, status: 'paid' as OrderStatus, amountPaid: amount, paymentStatus: paymentType === 'full' ? 'paid' as const : 'deposit' as const }
     }))
     setShowPaymentDialog(false)
     setPaymentOrder(null)
     toast.success('Payment confirmed! Order moved to Post to Baker queue.')
+    try {
+      const updated = await ordersService.recordPayment(orderId, amount, order.paymentMethod ?? 'cash')
+      setOrders(p => p.map(o => o.id === orderId ? updated : o))
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleOpenMessage = (order: Order, e?: React.MouseEvent) => {
@@ -188,10 +182,20 @@ export function FrontDeskOrders() {
             <h1 className="text-2xl font-bold text-foreground">Orders</h1>
             <p className="text-sm text-muted-foreground">Create, manage, and track all bakery orders</p>
           </div>
-          <Button onClick={() => setShowNewOrder(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
-            <Plus className="mr-2 h-5 w-5" />
-            New Order
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
+              <Link href="/front-desk/orders/new?mode=menu">
+                <Plus className="mr-2 h-5 w-5" />
+                New Order
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link href="/front-desk/orders/new?mode=custom">
+                <Cake className="mr-2 h-5 w-5" />
+                Custom Cake
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <OrderAlertsBar
@@ -262,14 +266,6 @@ export function FrontDeskOrders() {
           </TabsContent>
         </Tabs>
 
-        {showNewOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
-              <OrderForm onClose={() => setShowNewOrder(false)} onSubmit={handleNewOrder} />
-            </div>
-          </div>
-        )}
-
         {selectedOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -300,7 +296,7 @@ export function FrontDeskOrders() {
           }}
           onSend={() => {
             setShowMessageDialog(false)
-            toast.success(`Message sent to ${messageOrder?.customerName}!`)
+            toast.success(`Message sent to ${messageOrder?.customer.name}!`)
           }}
           getTrackingUrl={getTrackingUrl}
           onCopyLink={copyTrackingLink}

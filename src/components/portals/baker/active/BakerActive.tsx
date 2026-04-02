@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Order } from '@/types/order'
 import type { DailyBatchItem, FulfillmentMethod, TimerState, BulkBatch, FulfillmentChoice } from '@/types/production'
-import { mockOrders } from '@/data/mock/orders'
-import { mockDailyBatches } from '@/data/mock/production'
+import { ordersService, productionService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { FulfillmentDialog } from './FulfillmentDialog'
 import { OverduePopup } from './OverduePopup'
 import { BulkBatchPanel } from './BulkBatchPanel'
@@ -26,10 +26,8 @@ import {
 } from 'lucide-react'
 
 export function BakerActive() {
-  const [orders, setOrders] = useState<Order[]>(
-    mockOrders.filter(o => ['baker', 'quality'].includes(o.status))
-  )
-  const [dailyBatches, setDailyBatches] = useState<DailyBatchItem[]>(mockDailyBatches)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [dailyBatches, setDailyBatches] = useState<DailyBatchItem[]>([])
   const [timers, setTimers] = useState<Record<string, TimerState>>({})
   const [now, setNow] = useState<number>(0)
   const [mounted, setMounted] = useState(false)
@@ -49,8 +47,19 @@ export function BakerActive() {
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    productionService.getBatches({ signal: controller.signal })
+      .then(res => setDailyBatches(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     if (!mounted) return
-    const baking = orders.filter(o => o.status === 'baker' && o.postedToBakerAt)
+    const baking = orders.filter(o => o.status === 'baker' && o.assignedTo)
     for (const o of baking) {
       const t = timers[o.id]
       if (t && t.running) {
@@ -61,8 +70,8 @@ export function BakerActive() {
   }, [now, orders, timers, overduePopup, mounted])
 
   useEffect(() => {
-    const incoming = orders.filter(o => o.status === 'baker' && !o.postedToBakerAt)
-    const baking = orders.filter(o => o.status === 'baker' && o.postedToBakerAt)
+    const incoming = orders.filter(o => o.status === 'baker' && !o.assignedTo)
+    const baking = orders.filter(o => o.status === 'baker' && o.assignedTo)
     const qa = orders.filter(o => o.status === 'quality')
     if (incoming.length > 0 && baking.length === 0 && qa.length === 0) setActiveTab('incoming')
   }, [orders])
@@ -96,34 +105,44 @@ export function BakerActive() {
     setChoosingOrder(order)
   }
 
-  const handleAcceptOrder = (orderId: string, method: FulfillmentMethod, batchItem?: DailyBatchItem) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, postedToBakerAt: new Date().toISOString() } : o))
+  const handleAcceptOrder = async (orderId: string, method: FulfillmentMethod, batchItem?: DailyBatchItem) => {
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, assignedTo: 'me' } : o))
     if (method === 'from_batch' && batchItem) {
       const order = orders.find(o => o.id === orderId)
       const totalQty = order?.items.reduce((s, i) => s + i.quantity, 0) || 1
-      setDailyBatches(prev =>
-        prev.map(b => b.id === batchItem.id ? { ...b, quantityRemaining: Math.max(0, b.quantityRemaining - totalQty) } : b)
+      setDailyBatches(p =>
+        p.map(b => b.id === batchItem.id ? { ...b, quantityRemaining: Math.max(0, b.quantityRemaining - totalQty) } : b)
       )
-      setFulfillments(prev => ({
-        ...prev,
+      setFulfillments(p => ({
+        ...p,
         [orderId]: { orderId, method: 'from_batch', batchItemId: batchItem.id, batchItemName: batchItem.productName },
       }))
       toast(`Taken from batch: ${batchItem.productName}`)
     } else {
-      setFulfillments(prev => ({ ...prev, [orderId]: { orderId, method: 'bake_fresh' } }))
+      setFulfillments(p => ({ ...p, [orderId]: { orderId, method: 'bake_fresh' } }))
       toast('Order accepted -- Bake Fresh!')
     }
     setChoosingOrder(null)
     setActiveTab('baking')
+    try {
+      await ordersService.accept(orderId)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleAcceptAll = () => {
-    const incoming = orders.filter(o => o.status === 'baker' && !o.postedToBakerAt)
+    const incoming = orders.filter(o => o.status === 'baker' && !o.assignedTo)
     if (incoming.length === 0) return
     setOrders(prev =>
-      prev.map(o => o.status === 'baker' && !o.postedToBakerAt ? { ...o, postedToBakerAt: new Date().toISOString() } : o)
+      prev.map(o => o.status === 'baker' && !o.assignedTo ? { ...o, assignedTo: 'me' } : o)
     )
-    for (const o of incoming) setFulfillments(prev => ({ ...prev, [o.id]: { orderId: o.id, method: 'bake_fresh' } }))
+    for (const o of incoming) {
+      setFulfillments(prev => ({ ...prev, [o.id]: { orderId: o.id, method: 'bake_fresh' } }))
+      ordersService.accept(o.id).catch(handleApiError)
+    }
     setActiveTab('baking')
     toast(`${incoming.length} orders accepted (Bake Fresh)!`)
   }
@@ -143,16 +162,36 @@ export function BakerActive() {
     })
   }
 
-  const handleSendToQA = (orderId: string) => {
+  const handleSendToQA = async (orderId: string) => {
     handlePauseTimer(orderId)
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'quality' as Order['status'] } : o))
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, status: 'quality' as Order['status'] } : o))
     setActiveTab('qa')
     toast('Moved to QA.')
+    try {
+      await ordersService.qualityCheck(orderId)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
-  const handleQAPass = (orderId: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'decorator' as Order['status'] } : o))
-    toast('QA Passed! Sent to Decorator.')
+  const handleQAPass = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId)
+    const toStatus: Order['status'] = order?.orderType === 'custom' ? 'decorator' : 'packing'
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, status: toStatus } : o))
+    toast(`QA Passed! Sent to ${toStatus === 'packing' ? 'Packing' : 'Decorator'}.`)
+    try {
+      if (toStatus === 'packing') {
+        await ordersService.markPacking(orderId)
+      } else {
+        await ordersService.advanceStatus(orderId, 'decorator')
+      }
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleQAFail = (orderId: string) => {
@@ -175,8 +214,8 @@ export function BakerActive() {
     setBatches(prev => prev.filter(b => b.id !== batch.id))
   }
 
-  const incomingOrders = orders.filter(o => o.status === 'baker' && !o.postedToBakerAt)
-  const bakingOrders = orders.filter(o => o.status === 'baker' && o.postedToBakerAt)
+  const incomingOrders = orders.filter(o => o.status === 'baker' && !o.assignedTo)
+  const bakingOrders = orders.filter(o => o.status === 'baker' && !!o.assignedTo)
   const qaOrders = orders.filter(o => o.status === 'quality')
   const getBatchForOrder = (orderId: string) => batches.find(b => b.orderIds.includes(orderId))
 

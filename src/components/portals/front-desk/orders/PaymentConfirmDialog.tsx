@@ -30,7 +30,7 @@ export function PaymentConfirmDialog({ order, open, onOpenChange, onConfirm }: P
                 <p className="text-lg font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</p>
               </div>
               <p className="text-sm text-muted-foreground">
-                {order.customerName} - {order.customerPhone}
+                {order.customer.name} - {order.customer.phone}
               </p>
               <p className="text-xs text-muted-foreground">
                 {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}

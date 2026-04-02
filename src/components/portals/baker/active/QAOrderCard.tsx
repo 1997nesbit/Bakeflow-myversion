@@ -40,7 +40,7 @@ export function QAOrderCard({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-lg font-bold text-foreground">{order.id}</p>
-            <p className="text-sm text-muted-foreground">{order.customerName}</p>
+            <p className="text-sm text-muted-foreground">{order.customer.name}</p>
           </div>
           <Badge variant="outline" className="text-xs bg-transparent">{orderTypeLabels[order.orderType]}</Badge>
         </div>

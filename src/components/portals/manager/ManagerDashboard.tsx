@@ -1,8 +1,11 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { mockDebts, mockBusinessExpenses, mockExpenses } from '@/data/mock/finance'
 import { mockTasks } from '@/data/mock/tasks'
 import { mockStaff } from '@/data/mock/staff'
@@ -16,9 +19,19 @@ import {
 import Link from 'next/link'
 
 export function ManagerDashboard() {
-  const totalRevenue = mockOrders.reduce((s, o) => s + o.amountPaid, 0)
-  const totalOrders = mockOrders.length
-  const activeOrders = mockOrders.filter(o => !['delivered', 'pending'].includes(o.status)).length
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
+  const totalOrders = orders.length
+  const activeOrders = orders.filter(o => !['delivered', 'pending'].includes(o.status)).length
   const totalDebt = mockDebts.reduce((s, d) => s + d.balance, 0)
   const activeStaff = mockStaff.filter(s => s.status === 'active').length
   const pendingTasks = mockTasks.filter(t => t.status !== 'completed').length
@@ -33,7 +46,7 @@ export function ManagerDashboard() {
     { label: 'Active Staff', value: activeStaff, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10', change: `${mockStaff.length} total`, up: true },
   ]
 
-  const recentOrders = [...mockOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
+  const recentOrders = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
   const urgentTasks = mockTasks.filter(t => t.status !== 'completed').sort((a, b) => {
     const pri: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
     return (pri[a.priority] ?? 3) - (pri[b.priority] ?? 3)
@@ -175,7 +188,7 @@ export function ManagerDashboard() {
                 <div key={o.id} className="flex items-center gap-3 rounded-lg bg-white/[0.02] border border-white/5 px-3 py-2.5">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-white truncate">{o.customerName}</p>
+                      <p className="text-sm font-medium text-white truncate">{o.customer.name}</p>
                       <Badge className={`text-xs px-1.5 py-0 border-0 ${statusColorsDark[o.status] || ''}`}>{o.status}</Badge>
                     </div>
                     <p className="text-xs text-white/40 truncate">{o.items.map(i => i.name).join(', ')}</p>

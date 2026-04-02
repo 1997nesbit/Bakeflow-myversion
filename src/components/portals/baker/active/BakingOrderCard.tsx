@@ -75,7 +75,7 @@ export function BakingOrderCard({
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{order.customerName}</p>
+            <p className="text-sm text-muted-foreground">{order.customer.name}</p>
           </div>
           {td.overdue ? (
             <Badge className="text-white border-0 animate-pulse text-xs" style={{ background: '#CA0123' }}>

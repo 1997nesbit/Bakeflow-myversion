@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-02
+Last updated: 2026-04-03 (Phase 2 complete + Menu Management UI)
 
 ---
 
@@ -48,11 +48,98 @@ Last updated: 2026-04-02
 
 ---
 
-## Phase 2 — Orders & Production ⬜ NOT STARTED
+## Phase 2 — Orders & Production ✅ COMPLETE
 
-**Backend:** `apps/orders` — `Order`, `OrderItem`, `OrderStatusHistory`, `MenuItem`, `OrderService`, `OrderStateValidator`
+### Backend (`backend/`)
 
-**Frontend:** Activate `src/lib/api/services/orders.ts`; update `BakerActive`, `FrontDeskOrders`, `DriverDashboard`, `PackingDashboard`, `DecoratorDashboard`, `ManagerOrderHistory`. Delete `src/data/mock/orders.ts`, `production.ts`, `helpers.ts`.
+- `core/models.py` — `TimestampedModel` abstract base (auto `created_at` / `updated_at`)
+- `apps/customers/models.py` — `Customer` (UUID PK, phone unique, `is_gold`, denormalized counters)
+- `apps/orders/models.py` — `Order`, `OrderItem`, `OrderStatusHistory`, `MenuItem`, `DailyBatchItem` (all TextChoices enums defined)
+- `apps/orders/services.py` — `OrderStateValidator` (allowed transitions map, OCP), `OrderService`, `ProductionService`
+- `apps/orders/serializers.py` — `CustomerInlineSerializer`, `OrderListSerializer`, `OrderDetailSerializer`, `OrderCreateSerializer`, payment/dispatch serializers, batch serializers
+- `apps/orders/views.py` — `OrderViewSet` with all state-transition actions (`post_to_baker`, `accept`, `quality_check`, `mark_packing`, `mark_ready`, `dispatch`, `mark_delivered`, `record_payment`), `MenuViewSet`, `ProductionViewSet`
+- `apps/orders/urls.py` — registered: `/api/orders/`, `/api/menu/`, `/api/production/batches/`
+- `djangorestframework-camel-case` installed — auto-converts snake_case ↔ camelCase; no field renames needed in frontend
+- Migrations generated and applied for `customers` and `orders` apps
+
+### Frontend (`src/`)
+
+- `src/lib/api/services/orders.ts` — fully activated; all order actions + `productionService`
+- `src/types/order.ts` — `Order` now uses nested `customer: OrderCustomer` object; `NewOrderData` keeps flat fields for creation form
+- All portal components updated to use real API calls with AbortController pattern:
+  - `BakerActive`, `BakerDashboard`, `BakerHistory`, `BakerProduction`
+  - `FrontDeskOrders`, `FrontDeskDashboard`, `FrontDeskSearch`, `FrontDeskMessaging`
+  - `DriverDashboard`, `PackingDashboard`, `DecoratorDashboard`
+  - `ManagerDashboard`, `ManagerOrderHistory`, `ManagerPayments`, `ManagerReports`
+  - `OrderTracking` (public) — now fetches from `/api/orders/track/{id}/`
+- All subcomponents updated to use `order.customer.name` / `order.customer.phone` / `order.customer.isGold`
+- `OrderForm` — removed `generateTrackingId` (backend generates tracking IDs); removed tracking link preview from step 3
+- `src/data/mock/orders.ts`, `production.ts`, `helpers.ts` — deleted
+- `src/data/mock/index.ts` — Phase 2 exports removed
+
+### Design decisions made during Phase 2
+
+- **`djangorestframework-camel-case`** — installed to keep the frontend fully camelCase without renaming 36+ component references
+- **Customer model in Phase 2** — `Order` FK to `Customer` required the model; the full Customer API endpoints are Phase 3
+- **`DailyBatchItem` temporarily in `orders` app** — will move to `inventory` app in Phase 4
+- **Baker incoming/baking discriminator** — changed from `!postedToBakerAt` to `!assignedTo` (all baker-queue orders have `postedToBakerAt` set by front desk)
+- **`isGoldCustomer` removed from `NewOrderData`** — gold status is managed on the Customer record, not set at order creation
+
+---
+
+---
+
+## Menu Management UI — ✅ COMPLETE (2026-04-03)
+
+Standalone UI feature built ahead of Phase 4 backend activation. The page is live and fully functional using local state seeded from the existing `bakeryMenu` constant. Write operations will be wired to the API when Phase 4 CRUD endpoints are available.
+
+### Accessible from
+- Manager portal: `/manager/menu` (dark theme, `ManagerSidebar`)
+- Front Desk portal: `/front-desk/menu` (light theme, `FrontDeskSidebar`)
+- Both portals have full add / edit / delete access — no role restriction on the UI.
+
+### What was built
+
+**New files:**
+- `src/components/shared/MenuManagement.tsx` — cross-portal page component; takes `sidebar: ReactNode` and `theme: 'light' | 'dark'` props; owns all state
+- `src/components/shared/MenuItemFormDialog.tsx` — reusable add/edit dialog; receives `onSave(data, id?)` callback; handles its own form state and validation
+- `src/components/portals/manager/ManagerMenu.tsx` — thin wrapper: injects `<ManagerSidebar />` + `theme="dark"`
+- `src/components/portals/front-desk/FrontDeskMenu.tsx` — thin wrapper: injects `<FrontDeskSidebar />` + `theme="light"`
+- `src/app/(dashboard)/manager/menu/page.tsx` — 4-line shell
+- `src/app/(dashboard)/front-desk/menu/page.tsx` — 4-line shell
+
+**Modified files:**
+- `src/types/order.ts` — added `isAvailable?: boolean` to `MenuItem`
+- `src/lib/api/services/menu.ts` — extended with `createItem`, `updateItem`, `deleteItem`, `createCategory`, `renameCategory`, `deleteCategory` stubs (all throw until Phase 4 ext)
+- `src/lib/api/index.ts` — exports `menuService`
+- `src/components/layout/sidebar/PortalSidebar.tsx` — added `Menu` nav entry (icon: `UtensilsCrossed`) to both `managerNav` and `frontDeskNav`
+
+### Features
+
+**Menu Items tab**
+- Filter chips by category (counts reflect the full unfiltered set; not affected by search)
+- Search bar — filters by item name and description; `useMemo` ensures the filter only recomputes when `items`, `filterCat`, or `search` changes; clear button resets query
+- Responsive grid of item cards (name, category badge, price, estimated minutes, description)
+- Add Item → `MenuItemFormDialog` (name, category select or new inline, price, est. minutes, description)
+- Edit Item → same dialog pre-filled
+- Delete Item → confirm dialog before removal
+
+**Item Types tab**
+- Lists all categories with per-category item counts
+- Rename category → renames all items using it atomically in local state
+- Delete category → blocked with a toast if any items still use it
+- Add Category → creates an empty category (available immediately in the item form's category dropdown)
+
+### Design decisions
+
+- **Shared component in `shared/`** — the page logic is identical between both portals; only the sidebar differs. Using a `sidebar` prop keeps the component genuinely generic, analogous to `PortalLoginForm`.
+- **Local state seeded from constant** — `bakeryMenu` from `src/data/constants/menus.ts` is used as `useState` initial value. This is not mock retirement; the constant remains and is still used by order forms. The management page builds its own working copy.
+- **Category state** — categories are derived from items (`uniqueSorted`) plus an `emptyCats: string[]` list for categories added before any items exist. Rename and delete cascade through both lists atomically.
+- **`useMemo` on `filtered`** — avoids rerunning the name/description string scan on every render; only re-evaluates when `items`, `filterCat`, or `search` changes.
+
+### What's deferred (Phase 4 extension)
+
+The service stubs (`createItem`, `updateItem`, `deleteItem`, `createCategory`, `renameCategory`, `deleteCategory`) need corresponding Django endpoints before they can be activated. When ready, replace the `MenuManagement` `useState(bakeryMenu)` initializer with a `useEffect` fetch from `menuService.getItems()` and wire each mutation handler to the appropriate service call instead of updating local state directly. The component interface does not need to change.
 
 ---
 

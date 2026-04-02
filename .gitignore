@@ -12,6 +12,7 @@ node_modules/
 .DS_Store
 
 CLAUDE.md
+memory/
 
 # Django backend
 backend/.env

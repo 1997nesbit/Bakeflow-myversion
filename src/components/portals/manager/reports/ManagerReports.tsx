@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
-import type { PaymentMethod } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order, PaymentMethod } from '@/types/order'
+import type { DailyBatchItem } from '@/types/production'
 import { mockExpenses, mockBusinessExpenses, mockDebts } from '@/data/mock/finance'
 import { mockStaff } from '@/data/mock/staff'
 import { mockCustomers } from '@/data/mock/customers'
-import { mockDailyBatches } from '@/data/mock/production'
+import { ordersService, productionService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, paymentMethodLabels } from '@/data/constants/labels'
 import { OverviewTab } from './OverviewTab'
 import { OrdersTab } from './OrdersTab'
@@ -19,8 +20,21 @@ const PIE_COLORS = ['#CA0123', '#e06080', '#f89bad', '#3b82f6', '#8b5cf6', '#10b
 
 export function ManagerReports() {
   const [tab, setTab] = useState<'overview' | 'orders' | 'expenses' | 'staff'>('overview')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [batches, setBatches] = useState<DailyBatchItem[]>([])
 
-  const totalRevenue = mockOrders.reduce((s, o) => s + o.amountPaid, 0)
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    productionService.getBatches({ signal: controller.signal })
+      .then(res => setBatches(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
   const bizTotal = mockBusinessExpenses.reduce((s, e) => s + e.amount, 0)
   const stockTotal = mockExpenses.reduce((s, e) => s + e.amount, 0)
   const totalExpenses = bizTotal + stockTotal
@@ -28,11 +42,11 @@ export function ManagerReports() {
   const totalDebt = mockDebts.reduce((s, d) => s + d.balance, 0)
 
   const statusDistribution = Object.entries(
-    mockOrders.reduce((acc, o) => { acc[o.status] = (acc[o.status] || 0) + 1; return acc }, {} as Record<string, number>)
+    orders.reduce((acc, o) => { acc[o.status] = (acc[o.status] || 0) + 1; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: statusLabels[name as keyof typeof statusLabels] || name, value }))
 
   const methodData = Object.entries(
-    mockOrders.filter(o => o.paymentMethod).reduce((acc, o) => {
+    orders.filter(o => o.paymentMethod).reduce((acc, o) => {
       const m = o.paymentMethod as PaymentMethod
       acc[m] = (acc[m] || 0) + o.amountPaid
       return acc
@@ -40,8 +54,8 @@ export function ManagerReports() {
   ).map(([name, value]) => ({ name: paymentMethodLabels[name as PaymentMethod] || name, value }))
 
   const orderTypeData = [
-    { name: 'Menu', value: mockOrders.filter(o => o.orderType === 'menu').length },
-    { name: 'Custom', value: mockOrders.filter(o => o.orderType === 'custom').length },
+    { name: 'Menu', value: orders.filter(o => o.orderType === 'menu').length },
+    { name: 'Custom', value: orders.filter(o => o.orderType === 'custom').length },
   ]
 
   const bizExpenseData = Object.entries(
@@ -56,9 +70,9 @@ export function ManagerReports() {
     mockStaff.filter(s => s.status === 'active').reduce((acc, s) => { acc[s.role] = (acc[s.role] || 0) + 1; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value }))
 
-  const totalBaked = mockDailyBatches.reduce((s, b) => s + b.quantityBaked, 0)
-  const totalRemaining = mockDailyBatches.reduce((s, b) => s + b.quantityRemaining, 0)
-  const sellThrough = Math.round(((totalBaked - totalRemaining) / totalBaked) * 100)
+  const totalBaked = batches.reduce((s, b) => s + b.quantityBaked, 0)
+  const totalRemaining = batches.reduce((s, b) => s + b.quantityRemaining, 0)
+  const sellThrough = totalBaked > 0 ? Math.round(((totalBaked - totalRemaining) / totalBaked) * 100) : 0
 
   const activeStaff = mockStaff.filter(s => s.status === 'active')
 
@@ -93,7 +107,7 @@ export function ManagerReports() {
           />
         )}
         {tab === 'orders' && (
-          <OrdersTab statusDistribution={statusDistribution} />
+          <OrdersTab statusDistribution={statusDistribution} orders={orders} />
         )}
         {tab === 'expenses' && (
           <ExpensesTab
@@ -115,6 +129,7 @@ export function ManagerReports() {
             totalBaked={totalBaked}
             totalRemaining={totalRemaining}
             sellThrough={sellThrough}
+            batches={batches}
           />
         )}
       </main>

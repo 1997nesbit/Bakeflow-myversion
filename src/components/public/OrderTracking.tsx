@@ -1,9 +1,11 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { ChefHat, Paintbrush, Package, Truck, CheckCircle, Clock } from 'lucide-react'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { trackingStages } from '@/data/constants/tracking'
 
 const stageIcons = [ChefHat, Paintbrush, Package, Truck]
@@ -16,8 +18,15 @@ const stageColors = {
 export function OrderTracking() {
   const params = useParams()
   const trackingId = params.id as string
+  const [order, setOrder] = useState<Order | null>(null)
 
-  const order = useMemo(() => mockOrders.find(o => o.trackingId === trackingId), [trackingId])
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getByTrackingId(trackingId)
+      .then(setOrder)
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [trackingId])
 
   if (!order) {
     return (
@@ -77,7 +86,7 @@ export function OrderTracking() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">Customer</p>
-              <p className="font-medium text-foreground">{order.customerName}</p>
+              <p className="font-medium text-foreground">{order.customer.name}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">{order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}</p>

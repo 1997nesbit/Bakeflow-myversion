@@ -43,7 +43,7 @@ export function KitchenTracker({ inKitchen, overdueOrders, mounted }: KitchenTra
                         {statusLabels[order.status]}
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{order.customerName}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{order.customer.name}</p>
                   </div>
                   {isOverdue && <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />}
                 </div>

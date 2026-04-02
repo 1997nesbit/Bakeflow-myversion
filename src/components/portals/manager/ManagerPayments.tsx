@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { OrderStatus, PaymentMethod } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import type { Order, PaymentMethod } from '@/types/order'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, paymentMethodLabels } from '@/data/constants/labels'
 import { CreditCard, Search, DollarSign, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 
@@ -14,11 +15,20 @@ export function ManagerPayments() {
   const [search, setSearch] = useState('')
   const [filterPayment, setFilterPayment] = useState<string>('all')
   const [filterMethod, setFilterMethod] = useState<string>('all')
+  const [allOrders, setAllOrders] = useState<Order[]>([])
 
-  const orders = [...mockOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setAllOrders([...res.results].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const orders = allOrders
 
   const filtered = orders.filter(o => {
-    const matchSearch = o.customerName.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search)
+    const matchSearch = o.customer.name.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search)
     const matchPay = filterPayment === 'all' || o.paymentStatus === filterPayment
     const matchMethod = filterMethod === 'all' || o.paymentMethod === filterMethod
     return matchSearch && matchPay && matchMethod
@@ -114,7 +124,7 @@ export function ManagerPayments() {
             <div key={o.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-sm font-semibold text-white truncate">{o.customerName}</p>
+                  <p className="text-sm font-semibold text-white truncate">{o.customer.name}</p>
                   <Badge className={`text-[10px] px-1.5 py-0 border-0 ${payStatusStyle[o.paymentStatus]}`}>{o.paymentStatus}</Badge>
                   <Badge className={`text-[10px] px-1.5 py-0 border-0 ${orderStatusStyle[o.status]}`}>{statusLabels[o.status]}</Badge>
                 </div>

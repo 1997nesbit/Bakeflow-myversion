@@ -35,7 +35,7 @@ export function DepositTracker({ depositOrders, dispatchedOrders }: DepositTrack
                   <div key={order.id} className="rounded-lg border border-border p-3">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="text-xs font-bold text-foreground">{order.customerName}</p>
+                        <p className="text-xs font-bold text-foreground">{order.customer.name}</p>
                         <p className="text-[11px] text-muted-foreground">{order.id} - Due: {new Date(order.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                       </div>
                       <span className="text-sm font-bold text-secondary">TZS {balance.toLocaleString()}</span>
@@ -77,7 +77,7 @@ export function DepositTracker({ depositOrders, dispatchedOrders }: DepositTrack
                 <div key={order.id} className="rounded-lg border border-border p-3">
                   <div className="flex items-start justify-between mb-1">
                     <div>
-                      <p className="text-xs font-bold text-foreground">{order.id} - {order.customerName}</p>
+                      <p className="text-xs font-bold text-foreground">{order.id} - {order.customer.name}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{order.deliveryAddress}</p>
                     </div>
                     {order.driverAccepted ? (

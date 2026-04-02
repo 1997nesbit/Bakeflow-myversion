@@ -4,10 +4,11 @@ import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import type { Order } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { paymentMethodLabels } from '@/data/constants/labels'
 import { History, Search, Package, Clock, Calendar, User, MapPin, CreditCard, Truck, ShoppingBag, Cake, ChefHat } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 const statusLabels: Record<string, string> = {
   pending: 'Pending', paid: 'Paid', baker: 'In Kitchen', quality: 'Quality Check',
@@ -29,11 +30,15 @@ export function ManagerOrderHistory() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'menu' | 'custom'>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [allOrders, setAllOrders] = useState<Order[]>([])
 
-  const allOrders = useMemo(() =>
-    [...mockOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    []
-  )
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setAllOrders([...res.results].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const filtered = useMemo(() =>
     allOrders.filter(o => {
@@ -43,8 +48,8 @@ export function ManagerOrderHistory() {
         const q = search.toLowerCase()
         return o.id.toLowerCase().includes(q) ||
           o.trackingId.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.customerPhone.includes(q)
+          o.customer.name.toLowerCase().includes(q) ||
+          o.customer.phone.includes(q)
       }
       return true
     }),
@@ -136,7 +141,7 @@ export function ManagerOrderHistory() {
                       {order.paymentStatus === 'paid' ? 'Paid' : order.paymentStatus === 'deposit' ? 'Deposit' : 'Unpaid'}
                     </Badge>
                     {order.orderType === 'custom' && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-manager-accent/20 text-primary">Custom</Badge>}
-                    {order.isGoldCustomer && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-yellow-500/20 text-yellow-300">Gold</Badge>}
+                    {order.customer.isGold && <Badge className="text-[10px] px-1.5 py-0 border-0 bg-yellow-500/20 text-yellow-300">Gold</Badge>}
                   </div>
 
                   {/* Items */}
@@ -146,7 +151,7 @@ export function ManagerOrderHistory() {
 
                   {/* Meta row */}
                   <div className="flex items-center gap-4 text-[11px] text-white/30 flex-wrap">
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{order.customerName}</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{order.customer.name}</span>
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(order.createdAt).toLocaleDateString()}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{order.pickupTime}</span>
                     <span className="flex items-center gap-1">

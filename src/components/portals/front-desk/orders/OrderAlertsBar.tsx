@@ -36,7 +36,7 @@ export function OrderAlertsBar({
             </div>
             <div>
               <p className="font-semibold text-sm text-red-900">
-                Kitchen Overdue: {alert.order.id} - {alert.order.customerName}
+                Kitchen Overdue: {alert.order.id} - {alert.order.customer.name}
               </p>
               <p className="text-xs text-red-700">
                 Est. {alert.order.estimatedMinutes}min | {alert.minutesOver}min overdue - Check on the kitchen!
@@ -74,7 +74,7 @@ export function OrderAlertsBar({
                     : `Advance Order Due in ${days} days: ${order.id}`}
                 </p>
                 <p className="text-xs text-amber-700">
-                  {order.customerName}
+                  {order.customer.name}
                   {order.paymentStatus === 'deposit'
                     ? ` | Balance: TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}`
                     : ''}

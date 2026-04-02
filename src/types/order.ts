@@ -17,13 +17,23 @@ export type PaymentStatus = 'unpaid' | 'deposit' | 'paid'
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_money' | 'card'
 export type PaymentTerms = 'upfront' | 'on_delivery'
 
+/** Nested customer object returned by the backend on every order response. */
+export interface OrderCustomer {
+  id: string
+  name: string
+  phone: string
+  email?: string
+  isGold: boolean
+}
+
 export interface MenuItem {
   id: string
   name: string
-  category: 'cake' | 'bread' | 'pastry' | 'snack' | 'beverage'
+  category: string
   price: number
   estimatedMinutes: number
   description?: string
+  isAvailable?: boolean
 }
 
 export interface CustomCakeDetails {
@@ -43,16 +53,27 @@ export interface OrderItem {
   isCustom: boolean
 }
 
+export interface StatusHistoryEntry {
+  fromStatus: string
+  toStatus: string
+  changedAt: string
+}
+
+/**
+ * Order as returned by the Django API.
+ * All fields are camelCase — djangorestframework-camel-case converts
+ * the backend snake_case automatically.
+ *
+ * Customer data is a nested object (not flat fields).
+ */
 export interface Order {
   id: string
-  customerName: string
-  customerPhone: string
-  customerEmail?: string
+  trackingId: string
+  customer: OrderCustomer
   orderType: OrderType
   items: OrderItem[]
   status: OrderStatus
   specialNotes?: string
-  cakeDescription?: string
   noteForCustomer?: string
   pickupDate: string
   pickupTime: string
@@ -71,8 +92,7 @@ export interface Order {
   dispatchedAt?: string
   driverAccepted?: boolean
   driverDelivered?: boolean
-  trackingId: string
-  isGoldCustomer?: boolean
+  statusHistory?: StatusHistoryEntry[]
 }
 
 export interface OverdueAlert {
@@ -80,6 +100,11 @@ export interface OverdueAlert {
   minutesOver: number
 }
 
+/**
+ * Sent to POST /api/orders/
+ * Customer data is flat here — the backend's OrderService finds or creates
+ * the Customer record from these fields.
+ */
 export interface NewOrderData {
   customerName: string
   customerPhone: string
@@ -87,7 +112,6 @@ export interface NewOrderData {
   orderType: OrderType
   items: OrderItem[]
   specialNotes?: string
-  cakeDescription?: string
   noteForCustomer?: string
   pickupDate: string
   pickupTime: string
@@ -100,6 +124,4 @@ export interface NewOrderData {
   paymentTerms: PaymentTerms
   isAdvanceOrder: boolean
   estimatedMinutes: number
-  trackingId: string
-  isGoldCustomer?: boolean
 }

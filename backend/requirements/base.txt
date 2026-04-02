@@ -1,6 +1,7 @@
 Django
 djangorestframework
 djangorestframework-simplejwt
+djangorestframework-camel-case
 psycopg2-binary
 django-cors-headers
 django-filter

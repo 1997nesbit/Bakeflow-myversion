@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/dialog'
 import { OrderDetail } from '@/components/portals/front-desk/orders/OrderDetail'
 import type { Order, OrderStatus } from '@/types/order'
-import { mockOrders } from '@/data/mock/orders'
+import { ordersService } from '@/lib/api/services/orders'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, statusColors, orderTypeLabels } from '@/data/constants/labels'
 import {
   Search,
@@ -40,7 +41,15 @@ import {
 } from 'lucide-react'
 
 export function FrontDeskSearch() {
-  const [orders] = useState<Order[]>(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    ordersService.getAll({ signal: controller.signal })
+      .then(res => setOrders(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -57,9 +66,9 @@ export function FrontDeskSearch() {
   const filteredOrders = orders.filter(order => {
     const q = searchQuery.toLowerCase()
     const matchesSearch = !q ||
-      order.customerName.toLowerCase().includes(q) ||
+      order.customer.name.toLowerCase().includes(q) ||
       order.id.toLowerCase().includes(q) ||
-      order.customerPhone.includes(q) ||
+      order.customer.phone.includes(q) ||
       order.items.some(i => i.name.toLowerCase().includes(q))
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter
     const matchesDelivery = deliveryFilter === 'all' || order.deliveryType === deliveryFilter
@@ -193,14 +202,14 @@ export function FrontDeskSearch() {
                     {/* Left: Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="font-semibold text-foreground">{order.customerName}</p>
+                        <p className="font-semibold text-foreground">{order.customer.name}</p>
                         <p className="text-sm text-muted-foreground">{order.id}</p>
                         <Badge className={`${statusColors[order.status]} border-0 text-xs`}>{statusLabels[order.status]}</Badge>
                         <Badge variant="outline" className="bg-transparent text-xs">{orderTypeLabels[order.orderType]}</Badge>
                       </div>
                       <p className="text-sm text-foreground truncate">{order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
                       <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{order.customerPhone}</span>
+                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{order.customer.phone}</span>
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{order.pickupTime}</span>
                         <span className="flex items-center gap-1">
@@ -246,17 +255,17 @@ export function FrontDeskSearch() {
             {messageOrder && (
               <div className="space-y-4">
                 <div className="rounded-lg bg-accent p-3">
-                  <p className="font-medium text-foreground">{messageOrder.customerName}</p>
-                  <p className="text-sm text-muted-foreground">{messageOrder.customerPhone}</p>
+                  <p className="font-medium text-foreground">{messageOrder.customer.name}</p>
+                  <p className="text-sm text-muted-foreground">{messageOrder.customer.phone}</p>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="search-message" className="text-sm font-medium text-foreground">Message</label>
                   <Textarea id="search-message" placeholder="Type message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} className="min-h-[100px]" />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is ready for pickup!`)}>Ready for Pickup</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, your order ${messageOrder.id} is out for delivery!`)}>Out for Delivery</Button>
-                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customerName}, regarding your order ${messageOrder.id}, please contact us.`)}>General Inquiry</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customer.name}, your order ${messageOrder.id} is ready for pickup!`)}>Ready for Pickup</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customer.name}, your order ${messageOrder.id} is out for delivery!`)}>Out for Delivery</Button>
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => setMessageText(`Hi ${messageOrder.customer.name}, regarding your order ${messageOrder.id}, please contact us.`)}>General Inquiry</Button>
                 </div>
               </div>
             )}

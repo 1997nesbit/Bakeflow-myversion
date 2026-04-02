@@ -147,6 +147,44 @@ Activate `inventoryService`. Update `InventoryDashboard`, `InventoryStockIn`, `I
 - [ ] Apply the AbortController pattern to every new `useEffect` fetch.
 - [ ] Inventory list responses are paginated — read `.results` from `PaginatedResponse<InventoryItem>`.
 
+#### Phase 4 extension — Menu CRUD
+
+The Menu Management UI (`/manager/menu`, `/front-desk/menu`) is already built and uses local state. Activate it against the API by completing the following:
+
+**Backend endpoints needed** (add to `apps/orders/views.py` `MenuViewSet`):
+```
+POST   /api/menu/                        create menu item
+PATCH  /api/menu/{id}/                   update menu item
+DELETE /api/menu/{id}/                   delete menu item
+POST   /api/menu/categories/             create category
+PATCH  /api/menu/categories/{slug}/      rename category (cascades to all items)
+DELETE /api/menu/categories/{slug}/      delete category (reject if items exist)
+```
+Permissions: `IsManagerOrFrontDesk` on all write endpoints.
+
+**Frontend activation** (`src/components/shared/MenuManagement.tsx`):
+1. Replace `useState<MenuItem[]>(bakeryMenu)` with a `useEffect` fetch:
+   ```ts
+   useEffect(() => {
+     const controller = new AbortController()
+     menuService.getItems({ signal: controller.signal })
+       .then(setItems)
+       .catch(handleApiError)
+     return () => controller.abort()
+   }, [])
+   ```
+2. In `handleSaveItem` — replace `setItems(...)` local mutations with `menuService.createItem()` / `menuService.updateItem()` calls inside `try/catch → handleApiError`.
+3. In `handleDeleteItem` — replace local filter with `menuService.deleteItem(deleteId)`.
+4. In `handleAddCat` / `handleRenameCat` / `handleDeleteCat` — replace local state mutations with the corresponding `menuService.*Category()` calls; refetch `getCategories()` after each.
+5. Remove `emptyCats` state — categories are server-managed once the API is live.
+
+**Phase 4 extension checklist:**
+- [ ] `MenuViewSet` write actions added and registered in `apps/orders/urls.py`
+- [ ] `IsManagerOrFrontDesk` permission applied to all write endpoints
+- [ ] `MenuManagement` `useState` initializer replaced with `useEffect` fetch
+- [ ] All local mutation handlers replaced with `menuService` calls
+- [ ] `emptyCats` state removed; category list fetched from `menuService.getCategories()`
+
 ---
 
 ### Phase 5 — Finance & Payments
