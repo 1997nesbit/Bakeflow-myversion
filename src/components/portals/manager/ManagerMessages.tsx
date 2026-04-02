@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { StaffRole } from '@/types/staff'
-import { mockCustomers } from '@/data/mock/customers'
-import { mockStaff } from '@/data/mock/staff'
+import type { CustomerRecord } from '@/types/customer'
+import type { StaffMember } from '@/types/staff'
+import { customersService } from '@/lib/api/services/customers'
+import { staffService } from '@/lib/api/services/staff'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { staffRoleLabels } from '@/data/constants/labels'
 import { MessageSquare, Send, Users, Crown, Clock, CheckCircle2, Phone } from 'lucide-react'
 
@@ -24,6 +26,8 @@ interface SentMessage {
 }
 
 export function ManagerMessages() {
+  const [customers, setCustomers] = useState<CustomerRecord[]>([])
+  const [staff, setStaff] = useState<StaffMember[]>([])
   const [audience, setAudience] = useState<string>('all_customers')
   const [channel, setChannel] = useState<'sms' | 'whatsapp'>('whatsapp')
   const [message, setMessage] = useState('')
@@ -33,14 +37,32 @@ export function ManagerMessages() {
     { id: 'MSG-003', audience: 'All Staff', message: 'Reminder: Monthly meeting this Friday at 5pm. Please confirm attendance.', recipientCount: 9, sentAt: '2026-02-04T14:00:00', channel: 'whatsapp' },
   ])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    customersService.getAll({ signal: controller.signal })
+      .then(res => setCustomers(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    staffService.getAll({ signal: controller.signal })
+      .then(res => setStaff(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  const activeStaff = staff.filter(s => s.status === 'active')
+
   const getRecipientCount = () => {
     switch (audience) {
-      case 'all_customers': return mockCustomers.length
-      case 'gold_customers': return mockCustomers.filter(c => c.isGold).length
-      case 'all_staff': return mockStaff.filter(s => s.status === 'active').length
-      case 'bakers': return mockStaff.filter(s => s.role === 'baker' && s.status === 'active').length
-      case 'drivers': return mockStaff.filter(s => s.role === 'driver' && s.status === 'active').length
-      case 'front_desk': return mockStaff.filter(s => s.role === 'front_desk' && s.status === 'active').length
+      case 'all_customers': return customers.length
+      case 'gold_customers': return customers.filter(c => c.isGold).length
+      case 'all_staff': return activeStaff.length
+      case 'bakers': return activeStaff.filter(s => s.role === 'baker').length
+      case 'drivers': return activeStaff.filter(s => s.role === 'driver').length
+      case 'front_desk': return activeStaff.filter(s => s.role === 'front_desk').length
       default: return 0
     }
   }
@@ -93,12 +115,12 @@ export function ManagerMessages() {
                     <Select value={audience} onValueChange={setAudience}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all_customers">All Customers ({mockCustomers.length})</SelectItem>
-                        <SelectItem value="gold_customers">Gold Customers ({mockCustomers.filter(c => c.isGold).length})</SelectItem>
-                        <SelectItem value="all_staff">All Staff ({mockStaff.filter(s => s.status === 'active').length})</SelectItem>
-                        <SelectItem value="bakers">Bakers ({mockStaff.filter(s => s.role === 'baker' && s.status === 'active').length})</SelectItem>
-                        <SelectItem value="drivers">Drivers ({mockStaff.filter(s => s.role === 'driver' && s.status === 'active').length})</SelectItem>
-                        <SelectItem value="front_desk">Front Desk ({mockStaff.filter(s => s.role === 'front_desk' && s.status === 'active').length})</SelectItem>
+                        <SelectItem value="all_customers">All Customers ({customers.length})</SelectItem>
+                        <SelectItem value="gold_customers">Gold Customers ({customers.filter(c => c.isGold).length})</SelectItem>
+                        <SelectItem value="all_staff">All Staff ({activeStaff.length})</SelectItem>
+                        <SelectItem value="bakers">Bakers ({activeStaff.filter(s => s.role === 'baker').length})</SelectItem>
+                        <SelectItem value="drivers">Drivers ({activeStaff.filter(s => s.role === 'driver').length})</SelectItem>
+                        <SelectItem value="front_desk">Front Desk ({activeStaff.filter(s => s.role === 'front_desk').length})</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

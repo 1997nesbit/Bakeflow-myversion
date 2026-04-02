@@ -1,5 +1,5 @@
 // ---- STAFF SERVICE ----
-// Phase 6: Activate API calls when Django staff endpoints are ready.
+// Phase 3: Active — all calls go to the Django REST API.
 //
 // Django endpoints:
 //   GET    /api/staff/
@@ -8,33 +8,27 @@
 //   POST   /api/staff/{id}/deactivate/
 
 import type { StaffMember } from '@/types/staff'
-import { mockStaff } from '@/data/mock/staff'
+import type { PaginatedResponse } from '@/types/api'
+import { apiClient } from '@/lib/api/client'
 
 export const staffService = {
   /** GET /api/staff/ */
-  getAll: async (): Promise<StaffMember[]> => {
-    // TODO (Phase 6): return (await apiClient.get<StaffMember[]>('/staff/')).data
-    return Promise.resolve([...mockStaff])
+  getAll: async (options?: { signal?: AbortSignal }): Promise<PaginatedResponse<StaffMember>> => {
+    return (await apiClient.get<PaginatedResponse<StaffMember>>('/staff/', { signal: options?.signal })).data
   },
 
   /** POST /api/staff/ */
   create: async (payload: Omit<StaffMember, 'id'>): Promise<StaffMember> => {
-    // TODO (Phase 6): return (await apiClient.post<StaffMember>('/staff/', payload)).data
-    void payload
-    throw new Error('staffService.create() not yet connected to backend.')
+    return (await apiClient.post<StaffMember>('/staff/', payload)).data
   },
 
   /** PATCH /api/staff/{id}/ */
   update: async (id: string, payload: Partial<StaffMember>): Promise<StaffMember> => {
-    // TODO (Phase 6): return (await apiClient.patch<StaffMember>(`/staff/${id}/`, payload)).data
-    void id; void payload
-    throw new Error('staffService.update() not yet connected to backend.')
+    return (await apiClient.patch<StaffMember>(`/staff/${id}/`, payload)).data
   },
 
   /** POST /api/staff/{id}/deactivate/ */
   deactivate: async (id: string): Promise<void> => {
-    // TODO (Phase 6): await apiClient.post(`/staff/${id}/deactivate/`)
-    void id
-    throw new Error('staffService.deactivate() not yet connected to backend.')
+    await apiClient.post(`/staff/${id}/deactivate/`)
   },
 }

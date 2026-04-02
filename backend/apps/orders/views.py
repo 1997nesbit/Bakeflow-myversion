@@ -46,7 +46,7 @@ class OrderViewSet(viewsets.GenericViewSet):
     def get_permissions(self):
         if self.action == 'track':
             return [AllowAny()]
-        if self.action in ('create', 'post_to_baker', 'dispatch', 'record_payment'):
+        if self.action in ('create', 'post_to_baker', 'dispatch_order', 'record_payment'):
             return [IsManagerOrFrontDesk()]
         if self.action in ('accept', 'quality_check'):
             return [IsBaker()]
@@ -175,7 +175,7 @@ class OrderViewSet(viewsets.GenericViewSet):
         return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='dispatch')
-    def dispatch(self, request, pk=None):
+    def dispatch_order(self, request, pk=None):
         order = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = DispatchSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -207,6 +207,7 @@ class OrderViewSet(viewsets.GenericViewSet):
 
 class MenuViewSet(viewsets.GenericViewSet):
     queryset = MenuItem.objects.filter(is_active=True)
+    pagination_class = None
 
     def get_permissions(self):
         if self.action in ('create', 'partial_update'):
@@ -214,10 +215,12 @@ class MenuViewSet(viewsets.GenericViewSet):
         return [IsAuthenticated()]
 
     def list(self, request):
-        page = self.paginate_queryset(self.get_queryset())
-        if page is not None:
-            return self.get_paginated_response(MenuItemSerializer(page, many=True).data)
         return Response(MenuItemSerializer(self.get_queryset(), many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        categories = MenuItem.objects.values_list('category', flat=True).distinct()
+        return Response(list(categories))
 
     def create(self, request):
         serializer = MenuItemSerializer(data=request.data)

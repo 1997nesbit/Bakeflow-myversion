@@ -37,12 +37,27 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
 
   useEffect(() => {
     const controller = new AbortController()
+    
+    // Fetch menu items, but fallback to static bakeryMenu if database is empty
     menuService.getItems({ signal: controller.signal })
-      .then(setMenuItems)
+      .then(data => {
+        if (data && data.length > 0) {
+          setMenuItems(data)
+        }
+      })
       .catch(handleApiError)
+
+    // Fetch categories, but fallback to static categories if database is empty
     menuService.getCategories({ signal: controller.signal })
-      .then(setCategories)
+      .then(data => {
+        if (data && data.length > 0) {
+          setCategories(data)
+        } else {
+          setCategories(Array.from(new Set(bakeryMenu.map(m => m.category))))
+        }
+      })
       .catch(handleApiError)
+
     return () => controller.abort()
   }, [])
 

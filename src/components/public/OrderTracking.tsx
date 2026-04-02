@@ -1,11 +1,5 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
 import { ChefHat, Paintbrush, Package, Truck, CheckCircle, Clock } from 'lucide-react'
 import type { Order } from '@/types/order'
-import { ordersService } from '@/lib/api/services/orders'
-import { handleApiError } from '@/lib/utils/handle-error'
 import { trackingStages } from '@/data/constants/tracking'
 
 const stageIcons = [ChefHat, Paintbrush, Package, Truck]
@@ -15,18 +9,13 @@ const stageColors = {
   pending: { bg: 'bg-muted', border: 'border-border', icon: 'text-muted-foreground', line: 'bg-border' },
 }
 
-export function OrderTracking() {
-  const params = useParams()
-  const trackingId = params.id as string
-  const [order, setOrder] = useState<Order | null>(null)
+interface Props {
+  initialOrder: Order | null
+  trackingId: string
+}
 
-  useEffect(() => {
-    const controller = new AbortController()
-    ordersService.getByTrackingId(trackingId)
-      .then(setOrder)
-      .catch(handleApiError)
-    return () => controller.abort()
-  }, [trackingId])
+export function OrderTracking({ initialOrder, trackingId }: Props) {
+  const order = initialOrder
 
   if (!order) {
     return (

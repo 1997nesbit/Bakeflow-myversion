@@ -5,9 +5,10 @@ import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import type { Order, PaymentMethod } from '@/types/order'
 import type { DailyBatchItem } from '@/types/production'
 import { mockExpenses, mockBusinessExpenses, mockDebts } from '@/data/mock/finance'
-import { mockStaff } from '@/data/mock/staff'
-import { mockCustomers } from '@/data/mock/customers'
+import type { StaffMember } from '@/types/staff'
 import { ordersService, productionService } from '@/lib/api/services/orders'
+import { staffService } from '@/lib/api/services/staff'
+import { customersService } from '@/lib/api/services/customers'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, paymentMethodLabels } from '@/data/constants/labels'
 import { OverviewTab } from './OverviewTab'
@@ -22,6 +23,9 @@ export function ManagerReports() {
   const [tab, setTab] = useState<'overview' | 'orders' | 'expenses' | 'staff'>('overview')
   const [orders, setOrders] = useState<Order[]>([])
   const [batches, setBatches] = useState<DailyBatchItem[]>([])
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [customerCount, setCustomerCount] = useState(0)
+  const [goldCustomerCount, setGoldCustomerCount] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -30,6 +34,25 @@ export function ManagerReports() {
       .catch(handleApiError)
     productionService.getBatches({ signal: controller.signal })
       .then(res => setBatches(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    staffService.getAll({ signal: controller.signal })
+      .then(res => setStaff(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    customersService.getAll({ signal: controller.signal })
+      .then(res => {
+        setCustomerCount(res.results.length)
+        setGoldCustomerCount(res.results.filter(c => c.isGold).length)
+      })
       .catch(handleApiError)
     return () => controller.abort()
   }, [])
@@ -66,15 +89,15 @@ export function ManagerReports() {
     mockExpenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + e.amount; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value })).sort((a, b) => b.value - a.value)
 
+  const activeStaff = staff.filter(s => s.status === 'active')
+
   const staffByRole = Object.entries(
-    mockStaff.filter(s => s.status === 'active').reduce((acc, s) => { acc[s.role] = (acc[s.role] || 0) + 1; return acc }, {} as Record<string, number>)
+    activeStaff.reduce((acc, s) => { acc[s.role] = (acc[s.role] || 0) + 1; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value }))
 
   const totalBaked = batches.reduce((s, b) => s + b.quantityBaked, 0)
   const totalRemaining = batches.reduce((s, b) => s + b.quantityRemaining, 0)
   const sellThrough = totalBaked > 0 ? Math.round(((totalBaked - totalRemaining) / totalBaked) * 100) : 0
-
-  const activeStaff = mockStaff.filter(s => s.status === 'active')
 
   return (
     <div className="min-h-screen bg-manager-bg">
@@ -124,8 +147,8 @@ export function ManagerReports() {
             staffByRole={staffByRole}
             activeStaffCount={activeStaff.length}
             monthlyPayroll={activeStaff.reduce((s, m) => s + m.salary, 0)}
-            totalCustomers={mockCustomers.length}
-            goldCustomers={mockCustomers.filter(c => c.isGold).length}
+            totalCustomers={customerCount}
+            goldCustomers={goldCustomerCount}
             totalBaked={totalBaked}
             totalRemaining={totalRemaining}
             sellThrough={sellThrough}

@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-03 (Phase 2 complete + Menu Management UI)
+Last updated: 2026-04-03 (Phase 3 complete)
 
 ---
 
@@ -143,11 +143,36 @@ The service stubs (`createItem`, `updateItem`, `deleteItem`, `createCategory`, `
 
 ---
 
-## Phase 3 — Customers & Staff ⬜ NOT STARTED
+## Phase 3 — Customers & Staff ✅ COMPLETE (2026-04-03)
 
-**Backend:** `apps/customers`
+### Backend (`backend/`)
 
-**Frontend:** Activate `customersService`, `staffService`. Update `ManagerCustomers`, `ManagerUsers`, `FrontDeskSearch`. Delete `src/data/mock/customers.ts`, `staff.ts`.
+- `apps/customers/models.py` — `Customer` (UUID PK, phone unique, `is_gold`, `total_orders`/`total_spent`/`last_order_date` denormalized counters) — scaffolded in Phase 2, first exposed via API here
+- `apps/customers/serializers.py` — `CustomerSerializer` (all fields; `total_orders`, `total_spent`, `last_order_date` read-only)
+- `apps/customers/views.py` — `CustomerViewSet`: list/create/partial_update, search by name/phone/email, filter by `is_gold`, ordering by name/total_spent/last_order_date
+- `apps/customers/urls.py` — registered at `/api/customers/`
+- `apps/accounts/serializers.py` — `StaffPublicSerializer` (id, name, role, avatar_url — no salary), `StaffDetailSerializer` (adds email, phone, status, salary, join_date)
+- `apps/accounts/views.py` — `StaffViewSet.get_serializer_class()` returns `StaffDetailSerializer` for `manager` role, `StaffPublicSerializer` for all other roles
+
+### Frontend (`src/`)
+
+- `src/lib/api/services/customers.ts` — activated: `getAll` (PaginatedResponse + AbortController), `getById`, `create`, `update`
+- `src/lib/api/services/staff.ts` — activated: `getAll` (PaginatedResponse + AbortController), `create`, `update`, `deactivate`
+- `src/components/portals/manager/ManagerCustomers.tsx` — real API fetch; `toggleGold` uses optimistic update with rollback on error
+- `src/components/portals/manager/ManagerUsers.tsx` — real API fetch; `handleAdd`, `handleEdit`, `handleToggleStatus` all call service with error rollback
+- `src/components/portals/manager/ManagerDashboard.tsx` — added staff + customer `useEffect` fetches; removed mock imports
+- `src/components/portals/manager/ManagerReports.tsx` — staff + customer data fetched via service; `staffByRole` and customer counts derived from API results
+- `src/components/portals/manager/ManagerTasks.tsx` — staff fetched for "Assign To" dropdown
+- `src/components/portals/manager/ManagerMessages.tsx` — customers + staff fetched for audience counts in bulk message composer
+- `src/components/public/OrderTracking.tsx` — removed `'use client'`, `useParams`, `useEffect`; refactored to accept `{ initialOrder, trackingId }` props (pure render)
+- `src/app/track/[id]/page.tsx` — converted to async Server Component; fetches order server-side via `ordersService.getByTrackingId()`; adds `generateMetadata` for SEO title
+- `src/data/mock/customers.ts`, `src/data/mock/staff.ts` — deleted
+- `src/data/mock/index.ts` — Phase 3 exports removed
+
+### Design decisions made during Phase 3
+
+- **Tracking page as Server Component** — `/track/[id]` is the only public, SEO-indexable page; server-fetching avoids a loading flash and makes the HTML crawlable without JS
+- **`StaffPublicSerializer` excludes salary** — non-manager roles calling `GET /api/staff/` receive name, role, and avatar only; salary is a manager-only field enforced at the serializer level, not just the endpoint level
 
 ---
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { StaffMember, StaffRole } from '@/types/staff'
-import { mockStaff } from '@/data/mock/staff'
+import { staffService } from '@/lib/api/services/staff'
+import { handleApiError } from '@/lib/utils/handle-error'
+import { toast } from 'sonner'
 import { staffRoleLabels } from '@/data/constants/labels'
 import { Search, Plus, Phone, Mail, Calendar, Edit2, ToggleLeft, ToggleRight } from 'lucide-react'
 
 export function ManagerUsers() {
-  const [staff, setStaff] = useState<StaffMember[]>(mockStaff)
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
   const [showAdd, setShowAdd] = useState(false)
@@ -25,6 +28,15 @@ export function ManagerUsers() {
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formSalary, setFormSalary] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    staffService.getAll({ signal: controller.signal })
+      .then(res => setStaff(res.results))
+      .catch(handleApiError)
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [])
 
   const filtered = staff.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.phone.includes(search)
@@ -38,30 +50,60 @@ export function ManagerUsers() {
     driver: 'bg-purple-500/20 text-purple-300', inventory_clerk: 'bg-green-500/20 text-green-300',
   }
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!formName || !formPhone) return
-    const newStaff: StaffMember = {
-      id: `STF-${String(staff.length + 1).padStart(3, '0')}`,
-      name: formName, role: formRole, phone: formPhone, email: formEmail || undefined,
-      status: 'active', joinDate: new Date().toISOString().split('T')[0], salary: Number(formSalary) || 0,
+    try {
+      const created = await staffService.create({
+        name: formName, role: formRole, phone: formPhone,
+        email: formEmail || undefined, status: 'active',
+        joinDate: new Date().toISOString().split('T')[0], salary: Number(formSalary) || 0,
+      })
+      setStaff(prev => [...prev, created])
+      setShowAdd(false)
+      setFormName(''); setFormPhone(''); setFormEmail(''); setFormSalary('')
+      toast.success('Staff member added.')
+    } catch (err) {
+      handleApiError(err)
     }
-    setStaff([...staff, newStaff])
-    setShowAdd(false)
-    setFormName(''); setFormPhone(''); setFormEmail(''); setFormSalary('')
   }
 
-  const handleToggleStatus = (id: string) => {
-    setStaff(staff.map(s => s.id === id ? { ...s, status: s.status === 'active' ? 'inactive' : 'active' } : s))
+  const handleToggleStatus = async (id: string) => {
+    const member = staff.find(s => s.id === id)
+    if (!member) return
+    const prev = staff
+    const newStatus = member.status === 'active' ? 'inactive' : 'active'
+    setStaff(staff.map(s => s.id === id ? { ...s, status: newStatus } : s))
+    try {
+      if (newStatus === 'inactive') {
+        await staffService.deactivate(id)
+      } else {
+        await staffService.update(id, { status: 'active' })
+      }
+    } catch (err) {
+      setStaff(prev)
+      handleApiError(err)
+    }
   }
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!editStaff) return
+    const prev = staff
     setStaff(staff.map(s => s.id === editStaff.id ? editStaff : s))
     setEditStaff(null)
+    try {
+      await staffService.update(editStaff.id, {
+        name: editStaff.name, role: editStaff.role,
+        phone: editStaff.phone, salary: editStaff.salary,
+      })
+      toast.success('Staff member updated.')
+    } catch (err) {
+      setStaff(prev)
+      handleApiError(err)
+    }
   }
 
   const activeCount = staff.filter(s => s.status === 'active').length
-  const totalSalary = staff.filter(s => s.status === 'active').reduce((s, m) => s + m.salary, 0)
+  const totalSalary = staff.filter(s => s.status === 'active').reduce((s, m) => s + (Number(m.salary) || 0), 0)
 
   return (
     <div className="min-h-screen bg-manager-bg">
@@ -97,40 +139,44 @@ export function ManagerUsers() {
         </div>
 
         {/* Staff grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {filtered.map((s) => (
-            <div key={s.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-start gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 shrink-0 text-sm font-bold text-white/60">
-                {s.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm font-semibold text-white truncate">{s.name}</p>
-                  <Badge className={`text-[10px] px-1.5 py-0 border-0 ${roleColor[s.role]}`}>{staffRoleLabels[s.role]}</Badge>
-                  <Badge className={`text-[10px] px-1.5 py-0 border-0 ${s.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                    {s.status}
-                  </Badge>
+        {loading ? (
+          <div className="text-center py-16 text-white/30 text-sm">Loading staff...</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filtered.map((s) => (
+              <div key={s.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-start gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 shrink-0 text-sm font-bold text-white/60">
+                  {s.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-white/40">
-                  <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{s.phone}</span>
-                  {s.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{s.email}</span>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-semibold text-white truncate">{s.name}</p>
+                    <Badge className={`text-[10px] px-1.5 py-0 border-0 ${roleColor[s.role]}`}>{staffRoleLabels[s.role]}</Badge>
+                    <Badge className={`text-[10px] px-1.5 py-0 border-0 ${s.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                      {s.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-white/40">
+                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{s.phone}</span>
+                    {s.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{s.email}</span>}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-white/30 mt-1">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Joined {s.joinDate}</span>
+                    <span>TZS {(Number(s.salary) || 0).toLocaleString()}/mo</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-white/30 mt-1">
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Joined {s.joinDate}</span>
-                  <span>TZS {s.salary.toLocaleString()}/mo</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button type="button" onClick={() => setEditStaff(s)} className="p-2 rounded-lg text-white/30 hover:bg-white/5 hover:text-white/70">
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => void handleToggleStatus(s.id)} className="p-2 rounded-lg text-white/30 hover:bg-white/5 hover:text-white/70">
+                    {s.status === 'active' ? <ToggleRight className="h-4 w-4 text-green-400" /> : <ToggleLeft className="h-4 w-4 text-red-400" />}
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button type="button" onClick={() => setEditStaff(s)} className="p-2 rounded-lg text-white/30 hover:bg-white/5 hover:text-white/70">
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => handleToggleStatus(s.id)} className="p-2 rounded-lg text-white/30 hover:bg-white/5 hover:text-white/70">
-                  {s.status === 'active' ? <ToggleRight className="h-4 w-4 text-green-400" /> : <ToggleLeft className="h-4 w-4 text-red-400" />}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Add Dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
@@ -150,7 +196,7 @@ export function ManagerUsers() {
               <div><Label className="text-white/60">Phone</Label><Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
               <div><Label className="text-white/60">Email (optional)</Label><Input value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
               <div><Label className="text-white/60">Monthly Salary (TZS)</Label><Input type="number" value={formSalary} onChange={(e) => setFormSalary(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-              <Button onClick={handleAdd} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Add Staff Member</Button>
+              <Button onClick={() => void handleAdd()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Add Staff Member</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -170,8 +216,8 @@ export function ManagerUsers() {
                   </Select>
                 </div>
                 <div><Label className="text-white/60">Phone</Label><Input value={editStaff.phone} onChange={(e) => setEditStaff({ ...editStaff, phone: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-                <div><Label className="text-white/60">Salary (TZS)</Label><Input type="number" value={editStaff.salary} onChange={(e) => setEditStaff({ ...editStaff, salary: Number(e.target.value) })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-                <Button onClick={handleEdit} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Save Changes</Button>
+                <div><Label className="text-white/60">Salary (TZS)</Label><Input type="number" value={editStaff.salary || ''} onChange={(e) => setEditStaff({ ...editStaff, salary: Number(e.target.value) })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
+                <Button onClick={() => void handleEdit()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Save Changes</Button>
               </div>
             )}
           </DialogContent>

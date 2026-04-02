@@ -8,8 +8,8 @@ import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { mockDebts, mockBusinessExpenses, mockExpenses } from '@/data/mock/finance'
 import { mockTasks } from '@/data/mock/tasks'
-import { mockStaff } from '@/data/mock/staff'
-import { mockCustomers } from '@/data/mock/customers'
+import { customersService } from '@/lib/api/services/customers'
+import { staffService } from '@/lib/api/services/staff'
 import { statusColorsDark, priorityColorsDark } from '@/data/constants/labels'
 import {
   DollarSign, ShoppingCart, Users, AlertTriangle,
@@ -20,6 +20,9 @@ import Link from 'next/link'
 
 export function ManagerDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [activeStaff, setActiveStaff] = useState(0)
+  const [totalStaff, setTotalStaff] = useState(0)
+  const [goldCustomers, setGoldCustomers] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -29,13 +32,30 @@ export function ManagerDashboard() {
     return () => controller.abort()
   }, [])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    staffService.getAll({ signal: controller.signal })
+      .then(res => {
+        setActiveStaff(res.results.filter(s => s.status === 'active').length)
+        setTotalStaff(res.results.length)
+      })
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    customersService.getAll({ signal: controller.signal })
+      .then(res => setGoldCustomers(res.results.filter(c => c.isGold).length))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
   const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
   const totalOrders = orders.length
   const activeOrders = orders.filter(o => !['delivered', 'pending'].includes(o.status)).length
   const totalDebt = mockDebts.reduce((s, d) => s + d.balance, 0)
-  const activeStaff = mockStaff.filter(s => s.status === 'active').length
   const pendingTasks = mockTasks.filter(t => t.status !== 'completed').length
-  const goldCustomers = mockCustomers.filter(c => c.isGold).length
   const totalBusinessExpenses = mockBusinessExpenses.reduce((s, e) => s + e.amount, 0)
   const totalStockExpenses = mockExpenses.reduce((s, e) => s + e.amount, 0)
 
@@ -43,7 +63,7 @@ export function ManagerDashboard() {
     { label: 'Revenue', value: `TZS ${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10', change: '+12%', up: true },
     { label: 'Orders Today', value: totalOrders, icon: ShoppingCart, color: 'text-blue-400', bg: 'bg-blue-500/10', change: `${activeOrders} active`, up: true },
     { label: 'Outstanding Debts', value: `TZS ${totalDebt.toLocaleString()}`, icon: Banknote, color: 'text-amber-400', bg: 'bg-amber-500/10', change: `${mockDebts.length} records`, up: false },
-    { label: 'Active Staff', value: activeStaff, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10', change: `${mockStaff.length} total`, up: true },
+    { label: 'Active Staff', value: activeStaff, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10', change: `${totalStaff} total`, up: true },
   ]
 
   const recentOrders = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)

@@ -27,7 +27,9 @@ import { toast } from 'sonner'
 // { "username": ["This field is required."] }         ← field-level
 // { "order": { "items": ["This list may not be empty."] } } ← nested
 
-type DrfFieldErrors = Record<string, string[] | DrfFieldErrors>
+interface DrfFieldErrors {
+  [key: string]: string[] | DrfFieldErrors
+}
 
 interface DrfErrorResponse {
   detail?: string
@@ -115,6 +117,11 @@ export function handleApiError(err: unknown, fallback = 'An unexpected error occ
 
   // Plain JS Error (e.g. thrown directly in service code)
   if (err instanceof Error && err.message) {
+    // Ignore aborted requests
+    if (err.name === 'CanceledError' || err.name === 'AbortError' || err.message === 'canceled') {
+      return
+    }
+
     // Do not surface internal messages like "not yet connected to backend"
     if (err.message.includes('not yet connected')) {
       toast.error('This feature is not yet available.')

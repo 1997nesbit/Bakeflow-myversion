@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,14 +10,16 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { TaskItem } from '@/types/task'
-import type { StaffRole } from '@/types/staff'
+import type { StaffMember, StaffRole } from '@/types/staff'
 import { mockTasks } from '@/data/mock/tasks'
-import { mockStaff } from '@/data/mock/staff'
+import { staffService } from '@/lib/api/services/staff'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { staffRoleLabels } from '@/data/constants/labels'
 import { ListChecks, Plus, CheckCircle2, Clock, AlertTriangle, ChevronRight } from 'lucide-react'
 
 export function ManagerTasks() {
   const [tasks, setTasks] = useState<TaskItem[]>(mockTasks)
+  const [staff, setStaff] = useState<StaffMember[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('active')
 
@@ -26,6 +28,14 @@ export function ManagerTasks() {
   const [fAssign, setFAssign] = useState('')
   const [fPriority, setFPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
   const [fDue, setFDue] = useState(new Date().toISOString().split('T')[0])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    staffService.getAll({ signal: controller.signal })
+      .then(res => setStaff(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const activeTasks = tasks.filter(t => t.status !== 'completed')
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -41,7 +51,7 @@ export function ManagerTasks() {
 
   const handleAdd = () => {
     if (!fTitle || !fAssign) return
-    const staffMember = mockStaff.find(s => s.id === fAssign)
+    const staffMember = staff.find(s => s.id === fAssign)
     const newTask: TaskItem = {
       id: `TSK-${String(tasks.length + 1).padStart(3, '0')}`,
       title: fTitle, description: fDesc || undefined,
@@ -140,7 +150,7 @@ export function ManagerTasks() {
                 <Select value={fAssign} onValueChange={setFAssign}>
                   <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1"><SelectValue placeholder="Select staff member" /></SelectTrigger>
                   <SelectContent>
-                    {mockStaff.filter(s => s.status === 'active').map(s => (
+                    {staff.filter(s => s.status === 'active').map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name} ({staffRoleLabels[s.role]})</SelectItem>
                     ))}
                   </SelectContent>

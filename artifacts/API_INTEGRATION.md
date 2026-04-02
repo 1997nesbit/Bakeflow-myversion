@@ -113,29 +113,15 @@ useEffect(() => {
 
 ---
 
-### Phase 3 — Customers & Staff
+### Phase 3 — Customers & Staff ✅ COMPLETE (2026-04-03)
 
-Activate `customersService` and `staffService`. Update `ManagerCustomers`, `ManagerUsers`, `FrontDeskSearch`. Delete `src/data/mock/customers.ts` and `staff.ts`.
+`customersService` and `staffService` activated. `ManagerCustomers`, `ManagerUsers`, `ManagerDashboard`, `ManagerReports`, `ManagerTasks`, `ManagerMessages` updated. `/track/[id]/page.tsx` converted to async Server Component. `src/data/mock/customers.ts` and `staff.ts` deleted.
 
-**Phase 3 checklist:**
-- [ ] Apply the AbortController pattern (see Phase 2) to every new `useEffect` fetch.
-- [ ] **Role-aware staff serializer** — The `User` model has a `salary` field that must only be visible to the manager role. The backend's `StaffViewSet` must use `get_serializer_class()` to return `StaffDetailSerializer` (includes salary) for managers and `StaffPublicSerializer` (name, role, avatar only) for all other roles. See `BACKEND_ARCHITECTURE.md §8`. Verify by confirming the salary field is absent from the staff list response when logged in as any non-manager role.
-- [ ] **Public tracking page — convert to Server Component.** The `/track/[id]` page is the only public, SEO-indexable page in the app. After this phase activates the tracking endpoint (`GET /api/orders/track/{tracking_id}/`), convert `src/app/track/[id]/page.tsx` into an async Server Component that fetches server-side:
-  ```tsx
-  // src/app/track/[id]/page.tsx
-  import { ordersService } from '@/lib/api/services/orders'
-  import { OrderTracking } from '@/components/public/OrderTracking'
-
-  export async function generateMetadata({ params }: { params: { id: string } }) {
-    return { title: `Track order ${params.id} — Bakeflow` }
-  }
-
-  export default async function TrackingPage({ params }: { params: { id: string } }) {
-    const order = await ordersService.getByTrackingId(params.id).catch(() => null)
-    return <OrderTracking initialOrder={order} trackingId={params.id} />
-  }
-  ```
-- [ ] Mock files deleted: `src/data/mock/customers.ts`, `staff.ts`
+**Phase 3 checklist — COMPLETE ✅ (2026-04-03)**
+- [x] Apply the AbortController pattern (see Phase 2) to every new `useEffect` fetch.
+- [x] **Role-aware staff serializer** — The `User` model has a `salary` field that must only be visible to the manager role. The backend's `StaffViewSet` must use `get_serializer_class()` to return `StaffDetailSerializer` (includes salary) for managers and `StaffPublicSerializer` (name, role, avatar only) for all other roles. See `BACKEND_ARCHITECTURE.md §8`. Verify by confirming the salary field is absent from the staff list response when logged in as any non-manager role.
+- [x] **Public tracking page — converted to Server Component.** `src/app/track/[id]/page.tsx` is an async Server Component that fetches server-side and passes `initialOrder` + `trackingId` to `<OrderTracking>`. `generateMetadata` returns the page title.
+- [x] Mock files deleted: `src/data/mock/customers.ts`, `staff.ts`
 
 ---
 

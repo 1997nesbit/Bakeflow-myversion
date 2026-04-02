@@ -1,13 +1,16 @@
 from django.conf import settings
-from rest_framework import status
+from rest_framework import status, filters
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .serializers import MeSerializer
+from .models import User
+from .serializers import MeSerializer, StaffDetailSerializer, StaffPublicSerializer
 
 _REFRESH_COOKIE = 'bakeflow_refresh'
 _COOKIE_MAX_AGE = 7 * 24 * 3600  # 7 days — matches REFRESH_TOKEN_LIFETIME
@@ -96,3 +99,40 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(MeSerializer(request.user).data)
+
+
+class StaffViewSet(ModelViewSet):
+    """
+    /api/staff/          — list / create
+    /api/staff/{id}/     — retrieve / partial_update
+    /api/staff/{id}/deactivate/ — custom action
+    """
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'email', 'phone', 'role']
+    ordering_fields = ['name', 'join_date', 'status']
+    ordering = ['name']
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
+
+    def get_queryset(self):
+        qs = User.objects.exclude(role='manager')
+        role = self.request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    def get_serializer_class(self):
+        if hasattr(self.request, 'user') and self.request.user.role == 'manager':
+            return StaffDetailSerializer
+        return StaffPublicSerializer
+
+    @action(detail=True, methods=['post'], url_path='deactivate')
+    def deactivate(self, request, pk=None):
+        member = self.get_object()
+        member.status = 'inactive'
+        member.is_active = False
+        member.save(update_fields=['status', 'is_active'])
+        return Response({'status': 'deactivated'})
