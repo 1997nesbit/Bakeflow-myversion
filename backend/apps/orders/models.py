@@ -169,15 +169,16 @@ class SaleItem(models.Model):
 
 
 class DailyBatchItem(TimestampedModel):
-    """Baker's daily production log. Will move to inventory app in Phase 4."""
+    """Baker's daily production log."""
     id                 = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product_name       = models.CharField(max_length=200)
+    menu_item          = models.ForeignKey(MenuItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='batch_items')
+    product_name       = models.CharField(max_length=200)  # denormalized copy of menu_item.name
     category           = models.CharField(max_length=10, choices=[
         ('bread', 'Bread'), ('pastry', 'Pastry'), ('snack', 'Snack'), ('cake', 'Cake'),
-    ])
+    ])  # denormalized copy of menu_item.category
     quantity_baked     = models.PositiveIntegerField()
     quantity_remaining = models.PositiveIntegerField()
-    unit               = models.CharField(max_length=30)
+    unit               = models.CharField(max_length=30, default='pcs')
     baked_by           = models.ForeignKey(User, on_delete=models.PROTECT, related_name='batches')
     baked_at           = models.DateTimeField()
     oven_temp          = models.CharField(max_length=20, blank=True)

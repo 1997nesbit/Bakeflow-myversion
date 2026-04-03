@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.customers.models import Customer
-from .models import Order, OrderStatus, OrderStatusHistory, DailyBatchItem
+from .models import Order, OrderStatus, OrderStatusHistory, DailyBatchItem, MenuItem
 
 
 class OrderStateValidator:
@@ -161,10 +161,23 @@ class OrderService:
 class ProductionService:
     def get_today_batches(self):
         from django.utils import timezone
-        return DailyBatchItem.objects.select_related('baked_by').filter(
+        return DailyBatchItem.objects.select_related('baked_by', 'menu_item').filter(
             baked_at__date=timezone.now().date()
         )
 
     @transaction.atomic
     def create_batch(self, validated_data: dict, baked_by) -> DailyBatchItem:
-        return DailyBatchItem.objects.create(**validated_data, baked_by=baked_by)
+        from django.shortcuts import get_object_or_404
+        menu_item = get_object_or_404(MenuItem, pk=validated_data['menu_item_id'], is_active=True)
+        qty = validated_data['quantity_baked']
+        return DailyBatchItem.objects.create(
+            menu_item=menu_item,
+            product_name=menu_item.name,
+            category=menu_item.category,
+            quantity_baked=qty,
+            quantity_remaining=qty,
+            unit='pcs',
+            baked_by=baked_by,
+            baked_at=timezone.now(),
+            notes=validated_data.get('notes', ''),
+        )

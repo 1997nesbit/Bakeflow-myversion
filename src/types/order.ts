@@ -34,6 +34,7 @@ export interface MenuItem {
   estimatedMinutes: number
   description?: string
   isActive?: boolean
+  stockToday?: number
 }
 
 export interface CustomCakeDetails {

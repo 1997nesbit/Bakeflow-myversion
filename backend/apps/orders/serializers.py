@@ -148,9 +148,12 @@ class AdvanceStatusSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 
 class MenuItemSerializer(serializers.ModelSerializer):
+    # Populated by annotation in MenuViewSet.list(); 0 for non-list actions.
+    stock_today = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model  = MenuItem
-        fields = ['id', 'name', 'category', 'price', 'estimated_minutes', 'description', 'is_active']
+        fields = ['id', 'name', 'category', 'price', 'estimated_minutes', 'description', 'is_active', 'stock_today']
 
 
 # ---------------------------------------------------------------------------
@@ -194,17 +197,14 @@ class DailyBatchItemSerializer(serializers.ModelSerializer):
     class Meta:
         model  = DailyBatchItem
         fields = [
-            'id', 'product_name', 'category',
-            'quantity_baked', 'quantity_remaining', 'unit',
-            'baked_by_name', 'baked_at', 'oven_temp', 'notes',
+            'id', 'menu_item_id', 'product_name', 'category',
+            'quantity_baked', 'quantity_remaining',
+            'baked_by_name', 'baked_at', 'notes',
         ]
 
 
-class DailyBatchItemWriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model  = DailyBatchItem
-        fields = [
-            'product_name', 'category',
-            'quantity_baked', 'quantity_remaining', 'unit',
-            'baked_at', 'oven_temp', 'notes',
-        ]
+class DailyBatchItemWriteSerializer(serializers.Serializer):
+    """Accept only the three baker-supplied fields; everything else is derived server-side."""
+    menu_item_id   = serializers.IntegerField()
+    quantity_baked = serializers.IntegerField(min_value=1)
+    notes          = serializers.CharField(required=False, allow_blank=True, default='')

@@ -129,13 +129,19 @@ Not part of the order pipeline. Use `salesService.create()` from `src/lib/api/se
 
 ---
 
-### Phase 4 — Inventory
+### Phase 4 — Inventory ✅ COMPLETE (2026-04-03)
 
-Activate `inventoryService`. Update `InventoryDashboard`, `InventoryStockIn`, `InventoryAlerts`, `InventoryRollout`, `BakerActive` (daily batch data). Delete `src/data/mock/inventory.ts`.
+`inventoryService` activated. `InventoryDashboard`, `InventoryStockIn`, `InventoryAlerts`, `InventoryRollout` updated. `src/data/mock/inventory.ts` deleted. `apps/inventory/` Django app created with `InventoryItem`, `StockEntry`, `DailyRollout`, `Supplier`, `SupplierProduct` models, `InventoryService`, and registered endpoints. `DailyBatchItem` remains in `apps/orders` (already live since Phase 2).
 
-**Phase 4 checklist:**
-- [ ] Apply the AbortController pattern to every new `useEffect` fetch.
-- [ ] Inventory list responses are paginated — read `.results` from `PaginatedResponse<InventoryItem>`.
+**Phase 4 checklist — COMPLETE ✅ (2026-04-03)**
+- [x] Apply the AbortController pattern to every new `useEffect` fetch.
+- [x] Inventory list responses are paginated — read `.results` from `PaginatedResponse<InventoryItem>`.
+- [x] `src/types/inventory.ts` updated — `supplierId: string` replaced with `supplier: SupplierInline | null`; `stockHealth: number` added; `StockEntryPayload` and `DailyRolloutPayload` write types added.
+- [x] `InventoryRollout` hardcoded date removed — uses `new Date().toISOString().split('T')[0]`.
+- [x] `rolledOutBy` free-text field removed from rollout form — set server-side from `request.user`.
+- [x] All custom toast divs replaced with Sonner `toast()` calls.
+- [x] `handleQuickRestock` in `InventoryAlerts` now calls `inventoryService.recordStockIn()` instead of mutating local state.
+- [x] Mock file deleted: `src/data/mock/inventory.ts`
 
 #### Phase 4 extension — Menu CRUD
 
@@ -175,6 +181,23 @@ Permissions: `IsManagerOrFrontDesk` on all write endpoints.
 - [x] All local mutation handlers replaced with `menuService` calls
 - [x] `emptyCats` state removed; category list fetched from `menuService.getCategories()`
 - [x] `bakeryMenu` static array deleted from `src/data/constants/menus.ts` — `NewOrderPage` now fetches from the API with no fallback; `AddBatchForm` quick-select chips removed
+- [x] `MenuItem` type in `src/types/order.ts` gains `stockToday?: number` — populated from the `stock_today` annotation on `GET /api/menu/`
+- [x] `MenuManagement` item cards show "X in stock today" (green) or "Not baked today" (muted) based on `stockToday`
+- [x] `MenuItemBrowser` (order picker) shows the same stock indicator under each item name
+
+#### Phase 4 extension — Baker batch logging linked to menu (2026-04-03)
+
+`DailyBatchItem` gains a `menu_item` FK to `MenuItem`. The baker selects a product from the live menu; the backend derives `product_name`, `category`, `quantity_remaining`, `unit`, and `baked_at` server-side. Oven temp and unit fields removed from the form and display.
+
+- [x] `menu_item` FK added to `DailyBatchItem` model (`null=True, blank=True, SET_NULL`)
+- [x] `unit` field defaulted to `'pcs'` server-side — no longer sent from frontend
+- [x] Migration `0005_dailybatchitem_menu_item` applied
+- [x] `DailyBatchItemWriteSerializer` replaced with a 3-field `Serializer`: `menu_item_id`, `quantity_baked`, `notes`
+- [x] `ProductionService.create_batch` resolves `MenuItem` and fills all derived fields
+- [x] `DailyBatchItem` type updated in `src/types/production.ts` — `menuItemId` added, `ovenTemp` and `unit` removed; `NewBatchPayload` type added
+- [x] `AddBatchForm` fetches menu items via `menuService.getItems()` and replaces free-text product + category + unit + oven temp with a single menu item selector
+- [x] API call moved to `BakerProduction.handleAddBatch` — form emits `NewBatchPayload`, parent posts and adds server response to state
+- [x] `BatchCard` — oven temp row and unit from quantity badge removed
 
 ---
 
@@ -438,3 +461,5 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 - **Always use `PaginatedResponse<T>`** — all list service functions return `PaginatedResponse<T>`. Read `.results` in components; never assume the response is a raw array.
 - **Always use `AbortController`** — every `useEffect` data fetch must return a cleanup that calls `controller.abort()`. Pass the signal to the service call so Axios can cancel the in-flight request on unmount.
 - **Never store tokens in localStorage** — access token lives in the `client.ts` module variable only; refresh token is in the HttpOnly cookie managed by Django.
+- **camelCase is handled by `djangorestframework-camel-case`** — the DRF renderer converts snake_case response fields to camelCase automatically; the parser converts camelCase request bodies back to snake_case. Frontend types use camelCase; backend serializer fields use snake_case. Services that build request payloads manually must use snake_case keys (e.g. `{ menu_item_id: ... }` not `{ menuItemId: ... }`).
+- **Computed list fields via correlated Subquery** — when a list endpoint needs an aggregated value derived from a related model (e.g. `stock_today` on `MenuItem` from `DailyBatchItem`), use a correlated `Subquery` annotation rather than `Sum(filter=Q(...))` across a JOIN. The subquery approach is unambiguous and avoids phantom NULL results from LEFT JOIN aggregation edge cases. See `MenuViewSet.list()` for the reference pattern.

@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { InventorySidebar } from '@/components/layout/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { InventoryItem } from '@/types/inventory'
-import { mockInventory, mockSuppliers } from '@/data/mock/inventory'
+import { inventoryService } from '@/lib/api/services/inventory'
+import { handleApiError } from '@/lib/utils/handle-error'
 import {
   AlertTriangle,
   AlertOctagon,
@@ -23,11 +25,10 @@ interface AlertCardProps {
   readonly severity: 'critical' | 'low'
   readonly reorderSent: Set<string>
   readonly onReorder: (item: InventoryItem) => void
-  readonly onQuickRestock: (itemId: string, amount: number) => void
+  readonly onQuickRestock: (item: InventoryItem, amount: number) => void
 }
 
 function AlertCard({ item, severity, reorderSent, onReorder, onQuickRestock }: AlertCardProps) {
-  const supplier = mockSuppliers.find(s => s.id === item.supplierId) ?? null
   const ratio = item.quantity / item.minStock
   const suggestedReorder = Math.ceil(item.minStock * 2 - item.quantity)
   const isSent = reorderSent.has(item.id)
@@ -76,17 +77,18 @@ function AlertCard({ item, severity, reorderSent, onReorder, onQuickRestock }: A
           </div>
         </div>
 
-        {supplier && (
+        {item.supplier && (
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-            <span>Supplier: <span className="font-medium text-foreground">{supplier.name}</span></span>
-            <a href={`tel:${supplier.phone}`} className="text-primary hover:underline flex items-center gap-0.5">
+            <span>Supplier: <span className="font-medium text-foreground">{item.supplier.name}</span></span>
+            <a href={`tel:${item.supplier.phone}`} className="text-primary hover:underline flex items-center gap-0.5">
               <Phone className="h-3 w-3" /> Call
             </a>
-            {supplier.email && (
-              <a href={`mailto:${supplier.email}?subject=Reorder: ${item.name}&body=Please supply ${suggestedReorder} ${item.unit} of ${item.name}.`} className="text-primary hover:underline flex items-center gap-0.5">
-                <Mail className="h-3 w-3" /> Email
-              </a>
-            )}
+            <a
+              href={`mailto:?subject=Reorder: ${item.name}&body=Please supply ${suggestedReorder} ${item.unit} of ${item.name}.`}
+              className="text-primary hover:underline flex items-center gap-0.5"
+            >
+              <Mail className="h-3 w-3" /> Email
+            </a>
           </div>
         )}
 
@@ -110,7 +112,7 @@ function AlertCard({ item, severity, reorderSent, onReorder, onQuickRestock }: A
             size="sm"
             variant="outline"
             className="bg-transparent"
-            onClick={() => onQuickRestock(item.id, suggestedReorder)}
+            onClick={() => onQuickRestock(item, suggestedReorder)}
           >
             <PackagePlus className="mr-1 h-3.5 w-3.5" />
             Quick Add
@@ -122,30 +124,42 @@ function AlertCard({ item, severity, reorderSent, onReorder, onQuickRestock }: A
 }
 
 export function InventoryAlerts() {
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory)
-  const [toast, setToast] = useState('')
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [reorderSent, setReorderSent] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const controller = new AbortController()
+    inventoryService.getAll({ signal: controller.signal })
+      .then(res => setInventory(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
 
   const criticalItems = inventory.filter(i => i.quantity < i.minStock * 0.5)
   const lowItems = inventory.filter(i => i.quantity >= i.minStock * 0.5 && i.quantity <= i.minStock)
   const healthyItems = inventory.filter(i => i.quantity > i.minStock)
 
   const handleReorder = (item: InventoryItem) => {
-    const supplier = mockSuppliers.find(s => s.id === item.supplierId)
     setReorderSent(prev => new Set(prev).add(item.id))
-    setToast(`Reorder request sent to ${supplier?.name ?? 'supplier'} for ${item.name}`)
-    setTimeout(() => setToast(''), 3000)
+    toast.success(`Reorder request sent to ${item.supplier?.name ?? 'supplier'} for ${item.name}.`)
   }
 
-  const handleQuickRestock = (itemId: string, amount: number) => {
-    setInventory(inventory.map(i =>
-      i.id === itemId
-        ? { ...i, quantity: i.quantity + amount, lastRestocked: new Date().toISOString().split('T')[0] }
-        : i
-    ))
-    const item = inventory.find(i => i.id === itemId)
-    setToast(`Added ${amount} ${item?.unit} to ${item?.name}`)
-    setTimeout(() => setToast(''), 3000)
+  const handleQuickRestock = async (item: InventoryItem, amount: number) => {
+    try {
+      await inventoryService.recordStockIn({
+        inventoryItem: item.id,
+        quantity: amount,
+        costPerUnit: item.costPerUnit,
+        supplierName: item.supplier?.name ?? 'Unknown',
+        date: new Date().toISOString().split('T')[0],
+      })
+      toast.success(`Added ${amount} ${item.unit} to ${item.name}.`)
+      // Refetch so stock levels reflect the change
+      const res = await inventoryService.getAll()
+      setInventory(res.results)
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
   return (
@@ -172,7 +186,6 @@ export function InventoryAlerts() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Critical items */}
           {criticalItems.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -187,7 +200,6 @@ export function InventoryAlerts() {
             </div>
           )}
 
-          {/* Low items */}
           {lowItems.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -210,7 +222,6 @@ export function InventoryAlerts() {
             </div>
           )}
 
-          {/* Healthy overview */}
           {healthyItems.length > 0 && (
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-3">
@@ -234,13 +245,6 @@ export function InventoryAlerts() {
             </Card>
           )}
         </div>
-
-        {toast && (
-          <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">{toast}</span>
-          </div>
-        )}
       </main>
     </div>
   )

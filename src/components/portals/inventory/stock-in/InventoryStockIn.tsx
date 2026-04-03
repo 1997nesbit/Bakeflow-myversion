@@ -1,49 +1,79 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { InventorySidebar } from '@/components/layout/app-sidebar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { CheckCircle, Search, Plus } from 'lucide-react'
-import type { StockEntry, InventoryItem } from '@/types/inventory'
-import { mockInventory, mockStockEntries, mockSuppliers } from '@/data/mock/inventory'
+import { Search, Plus } from 'lucide-react'
+import type { StockEntry, InventoryItem, Supplier } from '@/types/inventory'
+import { inventoryService } from '@/lib/api/services/inventory'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { StockEntriesTable } from './StockEntriesTable'
 import { AddStockDialog } from './AddStockDialog'
 
 export function InventoryStockIn() {
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory)
-  const [entries, setEntries] = useState<StockEntry[]>(mockStockEntries)
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [entries, setEntries] = useState<StockEntry[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [showForm, setShowForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [toastMsg, setToastMsg] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleAddStock = (itemId: string, supplierId: string, qty: number, cost: number, invoiceRef?: string) => {
-    const item = inventory.find(i => i.id === itemId)
-    if (!item) return
-    const supplier = mockSuppliers.find(s => s.id === supplierId)
+  const today = new Date().toISOString().split('T')[0]
 
-    const newEntry: StockEntry = {
-      id: `SE-${String(entries.length + 1).padStart(3, '0')}`,
-      inventoryItemId: item.id,
-      itemName: item.name,
-      quantity: qty,
-      unit: item.unit,
-      supplierName: supplier?.name || 'Unknown',
-      costPerUnit: cost,
-      totalCost: qty * cost,
-      invoiceRef,
-      date: new Date().toISOString().split('T')[0],
-      addedBy: 'Admin',
+  useEffect(() => {
+    const controller = new AbortController()
+
+    inventoryService.getAll({ signal: controller.signal })
+      .then(res => setInventory(res.results))
+      .catch(handleApiError)
+
+    inventoryService.getStockEntries(undefined, { signal: controller.signal })
+      .then(res => setEntries(res.results))
+      .catch(handleApiError)
+
+    inventoryService.getSuppliers({ signal: controller.signal })
+      .then(res => setSuppliers(res.results))
+      .catch(handleApiError)
+
+    return () => controller.abort()
+  }, [])
+
+  const handleAddStock = async (
+    itemId: string,
+    supplierName: string,
+    qty: number,
+    cost: number,
+    invoiceRef?: string,
+  ) => {
+    setSubmitting(true)
+    try {
+      await inventoryService.recordStockIn({
+        inventoryItem: itemId,
+        quantity: qty,
+        costPerUnit: cost,
+        supplierName,
+        invoiceRef,
+        date: today,
+      })
+      const item = inventory.find(i => i.id === itemId)
+      toast.success(`Added ${qty} ${item?.unit ?? ''} of ${item?.name ?? 'item'} to stock.`)
+      setShowForm(false)
+      // Refresh both lists so totals stay accurate
+      const [entriesRes, invRes] = await Promise.all([
+        inventoryService.getStockEntries(),
+        inventoryService.getAll(),
+      ])
+      setEntries(entriesRes.results)
+      setInventory(invRes.results)
+    } catch (err) {
+      setSubmitting(false)
+      handleApiError(err)
+    } finally {
+      setSubmitting(false)
     }
-
-    setEntries([newEntry, ...entries])
-    setInventory(inventory.map(i =>
-      i.id === item.id ? { ...i, quantity: i.quantity + qty, lastRestocked: newEntry.date, costPerUnit: cost } : i
-    ))
-    setShowForm(false)
-    setToastMsg(`Added ${qty} ${item.unit} of ${item.name} to stock`)
-    setTimeout(() => setToastMsg(''), 3000)
   }
 
   const filteredEntries = entries.filter(e =>
@@ -52,7 +82,7 @@ export function InventoryStockIn() {
     (e.invoiceRef?.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const todayEntries = entries.filter(e => e.date === new Date().toISOString().split('T')[0])
+  const todayEntries = entries.filter(e => e.date === today)
   const todayTotal = todayEntries.reduce((s, e) => s + e.totalCost, 0)
 
   return (
@@ -109,16 +139,10 @@ export function InventoryStockIn() {
         <AddStockDialog
           open={showForm}
           inventory={inventory}
+          suppliers={suppliers}
           onOpenChange={setShowForm}
           onSubmit={handleAddStock}
         />
-
-        {toastMsg && (
-          <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">{toastMsg}</span>
-          </div>
-        )}
       </main>
     </div>
   )

@@ -2,14 +2,20 @@
 
 export interface DailyBatchItem {
   id: string
+  menuItemId: string
   productName: string
   category: 'bread' | 'pastry' | 'snack' | 'cake'
   quantityBaked: number
   quantityRemaining: number
-  unit: string
   bakedBy: string
   bakedAt: string
-  ovenTemp?: string
+  notes?: string
+}
+
+/** Payload sent to POST /api/production/batches/ */
+export interface NewBatchPayload {
+  menuItemId: string
+  quantityBaked: number
   notes?: string
 }
 

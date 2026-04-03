@@ -19,7 +19,7 @@
 //   POST   /api/production/batches/
 
 import type { Order, OrderStatus, NewOrderData } from '@/types/order'
-import type { DailyBatchItem } from '@/types/production'
+import type { DailyBatchItem, NewBatchPayload } from '@/types/production'
 import type { PaginatedResponse } from '@/types/api'
 import { apiClient } from '@/lib/api/client'
 
@@ -117,7 +117,11 @@ export const productionService = {
   },
 
   /** POST /api/production/batches/ */
-  createBatch: async (payload: Omit<DailyBatchItem, 'id' | 'bakedBy'>): Promise<DailyBatchItem> => {
-    return (await apiClient.post<DailyBatchItem>('/production/batches/', payload)).data
+  createBatch: async (payload: NewBatchPayload): Promise<DailyBatchItem> => {
+    return (await apiClient.post<DailyBatchItem>('/production/batches/', {
+      menu_item_id:   payload.menuItemId,
+      quantity_baked: payload.quantityBaked,
+      notes:          payload.notes ?? '',
+    })).data
   },
 }

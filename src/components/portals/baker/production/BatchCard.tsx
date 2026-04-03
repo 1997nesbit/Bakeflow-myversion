@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Layers, Clock, Flame, Wheat, Croissant, Cookie, Cake } from 'lucide-react'
+import { Layers, Clock, Wheat, Croissant, Cookie, Cake } from 'lucide-react'
 import type { DailyBatchItem } from '@/types/production'
 
 const categoryIcons: Record<string, typeof Wheat> = {
@@ -44,7 +44,7 @@ export function BatchCard({ batch }: Props) {
             <p className="text-xs text-muted-foreground">{batch.bakedBy}</p>
           </div>
           <Badge variant="outline" className="text-xs bg-transparent">
-            {batch.quantityRemaining}/{batch.quantityBaked} {batch.unit}
+            {batch.quantityRemaining}/{batch.quantityBaked}
           </Badge>
         </div>
 
@@ -67,12 +67,6 @@ export function BatchCard({ batch }: Props) {
             <Clock className="h-3 w-3" />
             {new Date(batch.bakedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
           </span>
-          {batch.ovenTemp && (
-            <span className="flex items-center gap-1">
-              <Flame className="h-3 w-3" />
-              {batch.ovenTemp}
-            </span>
-          )}
         </div>
 
         {batch.notes && (

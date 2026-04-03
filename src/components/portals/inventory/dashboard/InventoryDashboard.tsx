@@ -5,28 +5,55 @@ import { InventorySidebar } from '@/components/layout/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import type { InventoryItem } from '@/types/inventory'
-import { mockInventory, mockStockEntries, mockDailyRollouts, mockSuppliers } from '@/data/mock/inventory'
+import type { InventoryItem, StockEntry, DailyRollout, Supplier } from '@/types/inventory'
+import { inventoryService } from '@/lib/api/services/inventory'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { Package, TrendingDown, PackagePlus, ScrollText, ArrowRight, DollarSign, BarChart3, Truck } from 'lucide-react'
 import { CriticalStockAlert } from './CriticalStockAlert'
 import { StockLevelGrid } from './StockLevelGrid'
 
 export function InventoryDashboard() {
-  const [inventory] = useState<InventoryItem[]>(mockInventory)
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [recentEntries, setRecentEntries] = useState<StockEntry[]>([])
+  const [todayRollouts, setTodayRollouts] = useState<DailyRollout[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => { setMounted(true) }, [])
+  const today = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    setMounted(true)
+    const controller = new AbortController()
+
+    Promise.all([
+      inventoryService.getAll({ signal: controller.signal })
+        .then(res => setInventory(res.results))
+        .catch(handleApiError),
+
+      inventoryService.getStockEntries(undefined, { signal: controller.signal })
+        .then(res => setRecentEntries(res.results.slice(0, 3)))
+        .catch(handleApiError),
+
+      inventoryService.getRollouts({ date: today }, { signal: controller.signal })
+        .then(res => setTodayRollouts(res.results))
+        .catch(handleApiError),
+
+      inventoryService.getSuppliers({ signal: controller.signal })
+        .then(res => setSuppliers(res.results))
+        .catch(handleApiError),
+    ])
+
+    return () => controller.abort()
+  }, [today])
 
   const lowStock = inventory.filter(i => i.quantity <= i.minStock)
   const criticalStock = inventory.filter(i => i.quantity < i.minStock * 0.5)
   const healthyStock = inventory.filter(i => i.quantity > i.minStock)
   const totalValue = inventory.reduce((sum, i) => sum + i.quantity * i.costPerUnit, 0)
-  const todayRollouts = mockDailyRollouts.filter(r => r.date === '2026-02-06')
   const todayRolloutValue = todayRollouts.reduce((sum, r) => {
-    const item = inventory.find(i => i.id === r.inventoryItemId)
-    return sum + r.quantity * (item?.costPerUnit || 0)
+    const item = inventory.find(i => i.id === r.inventoryItem)
+    return sum + r.quantity * (item?.costPerUnit ?? 0)
   }, 0)
-  const recentEntries = mockStockEntries.slice(-3).reverse()
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,7 +161,7 @@ export function InventoryDashboard() {
                             <p className="text-xs text-muted-foreground">{r.purpose}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-secondary">{r.quantity} {r.unit}</p>
+                            <p className="text-sm font-semibold text-secondary">{r.quantity} {r.itemUnit}</p>
                             <p className="text-xs text-muted-foreground">{r.time}</p>
                           </div>
                         </div>
@@ -162,7 +189,7 @@ export function InventoryDashboard() {
                           <p className="text-xs text-muted-foreground">{entry.supplierName}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-emerald-600">+{entry.quantity} {entry.unit}</p>
+                          <p className="text-sm font-semibold text-emerald-600">+{entry.quantity} {entry.itemUnit}</p>
                           <p className="text-xs text-muted-foreground">TZS {entry.totalCost.toLocaleString()}</p>
                         </div>
                       </div>
@@ -177,7 +204,7 @@ export function InventoryDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2.5">
-                    {mockSuppliers.map(s => (
+                    {suppliers.map(s => (
                       <div key={s.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
                         <div>
                           <p className="text-sm font-medium text-foreground">{s.name}</p>

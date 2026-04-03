@@ -259,6 +259,17 @@ export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
                         <Clock className="h-3 w-3" />{item.estimatedMinutes} min
                       </span>
                     </div>
+                    <div className="mt-1.5">
+                      {(item.stockToday ?? 0) > 0 ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600">
+                          {item.stockToday} in stock today
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${dk ? 'text-white/25' : 'text-muted-foreground/50'}`}>
+                          Not baked today
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

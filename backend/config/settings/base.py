@@ -33,9 +33,10 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'apps.accounts',
-    'apps.customers',  # Phase 2: model only — endpoints in Phase 3
-    'apps.orders',     # Phase 2: full order lifecycle + production batches
-    # Phases 4-9: add apps here as they are implemented
+    'apps.customers',   # Phase 2: model only — endpoints in Phase 3
+    'apps.orders',      # Phase 2: full order lifecycle + production batches
+    'apps.inventory',   # Phase 4: inventory items, stock-in, rollouts, suppliers
+    # Phases 5-9: add apps here as they are implemented
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

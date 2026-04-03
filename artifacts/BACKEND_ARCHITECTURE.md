@@ -268,16 +268,23 @@ class DailyRollout(TimestampedModel):
     time           = TimeField()
 
 class DailyBatchItem(TimestampedModel):
-    """Baker's daily production log."""
-    product_name       = CharField(max_length=200)
-    category           = CharField(choices=['bread', 'pastry', 'snack', 'cake'])
+    """Baker's daily production log. Linked to MenuItem via FK (2026-04-03)."""
+    menu_item          = ForeignKey(MenuItem, on_delete=SET_NULL, null=True, related_name='batch_items')
+    product_name       = CharField(max_length=200)  # denormalized copy of menu_item.name
+    category           = CharField(choices=['bread', 'pastry', 'snack', 'cake'])  # denormalized copy of menu_item.category
     quantity_baked     = PositiveIntegerField()
     quantity_remaining = PositiveIntegerField()
-    unit               = CharField(max_length=30)
+    unit               = CharField(max_length=30, default='pcs')  # always 'pcs' — not user-supplied
     baked_by           = ForeignKey(User, on_delete=PROTECT)
     baked_at           = DateTimeField()
-    oven_temp          = CharField(max_length=20, blank=True)
+    oven_temp          = CharField(max_length=20, blank=True)  # retained in DB; no longer exposed via API
     notes              = TextField(blank=True)
+
+# Write payload accepted by POST /api/production/batches/:
+#   { menu_item_id, quantity_baked, notes }
+# All other fields are derived server-side by ProductionService.create_batch().
+#
+# Read response includes stock_today on MenuItem (see §6 — MENU ITEMS endpoint).
 ```
 
 ### `finance` app
@@ -444,7 +451,7 @@ ORDERS
   GET    /api/orders/track/{tracking_id}/   PUBLIC — no auth required
 
 MENU ITEMS
-  GET    /api/menu/                          list active menu items
+  GET    /api/menu/                          list active menu items — includes stock_today (sum of today's DailyBatchItem.quantity_remaining per item)
   GET    /api/menu/categories/               ordered list of distinct category slugs e.g. ["cake","bread","pastry"]
   POST   /api/menu/                          create (manager only)
   PATCH  /api/menu/{id}/
@@ -467,8 +474,8 @@ INVENTORY
   GET    /api/inventory/rollouts/            filter by date, item
 
 PRODUCTION  (Baker)
-  GET    /api/production/batches/
-  POST   /api/production/batches/
+  GET    /api/production/batches/            today's batches — IsBaker or IsAuthenticated
+  POST   /api/production/batches/            IsBaker only — payload: { menu_item_id, quantity_baked, notes? }
 
 SUPPLIERS
   GET    /api/suppliers/
@@ -727,10 +734,10 @@ Apply the same pattern anywhere the same endpoint serves multiple roles with dif
 
 | Phase | Scope | Priority |
 |---|---|---|
-| **1** | Auth, custom User model, role permissions, JWT setup | Critical |
-| **2** | Orders CRUD + state machine + payment recording + audit trail | Critical |
-| **3** | Customer model + public tracking endpoint | Critical |
-| **4** | Inventory: items, stock-in, rollouts, low-stock alerts | High |
+| **1** ✅ | Auth, custom User model, role permissions, JWT setup | Critical |
+| **2** ✅ | Orders CRUD + state machine + payment recording + audit trail | Critical |
+| **3** ✅ | Customer model + public tracking endpoint | Critical |
+| **4** ✅ | Inventory: items, stock-in, rollouts, low-stock alerts, supplier CRUD | High |
 | **5** | Finance: debts, expenses, payment history | High |
 | **6** | Staff management + task assignment | Medium |
 | **7** | Reports + dashboard aggregation endpoints | Medium |
@@ -802,7 +809,8 @@ but is no longer reachable through the normal order flow.
 | View orders | R | R | R | R | R | — |
 | Advance order status | W | W | W | W | W | — |
 | Record payment | W | W | — | — | — | — |
-| Inventory CRUD | R | — | — | — | — | W |
+| Inventory item & supplier CRUD | W | — | — | — | — | W |
+| Stock-in / rollout | — | — | — | — | — | W |
 | Staff management | W | — | — | — | — | — |
 | Debts & expenses | R/W | — | — | — | — | R |
 | Reports | R | — | — | — | — | — |
@@ -810,6 +818,7 @@ but is no longer reachable through the normal order flow.
 | Messaging | W | W | — | — | — | — |
 
 Note: Packing role removed from active roles (2026-04-02). Packing column dropped from matrix.
+Manager has write access to inventory item and supplier CRUD via `IsManagerOrInventory` permission (`core/permissions.py`). Stock-in and rollout operations remain inventory_clerk only — managers manage the catalogue, clerks manage stock movements.
 `R` = read, `W` = read + write, `—` = no access
 
 ---

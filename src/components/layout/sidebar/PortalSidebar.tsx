@@ -11,7 +11,7 @@ import {
   PackagePlus, ScrollText, AlertTriangle, Receipt,
   Flame, Layers,
   ShoppingCart, Package,
-  UtensilsCrossed,
+  UtensilsCrossed, Boxes,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -53,6 +53,7 @@ export const managerNav: NavItem[] = [
   { name: 'Customers',          href: '/manager/customers',     icon: Crown },
   { name: 'Tasks',              href: '/manager/tasks',         icon: ListChecks },
   { name: 'Menu',               href: '/manager/menu',          icon: UtensilsCrossed },
+  { name: 'Inventory',          href: '/manager/inventory',     icon: Boxes },
   { name: 'Order History',      href: '/manager/order-history', icon: History },
   { name: 'Bulk Messages',      href: '/manager/messages',      icon: MessageSquare },
   { name: 'Payments',           href: '/manager/payments',      icon: CreditCard },

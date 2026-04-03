@@ -1,4 +1,7 @@
+from django.db.models import IntegerField, OuterRef, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -221,7 +224,22 @@ class MenuViewSet(viewsets.GenericViewSet):
         return [IsAuthenticated()]
 
     def list(self, request):
-        return Response(MenuItemSerializer(self.get_queryset(), many=True).data)
+        today = timezone.now().date()
+        # Correlated subquery: sum quantity_remaining across today's batches for each menu item.
+        stock_subquery = Subquery(
+            DailyBatchItem.objects
+            .filter(menu_item=OuterRef('pk'), baked_at__date=today)
+            .values('menu_item')
+            .annotate(total=Sum('quantity_remaining'))
+            .values('total'),
+            output_field=IntegerField(),
+        )
+        qs = (
+            MenuItem.objects
+            .filter(is_active=True)
+            .annotate(stock_today=Coalesce(stock_subquery, Value(0)))
+        )
+        return Response(MenuItemSerializer(qs, many=True).data)
 
     def create(self, request):
         serializer = MenuItemSerializer(data=request.data)

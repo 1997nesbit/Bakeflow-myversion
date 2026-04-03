@@ -25,7 +25,10 @@ src/
 │   │   ├── baker/                # BakerActive, BakerLogin, BulkBatchPanel, ...
 │   │   ├── front-desk/           # FrontDeskOrders, OrderAlertsBar, PaymentConfirmDialog, ...
 │   │   ├── manager/
-│   │   ├── inventory/
+│   │   │   ├── inventory/        # ItemFormDialog.tsx, SupplierFormDialog.tsx (manager-only sub-components)
+│   │   │   ├── reports/          # ManagerReports + tab sub-components
+│   │   │   └── *.tsx             # ManagerDashboard, ManagerInventory, ManagerUsers, ...
+│   │   ├── inventory/            # Inventory clerk portal: InventoryDashboard, InventoryStockIn, InventoryAlerts, InventoryRollout
 │   │   ├── decorator/
 │   │   ├── driver/
 │   │   └── packing/              # future enhancement — packing portal exists but step removed from flow
@@ -39,7 +42,8 @@ src/
 │
 ├── types/                        # TypeScript interfaces — source of truth
 │   ├── order.ts                  # Order, OrderStatus, NewOrderData, OverdueAlert, ...
-│   ├── inventory.ts
+│   ├── inventory.ts              # InventoryItem, StockEntry, DailyRollout, Supplier, SupplierInline,
+│   │                             # StockEntryPayload, DailyRolloutPayload, InventoryItemPayload, SupplierPayload
 │   ├── staff.ts
 │   ├── finance.ts
 │   ├── production.ts             # TimerState, BulkBatch, FulfillmentChoice, ...
@@ -50,11 +54,11 @@ src/
 ├── data/
 │   ├── mock/                     # Temporary mock arrays — deleted per phase
 │   │   ├── orders.ts             # → replaced in Phase 2
-│   │   ├── inventory.ts          # → replaced in Phase 4
-│   │   ├── staff.ts              # → replaced in Phase 3
+│   │   ├── staff.ts              # → replaced in Phase 3 ✅ deleted
+│   │   ├── customers.ts          # → replaced in Phase 3 ✅ deleted
+│   │   ├── inventory.ts          # → replaced in Phase 4 ✅ deleted
 │   │   ├── finance.ts            # → replaced in Phase 5
 │   │   ├── production.ts         # → replaced in Phase 2
-│   │   ├── customers.ts          # → replaced in Phase 3
 │   │   ├── tasks.ts              # → replaced in Phase 6
 │   │   ├── helpers.ts            # generateTrackingId() — mock only, remove in Phase 2
 │   │   └── index.ts              # Documents which phase retires each file
@@ -140,7 +144,35 @@ This keeps components under ~300 lines and makes each section independently test
 
 ---
 
-## 5. Error Boundary Coverage
+## 5. Manager Portal Design Language
+
+The manager portal uses a custom dark theme distinct from the light `bg-background` theme used by all other portals. Every manager page **must** follow this pattern — mixing conventions produces a broken white page.
+
+| Element | Class |
+|---|---|
+| Page background | `bg-manager-bg` |
+| Main content area | `ml-64 p-6` — no sticky header |
+| Page title | `text-2xl font-bold text-white` |
+| Subtitle / muted text | `text-white/40` |
+| Label text (in forms) | `text-white/60` |
+| Body text | `text-white` |
+| Dimmed body text | `text-white/50` or `text-white/70` |
+| Inputs | `bg-white/5 border-white/10 text-white placeholder:text-white/30` |
+| Primary button | `bg-manager-accent hover:bg-manager-accent/85 text-white` |
+| Tab bar | Raw `<button>` elements inside `border border-white/10 rounded-lg p-0.5`; active: `bg-white/10 text-white`; inactive: `text-white/40 hover:text-white/70` |
+| Table wrapper | `rounded-xl border border-white/5 overflow-hidden` |
+| Table header row | `border-b border-white/5 bg-white/[0.02]`, cells `text-white/40 uppercase text-xs` |
+| Table body rows | `border-b border-white/5 hover:bg-white/[0.02]` |
+| Row cards / panels | `rounded-xl border border-white/5 bg-white/[0.02]` |
+| Dialog | `bg-manager-card border-white/10 text-white` |
+| Dialog cancel button | `border-white/10 text-white/60 hover:text-white bg-transparent` |
+| Status badges | `bg-<color>-500/20 text-<color>-300` |
+
+Do not use shadcn `<Card>`, `text-foreground`, `text-muted-foreground`, `bg-background`, or `bg-muted` inside manager pages — these are light-theme tokens.
+
+---
+
+## 6. Error Boundary Coverage
 
 Every portal layout wraps its children in `<PortalErrorBoundary>`:
 

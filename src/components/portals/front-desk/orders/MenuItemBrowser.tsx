@@ -47,7 +47,12 @@ export function MenuItemBrowser({ filteredMenu, menuFilter, categories, items, o
             >
               <div className="flex-1">
                 <p className="font-medium text-foreground text-sm">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.description}</p>
+                {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                {(item.stockToday ?? 0) > 0 ? (
+                  <p className="text-[10px] font-medium text-green-600 mt-0.5">{item.stockToday} in stock</p>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">Not baked today</p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-secondary">TZS {item.price.toLocaleString()}</span>

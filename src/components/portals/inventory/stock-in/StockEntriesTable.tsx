@@ -40,7 +40,7 @@ export function StockEntriesTable({ filteredEntries }: Props) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Badge className="bg-emerald-100 text-emerald-800 border-0">
-                      +{entry.quantity} {entry.unit}
+                      +{entry.quantity} {entry.itemUnit}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-foreground">${entry.costPerUnit.toFixed(2)}</td>
@@ -53,7 +53,7 @@ export function StockEntriesTable({ filteredEntries }: Props) {
                       </div>
                     ) : <span className="text-xs text-muted-foreground">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{entry.addedBy}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{entry.addedByName}</td>
                 </tr>
               ))}
             </tbody>

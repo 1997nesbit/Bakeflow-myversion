@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { BakerSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import type { DailyBatchItem } from '@/types/production'
+import type { DailyBatchItem, NewBatchPayload } from '@/types/production'
 import { productionService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { Layers, Plus, ChefHat, Flame, CheckCircle } from 'lucide-react'
@@ -28,10 +28,15 @@ export function BakerProduction() {
     return () => controller.abort()
   }, [])
 
-  const handleAddBatch = (batch: DailyBatchItem) => {
-    setBatches(prev => [batch, ...prev])
-    setShowForm(false)
-    toast.success(`Added ${batch.quantityBaked} ${batch.unit} of ${batch.productName}`)
+  const handleAddBatch = async (payload: NewBatchPayload) => {
+    try {
+      const batch = await productionService.createBatch(payload)
+      setBatches(prev => [batch, ...prev])
+      setShowForm(false)
+      toast.success(`Logged ${batch.quantityBaked} × ${batch.productName}`)
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
   const totalBaked = batches.reduce((sum, b) => sum + b.quantityBaked, 0)
@@ -91,7 +96,6 @@ export function BakerProduction() {
 
           {showForm && (
             <AddBatchForm
-              batchCount={batches.length}
               onAdd={handleAddBatch}
               onCancel={() => setShowForm(false)}
             />

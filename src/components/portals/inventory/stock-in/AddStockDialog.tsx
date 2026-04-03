@@ -7,17 +7,17 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { PackagePlus, CheckCircle } from 'lucide-react'
-import type { InventoryItem } from '@/types/inventory'
-import { mockSuppliers } from '@/data/mock/inventory'
+import type { InventoryItem, Supplier } from '@/types/inventory'
 
 interface Props {
   open: boolean
   inventory: InventoryItem[]
+  suppliers: Supplier[]
   onOpenChange: (open: boolean) => void
-  onSubmit: (itemId: string, supplierId: string, qty: number, cost: number, invoiceRef?: string) => void
+  onSubmit: (itemId: string, supplierName: string, qty: number, cost: number, invoiceRef?: string) => void
 }
 
-export function AddStockDialog({ open, inventory, onOpenChange, onSubmit }: Props) {
+export function AddStockDialog({ open, inventory, suppliers, onOpenChange, onSubmit }: Props) {
   const [formItem, setFormItem] = useState('')
   const [formSupplier, setFormSupplier] = useState('')
   const [formQty, setFormQty] = useState('')
@@ -62,8 +62,8 @@ export function AddStockDialog({ open, inventory, onOpenChange, onSubmit }: Prop
             <Select value={formSupplier} onValueChange={setFormSupplier}>
               <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
               <SelectContent>
-                {mockSuppliers.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                {suppliers.map(s => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

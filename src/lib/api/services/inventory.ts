@@ -1,5 +1,5 @@
 // ---- INVENTORY SERVICE ----
-// Phase 4: Activate API calls when Django inventory endpoints are ready.
+// Phase 4: Active — all methods connected to the Django backend.
 //
 // Django endpoints:
 //   GET    /api/inventory/
@@ -14,52 +14,88 @@
 //   GET    /api/suppliers/
 //   POST   /api/suppliers/
 
-import type { InventoryItem, StockEntry, DailyRollout, Supplier } from '@/types/inventory'
-import { mockInventory, mockStockEntries, mockDailyRollouts, mockSuppliers } from '@/data/mock/inventory'
+import { apiClient } from '@/lib/api/client'
+import type { PaginatedResponse } from '@/types/api'
+import type {
+  InventoryItem,
+  InventoryItemPayload,
+  StockEntry,
+  StockEntryPayload,
+  DailyRollout,
+  DailyRolloutPayload,
+  Supplier,
+  SupplierPayload,
+} from '@/types/inventory'
 
 export const inventoryService = {
-  /** GET /api/inventory/ */
-  getAll: async (): Promise<InventoryItem[]> => {
-    // TODO (Phase 4): return (await apiClient.get<InventoryItem[]>('/inventory/')).data
-    return Promise.resolve([...mockInventory])
+  /** GET /api/inventory/ — paginated */
+  getAll: async (options?: { signal?: AbortSignal }): Promise<PaginatedResponse<InventoryItem>> => {
+    return (await apiClient.get<PaginatedResponse<InventoryItem>>('/inventory/', { signal: options?.signal })).data
   },
 
-  /** GET /api/inventory/low_stock/ */
-  getLowStock: async (): Promise<InventoryItem[]> => {
-    // TODO (Phase 4): return (await apiClient.get<InventoryItem[]>('/inventory/low_stock/')).data
-    return Promise.resolve(mockInventory.filter((i) => i.quantity <= i.minStock))
+  /** GET /api/inventory/low_stock/ — not paginated (bounded set) */
+  getLowStock: async (options?: { signal?: AbortSignal }): Promise<InventoryItem[]> => {
+    return (await apiClient.get<InventoryItem[]>('/inventory/low_stock/', { signal: options?.signal })).data
   },
 
-  /** GET /api/inventory/stock_entries/ */
-  getStockEntries: async (): Promise<StockEntry[]> => {
-    // TODO (Phase 4): return (await apiClient.get<StockEntry[]>('/inventory/stock_entries/')).data
-    return Promise.resolve([...mockStockEntries])
+  /** GET /api/inventory/stock_entries/ — paginated, optional ?item=&date= */
+  getStockEntries: async (
+    params?: { item?: string; date?: string },
+    options?: { signal?: AbortSignal }
+  ): Promise<PaginatedResponse<StockEntry>> => {
+    return (
+      await apiClient.get<PaginatedResponse<StockEntry>>('/inventory/stock_entries/', {
+        params,
+        signal: options?.signal,
+      })
+    ).data
   },
 
   /** POST /api/inventory/stock_in/ */
-  recordStockIn: async (payload: Omit<StockEntry, 'id'>): Promise<StockEntry> => {
-    // TODO (Phase 4): return (await apiClient.post<StockEntry>('/inventory/stock_in/', payload)).data
-    void payload
-    throw new Error('inventoryService.recordStockIn() not yet connected to backend.')
+  recordStockIn: async (payload: StockEntryPayload): Promise<StockEntry> => {
+    return (await apiClient.post<StockEntry>('/inventory/stock_in/', payload)).data
   },
 
-  /** GET /api/inventory/rollouts/ */
-  getRollouts: async (date?: string): Promise<DailyRollout[]> => {
-    // TODO (Phase 4): return (await apiClient.get<DailyRollout[]>('/inventory/rollouts/', { params: { date } })).data
-    const all = [...mockDailyRollouts]
-    return Promise.resolve(date ? all.filter((r) => r.date === date) : all)
+  /** GET /api/inventory/rollouts/ — paginated, optional ?date=&item= */
+  getRollouts: async (
+    params?: { date?: string; item?: string },
+    options?: { signal?: AbortSignal }
+  ): Promise<PaginatedResponse<DailyRollout>> => {
+    return (
+      await apiClient.get<PaginatedResponse<DailyRollout>>('/inventory/rollouts/', {
+        params,
+        signal: options?.signal,
+      })
+    ).data
   },
 
   /** POST /api/inventory/rollout/ */
-  recordRollout: async (payload: Omit<DailyRollout, 'id'>): Promise<DailyRollout> => {
-    // TODO (Phase 4): return (await apiClient.post<DailyRollout>('/inventory/rollout/', payload)).data
-    void payload
-    throw new Error('inventoryService.recordRollout() not yet connected to backend.')
+  recordRollout: async (payload: DailyRolloutPayload): Promise<DailyRollout> => {
+    return (await apiClient.post<DailyRollout>('/inventory/rollout/', payload)).data
   },
 
-  /** GET /api/suppliers/ */
-  getSuppliers: async (): Promise<Supplier[]> => {
-    // TODO (Phase 4): return (await apiClient.get<Supplier[]>('/suppliers/')).data
-    return Promise.resolve([...mockSuppliers])
+  /** POST /api/inventory/ */
+  createItem: async (payload: InventoryItemPayload): Promise<InventoryItem> => {
+    return (await apiClient.post<InventoryItem>('/inventory/', payload)).data
+  },
+
+  /** PATCH /api/inventory/{id}/ */
+  updateItem: async (id: string, payload: Partial<InventoryItemPayload>): Promise<InventoryItem> => {
+    return (await apiClient.patch<InventoryItem>(`/inventory/${id}/`, payload)).data
+  },
+
+  /** GET /api/suppliers/ — paginated */
+  getSuppliers: async (options?: { signal?: AbortSignal }): Promise<PaginatedResponse<Supplier>> => {
+    return (await apiClient.get<PaginatedResponse<Supplier>>('/suppliers/', { signal: options?.signal })).data
+  },
+
+  /** POST /api/suppliers/ */
+  createSupplier: async (payload: SupplierPayload): Promise<Supplier> => {
+    return (await apiClient.post<Supplier>('/suppliers/', payload)).data
+  },
+
+  /** PATCH /api/suppliers/{id}/ */
+  updateSupplier: async (id: string, payload: Partial<SupplierPayload>): Promise<Supplier> => {
+    return (await apiClient.patch<Supplier>(`/suppliers/${id}/`, payload)).data
   },
 }

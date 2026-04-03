@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-03 (Phase 4 complete + Quick Sale feature)
+Last updated: 2026-04-03 (Phase 4 complete + Quick Sale feature + Manager Inventory Management page)
 
 ---
 
@@ -260,11 +260,44 @@ The packing status and its associated portal exist in the codebase but are no lo
 
 ---
 
-## Phase 4 — Inventory ⬜ NOT STARTED
+## Phase 4 — Inventory ✅ COMPLETE (2026-04-03)
 
-**Backend:** `apps/inventory`
+### Backend (`backend/`)
 
-**Frontend:** Activate `inventoryService`. Delete `src/data/mock/inventory.ts`.
+- `apps/inventory/` — new Django app created and registered in `INSTALLED_APPS`
+- `apps/inventory/models.py` — `Supplier`, `SupplierProduct`, `InventoryItem`, `StockEntry`, `DailyRollout` (note: `DailyBatchItem` remains in `apps/orders` where it was already live from Phase 2)
+- `apps/inventory/services.py` — `InventoryService`: `record_stock_in()` and `record_rollout()` both wrapped in `atomic()`; quantity updated via `F()` expressions to prevent race conditions; rollout validates against current stock before writing
+- `apps/inventory/serializers.py` — `InventoryItemSerializer` (includes `stock_health` as annotated `FloatField`; `supplier_id` write-only FK), `StockEntrySerializer` / `StockEntryWriteSerializer`, `DailyRolloutSerializer` / `DailyRolloutWriteSerializer`, `SupplierSerializer` / `SupplierWriteSerializer`
+- `apps/inventory/views.py` — `InventoryViewSet` (list, retrieve, create, partial_update + custom actions: `low_stock`, `stock_entries`, `stock_in`, `rollouts`, `rollout`), `SupplierViewSet` (list, retrieve, create, partial_update); write actions use `IsManagerOrInventory` permission
+- `apps/inventory/urls.py` — registered at `/api/inventory/` and `/api/suppliers/`
+- `config/urls.py` — `apps/inventory.urls` included at `/api/`
+- Migrations pending: run `python manage.py makemigrations inventory && python manage.py migrate`
+
+### Frontend (`src/`)
+
+- `src/types/inventory.ts` — updated to match backend: `supplierId` replaced with `supplier: SupplierInline | null`; `stockHealth: number` added; `itemUnit` / `addedByName` / `rolledOutByName` fields added; `StockEntryPayload`, `DailyRolloutPayload`, `InventoryItemPayload`, `SupplierPayload` write types added
+- `src/lib/api/services/inventory.ts` — fully activated: `getAll`, `getLowStock`, `getStockEntries`, `recordStockIn`, `getRollouts`, `recordRollout`, `getSuppliers`, `createItem`, `updateItem`, `createSupplier`, `updateSupplier`
+- `InventoryDashboard` — 4 parallel fetches (inventory, stock entries, today's rollouts, suppliers) with shared AbortController
+- `InventoryStockIn` + `AddStockDialog` — `handleAddStock` async, calls `recordStockIn`; suppliers passed as prop (no mock); Sonner toasts
+- `InventoryAlerts` — service fetch; `handleQuickRestock` calls `recordStockIn` then refetches; supplier lookup via `item.supplier`; Sonner toasts
+- `InventoryRollout` — service fetch; `handleRollout` async, calls `recordRollout`; hardcoded date removed; `rolledOutBy` free-text field removed (set server-side from `request.user`); Sonner toasts
+- `StockEntriesTable` — field names updated (`itemUnit`, `addedByName`)
+- `src/data/mock/inventory.ts` — deleted
+
+### Manager Inventory Management page (new feature, Phase 4)
+
+- `src/components/portals/manager/ManagerInventory.tsx` — manager-only page: Items tab (table with Health badge, edit button) + Suppliers tab; follows manager dark design language (`bg-manager-bg`, `text-white`, `border-white/10`, etc.)
+- `src/components/portals/manager/inventory/ItemFormDialog.tsx` — create/edit dialog for inventory items (name, category, unit, quantity, min stock, cost/unit, supplier)
+- `src/components/portals/manager/inventory/SupplierFormDialog.tsx` — create/edit dialog for suppliers (name, phone, email)
+- `src/app/(dashboard)/manager/inventory/page.tsx` — 4-line route shell
+- `src/components/layout/sidebar/PortalSidebar.tsx` — "Inventory" (`Boxes` icon) added to `managerNav` between Menu and Order History
+
+### Design decisions
+
+- **`DailyBatchItem` stays in `apps/orders`** — it already had a migration and live endpoints from Phase 2; moving it would require a destructive migration with no benefit
+- **`rolledOutBy` removed from rollout form** — set from `request.user` server-side; no risk of clerk logging a rollout under another name
+- **`stock_health` annotated in DB** — computed via `ExpressionWrapper(F('quantity') / F('min_stock'))` in the queryset; no Python-level property calls per item
+- **Manager can create/edit items and suppliers** — `IsManagerOrInventory` permission; stock-in and rollout remain inventory_clerk only
 
 ---
 
