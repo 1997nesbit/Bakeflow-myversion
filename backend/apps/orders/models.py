@@ -11,7 +11,7 @@ class OrderStatus(models.TextChoices):
     BAKER      = 'baker',      'With Baker'
     QUALITY    = 'quality',    'Quality Check'
     DECORATOR  = 'decorator',  'With Decorator'
-    PACKING    = 'packing',    'Packing'
+    # PACKING    = 'packing',    'Packing'  # future enhancement — packing step removed from flow
     READY      = 'ready',      'Ready'
     DISPATCHED = 'dispatched', 'Dispatched'
     DELIVERED  = 'delivered',  'Delivered'

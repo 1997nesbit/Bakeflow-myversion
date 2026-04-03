@@ -39,3 +39,7 @@ class IsManagerOrFrontDesk(IsRole):
 
 class IsManagerOrInventory(IsRole):
     allowed_roles = ['manager', 'inventory_clerk']
+
+
+class IsDriverOrFrontDesk(IsRole):
+    allowed_roles = ['driver', 'front_desk', 'manager']

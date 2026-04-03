@@ -16,10 +16,9 @@ class OrderStateValidator:
         OrderStatus.PENDING:    [OrderStatus.PAID],
         OrderStatus.PAID:       [OrderStatus.BAKER],
         OrderStatus.BAKER:      [OrderStatus.QUALITY],
-        OrderStatus.QUALITY:    [OrderStatus.DECORATOR, OrderStatus.PACKING],
-        OrderStatus.DECORATOR:  [OrderStatus.PACKING],
-        OrderStatus.PACKING:    [OrderStatus.READY],
-        OrderStatus.READY:      [OrderStatus.DISPATCHED],
+        OrderStatus.QUALITY:    [OrderStatus.DECORATOR, OrderStatus.READY],
+        OrderStatus.DECORATOR:  [OrderStatus.READY],
+        OrderStatus.READY:      [OrderStatus.DISPATCHED, OrderStatus.DELIVERED],
         OrderStatus.DISPATCHED: [OrderStatus.DELIVERED],
     }
 

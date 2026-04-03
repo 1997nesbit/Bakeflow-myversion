@@ -178,13 +178,13 @@ export function BakerActive() {
 
   const handleQAPass = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId)
-    const toStatus: Order['status'] = order?.orderType === 'custom' ? 'decorator' : 'packing'
+    const toStatus: Order['status'] = order?.orderType === 'custom' ? 'decorator' : 'ready'
     const prev = orders
     setOrders(p => p.map(o => o.id === orderId ? { ...o, status: toStatus } : o))
-    toast(`QA Passed! Sent to ${toStatus === 'packing' ? 'Packing' : 'Decorator'}.`)
+    toast(`QA Passed! ${toStatus === 'ready' ? 'Marked as Ready.' : 'Sent to Decorator.'}`)
     try {
-      if (toStatus === 'packing') {
-        await ordersService.markPacking(orderId)
+      if (toStatus === 'ready') {
+        await ordersService.markReady(orderId)
       } else {
         await ordersService.advanceStatus(orderId, 'decorator')
       }

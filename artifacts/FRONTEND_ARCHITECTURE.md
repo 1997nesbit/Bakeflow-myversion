@@ -18,7 +18,7 @@ src/
 │       ├── inventory/layout.tsx
 │       ├── driver/layout.tsx
 │       ├── decorator/layout.tsx
-│       └── packing/layout.tsx
+│       └── packing/layout.tsx    # future enhancement — packing portal exists but step removed from flow
 │
 ├── components/
 │   ├── portals/                  # All portal UI — one folder per role
@@ -28,7 +28,7 @@ src/
 │   │   ├── inventory/
 │   │   ├── decorator/
 │   │   ├── driver/
-│   │   └── packing/
+│   │   └── packing/              # future enhancement — packing portal exists but step removed from flow
 │   ├── shared/                   # Cross-portal reusable components
 │   │   ├── PortalLoginForm.tsx       # Generic login card used by all portals
 │   │   ├── PortalErrorBoundary.tsx

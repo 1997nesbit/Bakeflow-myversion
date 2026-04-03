@@ -94,6 +94,10 @@ useEffect(() => {
 }, [])
 ```
 
+**Walk-in sales — `POST /api/sales/`**
+
+Not part of the order pipeline. Use `salesService.create()` from `src/lib/api/services/sales.ts`. Payload shape is `NewSaleData` (see `src/types/sale.ts`): `items[]`, `totalPrice`, `paymentMethod`, optional `customerName`. The endpoint is live alongside Phase 2 — no additional activation needed.
+
 **Phase 2 checklist — do not mark done until all pass:**
 - [ ] **Pagination shape** — `ordersService.getAll()` returns `PaginatedResponse<Order>` (see `src/types/api.ts`). Every component that calls it must read `.results`, not treat the response as a raw array. Also store `count` if the component shows a total or needs to page.
 - [ ] **Nested customer object** — The backend's `OrderDetailSerializer` returns `customer: { id, name, phone }` as a nested object, not a flat `customerId: string`. Update `src/types/order.ts`: replace `customerId: string` with `customer: { id: string; name: string; phone: string }`. Update every component that reads `order.customerId`.
@@ -170,6 +174,7 @@ Permissions: `IsManagerOrFrontDesk` on all write endpoints.
 - [x] `MenuManagement` `useState` initializer replaced with `useEffect` fetch
 - [x] All local mutation handlers replaced with `menuService` calls
 - [x] `emptyCats` state removed; category list fetched from `menuService.getCategories()`
+- [x] `bakeryMenu` static array deleted from `src/data/constants/menus.ts` — `NewOrderPage` now fetches from the API with no fallback; `AddBatchForm` quick-select chips removed
 
 ---
 
@@ -276,7 +281,7 @@ Auth strategy is **Option C** — access token in JS memory, refresh token in Ht
 | `manager` | `/manager` |
 | `decorator` | `/portal/decorator` |
 | `driver` | `/portal/driver` |
-| `packing` | `/portal/packing` |
+| `packing` | `/portal/packing` — future enhancement; packing step removed from flow (2026-04-03); portal retained in codebase |
 
 ---
 

@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-03 (Phase 3 complete)
+Last updated: 2026-04-03 (Phase 4 complete + Quick Sale feature)
 
 ---
 
@@ -57,7 +57,7 @@ Last updated: 2026-04-03 (Phase 3 complete)
 - `apps/orders/models.py` — `Order`, `OrderItem`, `OrderStatusHistory`, `MenuItem`, `DailyBatchItem` (all TextChoices enums defined)
 - `apps/orders/services.py` — `OrderStateValidator` (allowed transitions map, OCP), `OrderService`, `ProductionService`
 - `apps/orders/serializers.py` — `CustomerInlineSerializer`, `OrderListSerializer`, `OrderDetailSerializer`, `OrderCreateSerializer`, payment/dispatch serializers, batch serializers
-- `apps/orders/views.py` — `OrderViewSet` with all state-transition actions (`post_to_baker`, `accept`, `quality_check`, `mark_packing`, `mark_ready`, `dispatch`, `mark_delivered`, `record_payment`), `MenuViewSet`, `ProductionViewSet`
+- `apps/orders/views.py` — `OrderViewSet` with all state-transition actions (`post_to_baker`, `accept`, `quality_check`, `mark_ready`, `dispatch`, `mark_delivered`, `record_payment`), `MenuViewSet`, `ProductionViewSet`; `mark_packing` commented out (future enhancement)
 - `apps/orders/urls.py` — registered: `/api/orders/`, `/api/menu/`, `/api/production/batches/`
 - `djangorestframework-camel-case` installed — auto-converts snake_case ↔ camelCase; no field renames needed in frontend
 - Migrations generated and applied for `customers` and `orders` apps
@@ -69,7 +69,7 @@ Last updated: 2026-04-03 (Phase 3 complete)
 - All portal components updated to use real API calls with AbortController pattern:
   - `BakerActive`, `BakerDashboard`, `BakerHistory`, `BakerProduction`
   - `FrontDeskOrders`, `FrontDeskDashboard`, `FrontDeskSearch`, `FrontDeskMessaging`
-  - `DriverDashboard`, `PackingDashboard`, `DecoratorDashboard`
+  - `DriverDashboard`, `PackingDashboard` (portal retained as future enhancement), `DecoratorDashboard`
   - `ManagerDashboard`, `ManagerOrderHistory`, `ManagerPayments`, `ManagerReports`
   - `OrderTracking` (public) — now fetches from `/api/orders/track/{id}/`
 - All subcomponents updated to use `order.customer.name` / `order.customer.phone` / `order.customer.isGold`
@@ -202,6 +202,61 @@ The service stubs (`createItem`, `updateItem`, `deleteItem`, `createCategory`, `
 
 - **Free-form categories** — `MenuItem.category` is now a plain string (no DB enum constraint). The `GET /api/menu/categories/` action returns `DISTINCT` values from active items. `POST /api/menu/categories/` validates the slug and returns it; no separate `Category` model needed for MVP.
 - **Soft-delete** — `DELETE /api/menu/{id}/` sets `is_active=False` rather than removing the row. The list queryset already filters `is_active=True` so deleted items are invisible to the frontend.
+
+---
+
+## Quick Sale feature ✅ COMPLETE (2026-04-03)
+
+Walk-in point-of-sale transactions that bypass the full order pipeline. A customer walks in, picks items, pays, and leaves — no customer record, no tracking ID, no baker assignment.
+
+### Backend (`backend/`)
+
+- `apps/orders/models.py` — `Sale` (`TimestampedModel`, UUID PK, `total_price`, `payment_method`, `customer_name` blank-optional plain text, `served_by` FK → User) and `SaleItem` (`sale` FK, `name`, `quantity`, `unit_price`)
+- `apps/orders/migrations/0003_sale_saleitem.py` — migration generated manually; apply with `python manage.py migrate`
+- `apps/orders/serializers.py` — `SaleItemSerializer`, `SaleSerializer` (read; includes nested items + `served_by.name`), `SaleCreateSerializer` (write; validates items non-empty)
+- `apps/orders/views.py` — `SaleViewSet`: `list` + `create`; `IsManagerOrFrontDesk` on both; `create` calls `Sale.objects.create()` then `SaleItem.objects.bulk_create()`
+- `apps/orders/urls.py` — registered at `/api/sales/`
+
+### Frontend (`src/`)
+
+- `src/types/sale.ts` — `Sale`, `SaleItem`, `NewSaleData` interfaces
+- `src/types/index.ts` — re-exports `sale.ts`
+- `src/lib/api/services/sales.ts` — `salesService.create()` → `POST /api/sales/`
+- `src/components/portals/front-desk/orders/MenuOrderStep.tsx` — Quick Sale toggle in the sticky cart panel; when ON: payment method pills (Cash / Card / Mobile / Bank) + "Sell Now — TZS X" button replace "Next: Customer Details"; steps 2 and 3 are never reached
+- `src/components/portals/front-desk/orders/NewOrderPage.tsx` — `handleQuickSale()` calls `salesService.create()` and redirects to `/front-desk/orders` on success
+
+### Design decisions
+
+- **Separate `Sale` model, not a flag on `Order`** — a walk-in has no pickup date, no delivery type, no customer FK, no status lifecycle, no baker pipeline. Forcing it into `Order` would require ~10 nullable fields and branching logic throughout the pipeline. `Sale` is a minimal 5-field record.
+- **Quick Sale only in the menu flow** — the toggle appears only in `MenuOrderStep`. The custom cake flow is always an advance order and never a walk-in.
+- **Always paid in full** — no deposit or "save unpaid" option. A sale at the counter is always settled immediately.
+- **Optional plain-text `customer_name`** — no FK to `Customer`; just a name for receipt reference if needed. No customer record is created or updated.
+
+---
+
+## `bakeryMenu` static data removed (2026-04-03)
+
+The static `bakeryMenu` array in `src/data/constants/menus.ts` was the last piece of hardcoded menu data. It has been fully removed from the order flow.
+
+- `src/data/constants/menus.ts` — `bakeryMenu` array and its `MenuItem` import deleted. `cakeFlavours` and `icingTypes` remain (permanent UI constants for the custom cake form).
+- `src/components/portals/front-desk/orders/NewOrderPage.tsx` — `useState<MenuItem[]>([])` with no fallback; fetches directly from `menuService.getItems()` and `menuService.getCategories()` on mount.
+- `src/components/portals/baker/production/AddBatchForm.tsx` — quick-select chip section removed. Product name is a plain text input.
+
+---
+
+## Packing step removed from order flow (2026-04-03)
+
+The packing status and its associated portal exist in the codebase but are no longer reachable through the normal order pipeline. `quality → ready` (menu orders) and `decorator → ready` (custom cakes) are now the active transitions.
+
+**What was changed:**
+- `OrderStateValidator.ALLOWED_TRANSITIONS` — `quality` now routes to `[decorator, ready]`; `packing` removed as intermediate step
+- `OrderStatus.PACKING` — commented out in `models.py` (value retained in DB for historical rows)
+- `mark_packing` view action — commented out in `views.py`
+- `packing` role filter — commented out in `OrderViewSet.list()`
+- `BakerActive.handleQAPass` — non-custom orders now call `ordersService.markReady()` instead of `markPacking()`
+- `QAOrderCard` — Pass button label now shows "Pass → Ready" for menu orders
+
+**What was NOT changed:** The `packing` DB column value, the `PackingDashboard` frontend portal, and `src/app/(dashboard)/packing/` route are all still present — ready to be reactivated if the packing step is reintroduced.
 
 ---
 

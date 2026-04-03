@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from core.permissions import (
-    IsBaker, IsDriver, IsManagerOrFrontDesk,
+    IsBaker, IsDriver, IsDriverOrFrontDesk, IsManagerOrFrontDesk,
 )
 from .models import DailyBatchItem, MenuItem, Order, Sale, SaleItem
 from .serializers import (
@@ -53,7 +53,7 @@ class OrderViewSet(viewsets.GenericViewSet):
         if self.action in ('accept', 'quality_check'):
             return [IsBaker()]
         if self.action == 'mark_delivered':
-            return [IsDriver()]
+            return [IsDriverOrFrontDesk()]
         return [IsAuthenticated()]
 
     # ------------------------------------------------------------------
@@ -72,8 +72,8 @@ class OrderViewSet(viewsets.GenericViewSet):
             qs = qs.filter(status__in=['ready', 'dispatched', 'delivered'])
         elif role == 'decorator':
             qs = qs.filter(status='decorator')
-        elif role == 'packing':
-            qs = qs.filter(status='packing')
+        # elif role == 'packing':  # future enhancement — packing step removed from flow
+        #     qs = qs.filter(status='packing')
 
         # Optional query filters
         status_filter = request.query_params.get('status')
@@ -164,11 +164,12 @@ class OrderViewSet(viewsets.GenericViewSet):
         order = self._service.advance_status(order, 'quality', by=request.user)
         return Response(OrderDetailSerializer(order).data)
 
-    @action(detail=True, methods=['post'], url_path='mark_packing')
-    def mark_packing(self, request, pk=None):
-        order = get_object_or_404(self.get_queryset(), pk=pk)
-        order = self._service.advance_status(order, 'packing', by=request.user)
-        return Response(OrderDetailSerializer(order).data)
+    # future enhancement — packing step removed from flow
+    # @action(detail=True, methods=['post'], url_path='mark_packing')
+    # def mark_packing(self, request, pk=None):
+    #     order = get_object_or_404(self.get_queryset(), pk=pk)
+    #     order = self._service.advance_status(order, 'packing', by=request.user)
+    #     return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='mark_ready')
     def mark_ready(self, request, pk=None):

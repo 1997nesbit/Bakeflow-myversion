@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle, XCircle, RotateCcw, Palette } from 'lucide-react'
+import { CheckCircle, XCircle, RotateCcw, Palette, PackageCheck } from 'lucide-react'
 import type { Order } from '@/types/order'
 import type { FulfillmentChoice } from '@/types/production'
 import { orderTypeLabels } from '@/data/constants/labels'
@@ -93,7 +93,10 @@ export function QAOrderCard({
               <XCircle className="mr-1.5 h-4 w-4" />Fail QA
             </Button>
             <Button className="flex-1 text-white border-0" style={{ background: 'linear-gradient(135deg, #CA0123, #e66386)' }} onClick={onQAPass}>
-              <Palette className="mr-1.5 h-4 w-4" />{'Pass → Decorator'}
+              {order.orderType === 'custom'
+                ? <><Palette className="mr-1.5 h-4 w-4" />{'Pass → Decorator'}</>
+                : <><PackageCheck className="mr-1.5 h-4 w-4" />{'Pass → Ready'}</>
+              }
             </Button>
           </div>
         )}

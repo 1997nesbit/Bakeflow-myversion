@@ -137,9 +137,17 @@ export function FrontDeskOrders() {
     toast.info('Order sent to Driver Portal. Waiting for driver to accept.')
   }
 
-  const handleMarkPickedUp = (orderId: string) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'delivered' as OrderStatus } : o))
+  const handleMarkPickedUp = async (orderId: string) => {
+    const prev = orders
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, status: 'delivered' as OrderStatus } : o))
     toast.success('Order marked as picked up!')
+    try {
+      const updated = await ordersService.markDelivered(orderId)
+      setOrders(p => p.map(o => o.id === orderId ? updated : o))
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleConfirmPayment = async (orderId: string, paymentType: 'full' | 'deposit') => {

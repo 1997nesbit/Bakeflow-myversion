@@ -135,7 +135,7 @@ class OrderStatus(TextChoices):
     BAKER      = 'baker'
     QUALITY    = 'quality'
     DECORATOR  = 'decorator'
-    PACKING    = 'packing'
+    # PACKING  = 'packing'  # future enhancement — packing step removed from flow; value retained in DB for historical rows
     READY      = 'ready'
     DISPATCHED = 'dispatched'
     DELIVERED  = 'delivered'
@@ -348,9 +348,9 @@ class OrderStateValidator(BaseService):
         'pending':    ['paid'],
         'paid':       ['baker'],
         'baker':      ['quality'],
-        'quality':    ['decorator', 'packing'],   # packing if no custom cake
-        'decorator':  ['packing'],
-        'packing':    ['ready'],
+        'quality':    ['decorator', 'ready'],     # ready if no custom cake; decorator for custom cakes only
+        'decorator':  ['ready'],
+        # 'packing' removed — future enhancement if a dedicated packing step is reintroduced
         'ready':      ['dispatched'],
         'dispatched': ['delivered'],
     }
@@ -436,7 +436,7 @@ ORDERS
   POST   /api/orders/{id}/post_to_baker/
   POST   /api/orders/{id}/assign_baker/
   POST   /api/orders/{id}/quality_check/
-  POST   /api/orders/{id}/mark_packing/
+  # POST /api/orders/{id}/mark_packing/  — future enhancement (packing step removed)
   POST   /api/orders/{id}/mark_ready/
   POST   /api/orders/{id}/dispatch/
   POST   /api/orders/{id}/mark_delivered/
@@ -773,42 +773,43 @@ Apply the same pattern anywhere the same endpoint serves multiple roles with dif
                  ┌────────┴────────┐
         custom cake?             no custom cake
                  │                        │
-          ┌──────▼──────┐         ┌───────▼──────┐
-          │  DECORATOR  │         │   PACKING    │
-          └──────┬──────┘         └───────┬──────┘
-                 │ decoration done         │
           ┌──────▼──────┐                 │
-          │   PACKING   │─────────────────┘
-          └──────┬──────┘
-                 │ packed
-            ┌────▼────┐
-            │  READY  │  ← Front Desk notified
-            └────┬────┘
-                 │ dispatched
-          ┌──────▼──────┐
-          │ DISPATCHED  │  ← Driver assigned
-          └──────┬──────┘
-                 │ driver confirms delivery
-          ┌──────▼──────┐
-          │  DELIVERED  │  ← Order complete
-          └─────────────┘
+          │  DECORATOR  │                 │
+          └──────┬──────┘                 │
+                 │ decoration done        │
+                 └──────────┬─────────────┘
+                       ┌────▼────┐
+                       │  READY  │  ← Front Desk notified
+                       └────┬────┘
+                            │ dispatched
+                     ┌──────▼──────┐
+                     │ DISPATCHED  │  ← Driver assigned
+                     └──────┬──────┘
+                            │ driver confirms delivery
+                     ┌──────▼──────┐
+                     │  DELIVERED  │  ← Order complete
+                     └─────────────┘
+
+Note: PACKING status is retained in the DB schema as a future enhancement
+but is no longer reachable through the normal order flow.
 ```
 
 ## Appendix: Role Access Matrix
 
-| Endpoint Group | Manager | Front Desk | Baker | Decorator | Packing | Driver | Inventory |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Create orders | W | W | — | — | — | — | — |
-| View orders | R | R | R | R | R | R | — |
-| Advance order status | W | W | W | W | W | W | — |
-| Record payment | W | W | — | — | — | — | — |
-| Inventory CRUD | R | — | — | — | — | — | W |
-| Staff management | W | — | — | — | — | — | — |
-| Debts & expenses | R/W | — | — | — | — | — | R |
-| Reports | R | — | — | — | — | — | — |
-| Tasks | W | — | R | R | R | R | R |
-| Messaging | W | W | — | — | — | — | — |
+| Endpoint Group | Manager | Front Desk | Baker | Decorator | Driver | Inventory |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Create orders | W | W | — | — | — | — |
+| View orders | R | R | R | R | R | — |
+| Advance order status | W | W | W | W | W | — |
+| Record payment | W | W | — | — | — | — |
+| Inventory CRUD | R | — | — | — | — | W |
+| Staff management | W | — | — | — | — | — |
+| Debts & expenses | R/W | — | — | — | — | R |
+| Reports | R | — | — | — | — | — |
+| Tasks | W | — | R | R | R | R |
+| Messaging | W | W | — | — | — | — |
 
+Note: Packing role removed from active roles (2026-04-02). Packing column dropped from matrix.
 `R` = read, `W` = read + write, `—` = no access
 
 ---
