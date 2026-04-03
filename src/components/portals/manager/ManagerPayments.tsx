@@ -130,7 +130,7 @@ export function ManagerPayments() {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-white/30">
                   <span>{o.id}</span>
-                  <span>{o.items.map(i => i.name).join(', ')}</span>
+                  <span>{o.items?.map(i => i.name).join(', ')}</span>
                   {o.paymentMethod && <span>{paymentMethodLabels[o.paymentMethod]}</span>}
                   <span>{new Date(o.createdAt).toLocaleDateString()}</span>
                 </div>

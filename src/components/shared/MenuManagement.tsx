@@ -1,9 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useState, useMemo } from 'react'
-import { bakeryMenu } from '@/data/constants/menus'
+import { useState, useEffect, useMemo } from 'react'
 import type { MenuItem } from '@/types/order'
+import { menuService } from '@/lib/api/services/menu'
+import { handleApiError } from '@/lib/utils/handle-error'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,14 +21,10 @@ interface MenuManagementProps {
   theme: 'light' | 'dark'
 }
 
-function uniqueSorted(arr: string[]): string[] {
-  return Array.from(new Set(arr)).sort()
-}
-
 export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
-  const [items, setItems] = useState<MenuItem[]>(bakeryMenu)
-  /** Categories that exist but have no items yet (added via the Categories tab) */
-  const [emptyCats, setEmptyCats] = useState<string[]>([])
+  const [items, setItems] = useState<MenuItem[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterCat, setFilterCat] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -40,8 +37,24 @@ export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
   const [newCatName, setNewCatName] = useState('')
   const [renameCat, setRenameCat] = useState<{ old: string; val: string } | null>(null)
 
-  const itemCats = uniqueSorted(items.map(i => i.category))
-  const categories = uniqueSorted([...itemCats, ...emptyCats])
+  // ── Data fetching ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    Promise.all([
+      menuService.getItems({ signal: controller.signal }),
+      menuService.getCategories({ signal: controller.signal }),
+    ])
+      .then(([fetchedItems, fetchedCats]) => {
+        setItems(fetchedItems)
+        setCategories(fetchedCats)
+      })
+      .catch(handleApiError)
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -69,51 +82,80 @@ export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  function handleSaveItem(data: Omit<MenuItem, 'id'>, id?: string) {
-    if (id) {
-      setItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
-      toast.success('Menu item updated.')
-    } else {
-      setItems(prev => [...prev, { id: `M-${Date.now().toString().slice(-7)}`, ...data }])
-      setEmptyCats(prev => prev.filter(c => c !== data.category))
-      toast.success('Menu item added.')
+  async function handleSaveItem(data: Omit<MenuItem, 'id'>, id?: string) {
+    try {
+      if (id) {
+        const updated = await menuService.updateItem(id, data)
+        setItems(prev => prev.map(i => i.id === id ? updated : i))
+        toast.success('Menu item updated.')
+      } else {
+        const created = await menuService.createItem(data)
+        setItems(prev => [...prev, created])
+        if (!categories.includes(created.category)) {
+          setCategories(prev => [...prev, created.category].sort())
+        }
+        toast.success('Menu item added.')
+      }
+      setItemDialog({ open: false })
+    } catch (err) {
+      handleApiError(err)
     }
-    setItemDialog({ open: false })
   }
 
-  function handleDeleteItem() {
+  async function handleDeleteItem() {
     if (!deleteId) return
-    setItems(prev => prev.filter(i => i.id !== deleteId))
-    setDeleteId(null)
-    toast.success('Item removed.')
+    try {
+      await menuService.deleteItem(deleteId)
+      setItems(prev => prev.filter(i => i.id !== deleteId))
+      setDeleteId(null)
+      toast.success('Item removed.')
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
-  function handleAddCat() {
-    const slug = newCatName.trim().toLowerCase()
-    if (!slug) { toast.warning('Enter a category name.'); return }
-    if (categories.includes(slug)) { toast.warning('Category already exists.'); return }
-    setEmptyCats(prev => [...prev, slug])
-    setNewCatName('')
-    setCatDialogOpen(false)
-    toast.success('Category added.')
+  async function handleAddCat() {
+    const name = newCatName.trim()
+    if (!name) { toast.warning('Enter a category name.'); return }
+    if (categories.includes(name.toLowerCase())) { toast.warning('Category already exists.'); return }
+    try {
+      const slug = await menuService.createCategory(name)
+      setCategories(prev => [...prev, slug].sort())
+      setNewCatName('')
+      setCatDialogOpen(false)
+      toast.success('Category added.')
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
-  function handleRenameCat() {
+  async function handleRenameCat() {
     if (!renameCat) return
-    const slug = renameCat.val.trim().toLowerCase()
-    if (!slug) return
-    if (slug !== renameCat.old && categories.includes(slug)) { toast.warning('A category with that name already exists.'); return }
-    setItems(prev => prev.map(i => i.category === renameCat.old ? { ...i, category: slug } : i))
-    setEmptyCats(prev => prev.map(c => c === renameCat.old ? slug : c))
-    setRenameCat(null)
-    toast.success('Category renamed.')
+    const newName = renameCat.val.trim()
+    if (!newName) return
+    if (newName.toLowerCase() !== renameCat.old && categories.includes(newName.toLowerCase())) {
+      toast.warning('A category with that name already exists.')
+      return
+    }
+    try {
+      const newSlug = await menuService.renameCategory(renameCat.old, newName)
+      setItems(prev => prev.map(i => i.category === renameCat.old ? { ...i, category: newSlug } : i))
+      setCategories(prev => prev.map(c => c === renameCat.old ? newSlug : c).sort())
+      setRenameCat(null)
+      toast.success('Category renamed.')
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
-  function handleDeleteCat(cat: string) {
-    const count = items.filter(i => i.category === cat).length
-    if (count > 0) { toast.error(`Cannot delete — ${count} item${count > 1 ? 's' : ''} use this category.`); return }
-    setEmptyCats(prev => prev.filter(c => c !== cat))
-    toast.success('Category removed.')
+  async function handleDeleteCat(cat: string) {
+    try {
+      await menuService.deleteCategory(cat)
+      setCategories(prev => prev.filter(c => c !== cat))
+      toast.success('Category removed.')
+    } catch (err) {
+      handleApiError(err)
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -177,7 +219,11 @@ export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
               ))}
             </div>
 
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className={`text-center py-20 ${mu}`}>
+                <p className="text-sm">Loading menu...</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className={`text-center py-20 ${mu}`}>
                 <UtensilsCrossed className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">{search ? `No items match "${search}".` : 'No items in this category.'}</p>
@@ -228,7 +274,11 @@ export function MenuManagement({ sidebar, theme }: MenuManagementProps) {
               </Button>
             </div>
 
-            {categories.length === 0 ? (
+            {loading ? (
+              <div className={`text-center py-20 ${mu}`}>
+                <p className="text-sm">Loading categories...</p>
+              </div>
+            ) : categories.length === 0 ? (
               <div className={`text-center py-20 ${mu}`}>
                 <Tag className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No categories yet. Add one to get started.</p>

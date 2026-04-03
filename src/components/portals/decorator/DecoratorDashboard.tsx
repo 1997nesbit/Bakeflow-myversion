@@ -84,7 +84,7 @@ export function DecoratorDashboard() {
                     <p className="font-medium text-foreground">
                       {orderTypeLabels[order.orderType]}
                     </p>
-                    {order.items.map((item, idx) => (
+                    {order.items?.map((item, idx) => (
                       <div key={idx} className="rounded-lg bg-accent p-3">
                         <p className="font-medium text-foreground">{item.name}</p>
                         <p className="text-sm text-muted-foreground">

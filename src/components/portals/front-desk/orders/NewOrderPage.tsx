@@ -18,9 +18,10 @@ import { DeliverySection } from './DeliverySection'
 import { PaymentMethodSelector } from './PaymentMethodSelector'
 import { PaymentActionButtons } from './PaymentActionButtons'
 import type { OrderItem, MenuItem, DeliveryType, PaymentMethod, PaymentTerms, NewOrderData } from '@/types/order'
-import { bakeryMenu } from '@/data/constants/menus'
+import type { NewSaleData } from '@/types/sale'
 import { menuService } from '@/lib/api/services/menu'
 import { ordersService } from '@/lib/api/services/orders'
+import { salesService } from '@/lib/api/services/sales'
 import { handleApiError } from '@/lib/utils/handle-error'
 
 interface NewOrderPageProps {
@@ -32,30 +33,18 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
   const [step, setStep] = useState(1)
   const [items, setItems] = useState<OrderItem[]>([])
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(bakeryMenu)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [categories, setCategories] = useState<string[]>([])
 
   useEffect(() => {
     const controller = new AbortController()
-    
-    // Fetch menu items, but fallback to static bakeryMenu if database is empty
+
     menuService.getItems({ signal: controller.signal })
-      .then(data => {
-        if (data && data.length > 0) {
-          setMenuItems(data)
-        }
-      })
+      .then(setMenuItems)
       .catch(handleApiError)
 
-    // Fetch categories, but fallback to static categories if database is empty
     menuService.getCategories({ signal: controller.signal })
-      .then(data => {
-        if (data && data.length > 0) {
-          setCategories(data)
-        } else {
-          setCategories(Array.from(new Set(bakeryMenu.map(m => m.category))))
-        }
-      })
+      .then(setCategories)
       .catch(handleApiError)
 
     return () => controller.abort()
@@ -119,6 +108,21 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
     isAdvanceOrder: isAdvance, estimatedMinutes,
   })
 
+  const handleQuickSale = async (paymentMethod: PaymentMethod) => {
+    const payload: NewSaleData = {
+      items: items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.price })),
+      totalPrice,
+      paymentMethod,
+    }
+    try {
+      await salesService.create(payload)
+      toast.success(`Sale recorded — TZS ${totalPrice.toLocaleString()}`)
+      router.push('/front-desk/orders')
+    } catch (err) {
+      handleApiError(err)
+    }
+  }
+
   const handleSubmit = async (paymentStatus: 'unpaid' | 'deposit' | 'paid', amountPaid: number) => {
     try {
       await ordersService.create(buildOrderData(paymentStatus, amountPaid))
@@ -166,6 +170,7 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
             onItemsChange={setItems}
             onNext={() => setStep(2)}
             onCancel={() => router.push('/front-desk/orders')}
+            onQuickSale={handleQuickSale}
           />
         )}
 

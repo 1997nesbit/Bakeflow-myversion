@@ -72,7 +72,7 @@ export function ActionCenterTab({
                       {order.paymentStatus === 'deposit' ? 'Deposit' : 'Paid'}
                     </Badge>
                   </div>
-                  <p className="text-xs text-foreground truncate">{order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
+                  <p className="text-xs text-foreground truncate">{order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />{order.pickupDate}
                     <Clock className="h-3 w-3 ml-1" />{order.pickupTime}
@@ -177,7 +177,7 @@ export function ActionCenterTab({
                       <Package className="mr-1 h-3 w-3" /> Pickup
                     </Badge>
                   </div>
-                  <p className="text-xs text-foreground truncate">{order.items.map(i => i.name).join(', ')}</p>
+                  <p className="text-xs text-foreground truncate">{order.items?.map(i => i.name).join(', ')}</p>
                   <button
                     type="button"
                     onClick={() => copyTrackingLink(order.trackingId)}

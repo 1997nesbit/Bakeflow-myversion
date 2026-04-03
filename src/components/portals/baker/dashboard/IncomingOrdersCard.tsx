@@ -51,7 +51,7 @@ export function IncomingOrdersCard({ orders }: Props) {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-1 mb-2">
-                  {order.items.map((item, idx) => (
+                  {order.items?.map((item, idx) => (
                     <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#fce7ea', color: '#CA0123' }}>
                       {item.name} x{item.quantity}
                     </span>

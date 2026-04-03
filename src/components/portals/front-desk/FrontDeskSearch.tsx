@@ -69,7 +69,7 @@ export function FrontDeskSearch() {
       order.customer.name.toLowerCase().includes(q) ||
       order.id.toLowerCase().includes(q) ||
       order.customer.phone.includes(q) ||
-      order.items.some(i => i.name.toLowerCase().includes(q))
+      order.items?.some(i => i.name.toLowerCase().includes(q))
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter
     const matchesDelivery = deliveryFilter === 'all' || order.deliveryType === deliveryFilter
     const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter
@@ -207,7 +207,7 @@ export function FrontDeskSearch() {
                         <Badge className={`${statusColors[order.status]} border-0 text-xs`}>{statusLabels[order.status]}</Badge>
                         <Badge variant="outline" className="bg-transparent text-xs">{orderTypeLabels[order.orderType]}</Badge>
                       </div>
-                      <p className="text-sm text-foreground truncate">{order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
+                      <p className="text-sm text-foreground truncate">{order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
                       <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{order.customer.phone}</span>
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>

@@ -1,6 +1,5 @@
 'use client'
 
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,7 +12,6 @@ import {
   User,
   AlertTriangle,
   MessageSquare,
-  Phone,
 } from 'lucide-react'
 
 interface AwaitingPaymentTabProps {
@@ -42,66 +40,56 @@ export function AwaitingPaymentTab({
           </p>
         </div>
       )}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex flex-col gap-2">
         {pendingPayment.map(order => {
-          const timeSinceCreated = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60))
           return (
-            <Card key={order.id} className="border-2 border-amber-200 bg-card shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-foreground">{order.id}</p>
-                      {timeSinceCreated > 30 && (
-                        <Badge className="bg-red-100 text-red-700 border-0 text-xs">
-                          <Clock className="mr-1 h-3 w-3" />{timeSinceCreated}min ago
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{order.customer.name}</p>
+            <Card key={order.id} className="border border-amber-200 bg-card shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-4">
+                  {/* Order ID + Customer */}
+                  <div className="min-w-0 w-40 shrink-0">
+                    <p className="text-sm font-medium text-foreground">{order.customer.name}</p>
                     <p className="text-xs text-muted-foreground">{order.customer.phone}</p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xl font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</p>
+
+                  {/* Items summary */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                      {order.items?.map(item => (
+                        <span key={item.name} className="text-xs text-muted-foreground">
+                          {item.name} <span className="font-medium text-foreground">×{item.quantity}</span>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap mt-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{order.pickupTime}</span>
+                      <span className="flex items-center gap-1">
+                        {order.deliveryType === 'delivery'
+                          ? <><Truck className="h-3 w-3 text-secondary" />Delivery</>
+                          : <><User className="h-3 w-3" />Pickup</>}
+                      </span>
+                      {order.isAdvanceOrder && (
+                        <span className="flex items-center gap-1 text-amber-700">
+                          <AlertTriangle className="h-3 w-3" />Advance
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Amount + badge */}
+                  <div className="text-right shrink-0 w-32">
+                    <p className="text-base font-bold text-secondary">TZS {order.totalPrice.toLocaleString()}</p>
                     <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">Unpaid</Badge>
                   </div>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2.5 space-y-1">
-                  {order.items.map(item => (
-                    <div key={item.name} className="flex justify-between text-xs">
-                      <span className="text-foreground">{item.name} x{item.quantity}</span>
-                      <span className="font-medium text-foreground">TZS {(item.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{order.pickupDate}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{order.pickupTime}</span>
-                  <span className="flex items-center gap-1">
-                    {order.deliveryType === 'delivery'
-                      ? <><Truck className="h-3 w-3 text-secondary" />Delivery</>
-                      : <><User className="h-3 w-3" />Pickup</>}
-                  </span>
-                </div>
-                {order.isAdvanceOrder && (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    Advance order - 50% deposit option available
-                  </div>
-                )}
-                <div className="flex flex-col gap-2 pt-1">
-                  <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => onConfirmPaymentClick(order)}>
-                    <DollarSign className="mr-1 h-4 w-4" /> Confirm Payment
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent" onClick={() => onOpenMessage(order)}>
-                      <MessageSquare className="mr-1 h-3.5 w-3.5" /> Remind
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => onConfirmPaymentClick(order)}>
+                      <DollarSign className="mr-1 h-4 w-4" /> Confirm Payment
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1 bg-transparent" onClick={() => {
-                      if (order.customer.phone) window.open(`tel:${order.customer.phone}`, '_self')
-                      toast.info(`Calling ${order.customer.name}...`)
-                    }}>
-                      <Phone className="mr-1 h-3.5 w-3.5" /> Call
+                    <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent" onClick={() => onOpenMessage(order)}>
+                      <MessageSquare className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>

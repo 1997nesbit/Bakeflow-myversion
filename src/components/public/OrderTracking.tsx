@@ -83,7 +83,7 @@ export function OrderTracking({ initialOrder, trackingId }: Props) {
             </div>
             <div className="col-span-2">
               <p className="text-muted-foreground text-xs">Items</p>
-              {order.items.map((item, i) => (
+              {order.items?.map((item, i) => (
                 <p key={i} className="font-medium text-foreground text-sm">{item.name} x{item.quantity}</p>
               ))}
             </div>

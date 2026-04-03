@@ -118,7 +118,7 @@ export function DriverDashboard() {
                       <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">Pending</Badge>
                     </div>
 
-                    <p className="text-sm text-foreground">{order.items.map((i) => `${i.name} x${i.quantity}`).join(', ')}</p>
+                    <p className="text-sm text-foreground">{order.items?.map((i) => `${i.name} x${i.quantity}`).join(', ')}</p>
 
                     {/* Location */}
                     <div className="rounded-xl bg-secondary/10 border-2 border-secondary/30 p-3 space-y-2">

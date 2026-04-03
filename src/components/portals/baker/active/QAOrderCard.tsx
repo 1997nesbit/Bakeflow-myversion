@@ -46,7 +46,7 @@ export function QAOrderCard({
         </div>
 
         <div className="space-y-2">
-          {order.items.map((item, idx) => (
+          {order.items?.map((item, idx) => (
             <div key={idx} className="rounded-lg border p-3" style={{ background: '#fdf2f4', borderColor: '#fce7ea' }}>
               <div className="flex items-start justify-between">
                 <p className="font-medium text-sm text-foreground">{item.name}</p>

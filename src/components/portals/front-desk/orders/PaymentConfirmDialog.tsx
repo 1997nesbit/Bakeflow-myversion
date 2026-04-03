@@ -33,7 +33,7 @@ export function PaymentConfirmDialog({ order, open, onOpenChange, onConfirm }: P
                 {order.customer.name} - {order.customer.phone}
               </p>
               <p className="text-xs text-muted-foreground">
-                {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
               </p>
             </div>
 

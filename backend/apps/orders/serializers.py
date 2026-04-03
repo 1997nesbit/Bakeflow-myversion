@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.accounts.models import User
-from .models import Order, OrderItem, OrderStatusHistory, MenuItem, DailyBatchItem
+from .models import Order, OrderItem, OrderStatusHistory, MenuItem, DailyBatchItem, Sale, SaleItem
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +156,37 @@ class MenuItemSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 # Production (daily batch) serializers
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Sale serializers
+# ---------------------------------------------------------------------------
+
+class SaleItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = SaleItem
+        fields = ['name', 'quantity', 'unit_price']
+
+
+class SaleSerializer(serializers.ModelSerializer):
+    items     = SaleItemSerializer(many=True, read_only=True)
+    served_by = serializers.CharField(source='served_by.name', read_only=True)
+
+    class Meta:
+        model  = Sale
+        fields = ['id', 'items', 'total_price', 'payment_method', 'customer_name', 'served_by', 'created_at']
+
+
+class SaleCreateSerializer(serializers.Serializer):
+    items          = SaleItemSerializer(many=True)
+    total_price    = serializers.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = serializers.ChoiceField(choices=['cash', 'bank_transfer', 'mobile_money', 'card'])
+    customer_name  = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError('A sale must have at least one item.')
+        return value
+
 
 class DailyBatchItemSerializer(serializers.ModelSerializer):
     baked_by_name = serializers.CharField(source='baked_by.name', read_only=True)

@@ -126,10 +126,7 @@ class OrderStatusHistory(models.Model):
 
 class MenuItem(models.Model):
     name               = models.CharField(max_length=200)
-    category           = models.CharField(max_length=20, choices=[
-        ('cake', 'Cake'), ('bread', 'Bread'), ('pastry', 'Pastry'),
-        ('snack', 'Snack'), ('beverage', 'Beverage'),
-    ])
+    category           = models.CharField(max_length=50)
     price              = models.DecimalField(max_digits=10, decimal_places=2)
     estimated_minutes  = models.PositiveIntegerField()
     description        = models.TextField(blank=True)
@@ -140,6 +137,35 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return f'{self.name} (TZS {self.price})'
+
+
+class Sale(TimestampedModel):
+    """
+    Walk-in / point-of-sale transaction.
+    No production pipeline, no customer record required.
+    Created and immediately complete.
+    """
+    id             = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    total_price    = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    customer_name  = models.CharField(max_length=150, blank=True)
+    served_by      = models.ForeignKey(User, on_delete=models.PROTECT, related_name='sales')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Sale {self.id} — TZS {self.total_price} ({self.created_at.date()})'
+
+
+class SaleItem(models.Model):
+    sale       = models.ForeignKey(Sale, related_name='items', on_delete=models.CASCADE)
+    name       = models.CharField(max_length=200)
+    quantity   = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f'{self.name} x{self.quantity}'
 
 
 class DailyBatchItem(TimestampedModel):

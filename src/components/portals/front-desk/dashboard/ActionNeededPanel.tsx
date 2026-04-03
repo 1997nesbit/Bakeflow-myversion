@@ -47,7 +47,7 @@ export function ActionNeededPanel({ paidReadyToPost, readyOrders, pendingPayment
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
                   {order.customer.isGold && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
-                  {order.customer.name} - {order.items.map(i => i.name).join(', ')}
+                  {order.customer.name} - {order.items?.map(i => i.name).join(', ')}
                 </p>
               </div>
               <Link href="/front-desk/orders">

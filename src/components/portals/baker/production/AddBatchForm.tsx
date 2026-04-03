@@ -7,15 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Layers, Plus, X } from 'lucide-react'
 import type { DailyBatchItem } from '@/types/production'
-import { bakeryMenu } from '@/data/constants/menus'
 
 interface Props {
   batchCount: number
   onAdd: (batch: DailyBatchItem) => void
   onCancel: () => void
 }
-
-const menuSuggestions = bakeryMenu.filter(m => m.category !== 'beverage' && m.category !== 'cake')
 
 export function AddBatchForm({ batchCount, onAdd, onCancel }: Props) {
   const [formProduct, setFormProduct] = useState('')
@@ -62,30 +59,6 @@ export function AddBatchForm({ batchCount, onAdd, onCancel }: Props) {
           <button type="button" onClick={onCancel}>
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Quick select from menu:</p>
-          <div className="flex flex-wrap gap-1.5">
-            {menuSuggestions.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                className="text-xs px-3 py-1.5 rounded-full border transition-colors"
-                style={{
-                  borderColor: formProduct === item.name ? '#CA0123' : '#fbd5db',
-                  background: formProduct === item.name ? '#fce7ea' : 'transparent',
-                  color: formProduct === item.name ? '#CA0123' : undefined,
-                }}
-                onClick={() => {
-                  setFormProduct(item.name)
-                  setFormCategory(item.category as DailyBatchItem['category'])
-                }}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

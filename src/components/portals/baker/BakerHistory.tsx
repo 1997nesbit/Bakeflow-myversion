@@ -40,7 +40,7 @@ export function BakerHistory() {
   const filtered = completedOrders.filter(o =>
     o.id.toLowerCase().includes(query.toLowerCase()) ||
     o.customer.name.toLowerCase().includes(query.toLowerCase()) ||
-    o.items.some(item => item.name.toLowerCase().includes(query.toLowerCase()))
+    o.items?.some(item => item.name.toLowerCase().includes(query.toLowerCase()))
   )
 
   const totalCustom = completedOrders.filter((o) => o.orderType === 'custom').length
@@ -139,7 +139,7 @@ export function BakerHistory() {
                       </div>
                       <p className="text-sm text-muted-foreground">{order.customer.name}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {order.items.map((item, idx) => (
+                        {order.items?.map((item, idx) => (
                           <span key={idx} className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                             {item.name} x{item.quantity}
                           </span>

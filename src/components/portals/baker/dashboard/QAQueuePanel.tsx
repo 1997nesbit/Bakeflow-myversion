@@ -41,7 +41,7 @@ export function QAQueuePanel({ orders }: Props) {
               </div>
               <p className="text-xs text-muted-foreground">{order.customer.name}</p>
               <div className="flex flex-wrap gap-1 mt-1">
-                {order.items.map((item, idx) => (
+                {order.items?.map((item, idx) => (
                   <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: '#fce7ea', color: '#CA0123' }}>
                     {item.name}
                   </span>

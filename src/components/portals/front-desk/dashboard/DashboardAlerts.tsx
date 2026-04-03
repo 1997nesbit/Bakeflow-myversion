@@ -49,7 +49,7 @@ export function DashboardAlerts({ overdueOrders, advanceDueSoon, mounted }: Dash
               <div>
                 <p className="text-sm font-semibold text-amber-900">Advance Due {dueLabel}: {order.id}</p>
                 <p className="text-xs text-amber-700">
-                  {order.customer.name} - {order.items.map(i => i.name).join(', ')}
+                  {order.customer.name} - {order.items?.map(i => i.name).join(', ')}
                   {order.paymentStatus === 'deposit' && ` | Balance due: TZS ${(order.totalPrice - order.amountPaid).toLocaleString()}`}
                 </p>
               </div>

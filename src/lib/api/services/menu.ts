@@ -1,17 +1,15 @@
 // ---- MENU SERVICE ----
-// Phase 4: Active (read) — menu items and categories are fetched from Django.
-// Phase 4 extension (CRUD): createItem, updateItem, deleteItem stubs below —
-//   activate once the backend exposes write endpoints.
+// Phase 4: Fully active — all read and write endpoints connected to Django.
 //
 // Django endpoints:
-//   GET    /api/menu/              list all active menu items
-//   GET    /api/menu/categories/   list distinct category slugs
-//   POST   /api/menu/              create a menu item         (TODO Phase 4 ext)
-//   PATCH  /api/menu/{id}/         update a menu item         (TODO Phase 4 ext)
-//   DELETE /api/menu/{id}/         delete a menu item         (TODO Phase 4 ext)
-//   POST   /api/menu/categories/   create a category          (TODO Phase 4 ext)
-//   PATCH  /api/menu/categories/{slug}/  rename a category    (TODO Phase 4 ext)
-//   DELETE /api/menu/categories/{slug}/  delete a category    (TODO Phase 4 ext)
+//   GET    /api/menu/                          list all active menu items
+//   POST   /api/menu/                          create a menu item
+//   PATCH  /api/menu/{id}/                     update a menu item
+//   DELETE /api/menu/{id}/                     soft-delete a menu item
+//   GET    /api/menu/categories/               list distinct category slugs
+//   POST   /api/menu/categories/               validate + return new category slug
+//   PATCH  /api/menu/categories/{slug}/        rename a category (cascades to items)
+//   DELETE /api/menu/categories/{slug}/        delete a category (rejected if items exist)
 
 import type { MenuItem } from '@/types/order'
 import { apiClient } from '@/lib/api/client'
@@ -27,41 +25,35 @@ export const menuService = {
     return (await apiClient.get<string[]>('/menu/categories/', { signal: options?.signal })).data
   },
 
-  // ── Write operations (Phase 4 extension) ────────────────────────────────────
+  // ── Write operations ─────────────────────────────────────────────────────────
 
   /** POST /api/menu/ — create a new menu item */
   createItem: async (data: Omit<MenuItem, 'id'>): Promise<MenuItem> => {
-    // TODO (Phase 4 ext): return (await apiClient.post<MenuItem>('/menu/', data)).data
-    throw new Error('createItem — not yet active (Phase 4 extension)')
+    return (await apiClient.post<MenuItem>('/menu/', data)).data
   },
 
   /** PATCH /api/menu/{id}/ — update an existing menu item */
   updateItem: async (id: string, data: Partial<Omit<MenuItem, 'id'>>): Promise<MenuItem> => {
-    // TODO (Phase 4 ext): return (await apiClient.patch<MenuItem>(`/menu/${id}/`, data)).data
-    throw new Error('updateItem — not yet active (Phase 4 extension)')
+    return (await apiClient.patch<MenuItem>(`/menu/${id}/`, data)).data
   },
 
-  /** DELETE /api/menu/{id}/ — remove a menu item */
+  /** DELETE /api/menu/{id}/ — soft-deletes the item (sets is_active=False on server) */
   deleteItem: async (id: string): Promise<void> => {
-    // TODO (Phase 4 ext): await apiClient.delete(`/menu/${id}/`)
-    throw new Error('deleteItem — not yet active (Phase 4 extension)')
+    await apiClient.delete(`/menu/${id}/`)
   },
 
-  /** POST /api/menu/categories/ — add a new category */
+  /** POST /api/menu/categories/ — validate and return the new category slug */
   createCategory: async (name: string): Promise<string> => {
-    // TODO (Phase 4 ext): return (await apiClient.post<{ slug: string }>('/menu/categories/', { name })).data.slug
-    throw new Error('createCategory — not yet active (Phase 4 extension)')
+    return (await apiClient.post<{ slug: string }>('/menu/categories/', { name })).data.slug
   },
 
-  /** PATCH /api/menu/categories/{slug}/ — rename a category (cascades to items on server) */
+  /** PATCH /api/menu/categories/{slug}/ — rename a category; cascades to all items on server */
   renameCategory: async (slug: string, newName: string): Promise<string> => {
-    // TODO (Phase 4 ext): return (await apiClient.patch<{ slug: string }>(`/menu/categories/${slug}/`, { name: newName })).data.slug
-    throw new Error('renameCategory — not yet active (Phase 4 extension)')
+    return (await apiClient.patch<{ slug: string }>(`/menu/categories/${slug}/`, { name: newName })).data.slug
   },
 
-  /** DELETE /api/menu/categories/{slug}/ — delete an empty category */
+  /** DELETE /api/menu/categories/{slug}/ — delete a category (rejected if items exist) */
   deleteCategory: async (slug: string): Promise<void> => {
-    // TODO (Phase 4 ext): await apiClient.delete(`/menu/categories/${slug}/`)
-    throw new Error('deleteCategory — not yet active (Phase 4 extension)')
+    await apiClient.delete(`/menu/categories/${slug}/`)
   },
 }

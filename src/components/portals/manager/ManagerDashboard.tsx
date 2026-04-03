@@ -211,7 +211,7 @@ export function ManagerDashboard() {
                       <p className="text-sm font-medium text-white truncate">{o.customer.name}</p>
                       <Badge className={`text-xs px-1.5 py-0 border-0 ${statusColorsDark[o.status] || ''}`}>{o.status}</Badge>
                     </div>
-                    <p className="text-xs text-white/40 truncate">{o.items.map(i => i.name).join(', ')}</p>
+                    <p className="text-xs text-white/40 truncate">{o.items?.map(i => i.name).join(', ')}</p>
                   </div>
                   <p className="text-sm font-bold text-white shrink-0">TZS {o.totalPrice.toLocaleString()}</p>
                 </div>

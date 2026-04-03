@@ -123,7 +123,7 @@ export function BakingOrderCard({
 
         {/* Items */}
         <div className="space-y-2">
-          {order.items.map((item, idx) => (
+          {order.items?.map((item, idx) => (
             <div key={idx} className="rounded-lg bg-muted/50 p-3">
               <div className="flex items-start justify-between">
                 <p className="font-medium text-sm text-foreground">{item.name}</p>

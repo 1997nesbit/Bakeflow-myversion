@@ -93,7 +93,7 @@ export function BakerActive() {
   const findMatchingBatches = (order: Order): DailyBatchItem[] =>
     dailyBatches.filter(b => {
       if (b.quantityRemaining <= 0) return false
-      return order.items.some(item =>
+      return order.items?.some(item =>
         b.productName.toLowerCase().includes(item.name.toLowerCase().split(' - ')[0].split('(')[0].trim()) ||
         item.name.toLowerCase().includes(b.productName.toLowerCase())
       )
@@ -110,7 +110,7 @@ export function BakerActive() {
     setOrders(p => p.map(o => o.id === orderId ? { ...o, assignedTo: 'me' } : o))
     if (method === 'from_batch' && batchItem) {
       const order = orders.find(o => o.id === orderId)
-      const totalQty = order?.items.reduce((s, i) => s + i.quantity, 0) || 1
+      const totalQty = order?.items?.reduce((s, i) => s + i.quantity, 0) || 1
       setDailyBatches(p =>
         p.map(b => b.id === batchItem.id ? { ...b, quantityRemaining: Math.max(0, b.quantityRemaining - totalQty) } : b)
       )

@@ -113,7 +113,7 @@ export function TrackingTab({
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <p className="font-semibold text-sm text-foreground">{order.id} - {order.customer.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{order.items.map(i => i.name).join(', ')}</p>
+                        <p className="text-xs text-muted-foreground truncate">{order.items?.map(i => i.name).join(', ')}</p>
                       </div>
                       <Badge className={`${statusColors[order.status]} border-0 text-xs shrink-0`}>{statusLabels[order.status]}</Badge>
                     </div>

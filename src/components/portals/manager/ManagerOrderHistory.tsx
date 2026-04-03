@@ -146,7 +146,7 @@ export function ManagerOrderHistory() {
 
                   {/* Items */}
                   <p className="text-xs text-white/60 mb-1.5 truncate">
-                    {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                    {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
                   </p>
 
                   {/* Meta row */}

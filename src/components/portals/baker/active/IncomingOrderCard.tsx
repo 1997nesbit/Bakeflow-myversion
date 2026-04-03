@@ -49,7 +49,7 @@ export function IncomingOrderCard({ order, matchingBatches, onAccept }: Props) {
         </div>
 
         <div className="space-y-2">
-          {order.items.map((item, idx) => (
+          {order.items?.map((item, idx) => (
             <div key={idx} className="rounded-lg bg-card border border-border p-3">
               <div className="flex items-start justify-between">
                 <p className="font-medium text-sm text-foreground">{item.name}</p>

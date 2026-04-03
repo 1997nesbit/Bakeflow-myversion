@@ -176,6 +176,35 @@ The service stubs (`createItem`, `updateItem`, `deleteItem`, `createCategory`, `
 
 ---
 
+## Phase 4 — Menu CRUD ✅ COMPLETE (2026-04-03)
+
+### Backend (`backend/`)
+
+- `apps/orders/models.py` — `MenuItem.category` changed from hardcoded choices to a free-form `CharField(max_length=50)`; enables dynamic categories from the UI
+- `apps/orders/views.py` — `MenuViewSet` extended:
+  - `destroy` action added (soft-delete: sets `is_active=False`)
+  - `categories` action extended to handle `POST` (validate name, return slug)
+  - `category_detail` action added (`PATCH` = rename all items, `DELETE` = reject if items exist, 204 if empty)
+  - Permissions changed from `IsManager` → `IsManagerOrFrontDesk` on all write actions
+- Migration generated and applied: `0002_menu_category_freeform`
+
+### Frontend (`src/`)
+
+- `src/types/order.ts` — `MenuItem.isAvailable` renamed to `isActive` (matches backend `is_active` → `isActive` via camel-case middleware)
+- `src/lib/api/services/menu.ts` — all 6 write stubs activated: `createItem`, `updateItem`, `deleteItem`, `createCategory`, `renameCategory`, `deleteCategory`
+- `src/components/shared/MenuManagement.tsx` — fully API-driven:
+  - `useState(bakeryMenu)` replaced with `useEffect` fetching both `getItems()` and `getCategories()` in parallel
+  - All mutation handlers (`handleSaveItem`, `handleDeleteItem`, `handleAddCat`, `handleRenameCat`, `handleDeleteCat`) now `async` and call the service with `try/catch → handleApiError`
+  - `emptyCats` state removed; categories are server-managed
+  - `loading` state added
+
+### Design decisions
+
+- **Free-form categories** — `MenuItem.category` is now a plain string (no DB enum constraint). The `GET /api/menu/categories/` action returns `DISTINCT` values from active items. `POST /api/menu/categories/` validates the slug and returns it; no separate `Category` model needed for MVP.
+- **Soft-delete** — `DELETE /api/menu/{id}/` sets `is_active=False` rather than removing the row. The list queryset already filters `is_active=True` so deleted items are invisible to the frontend.
+
+---
+
 ## Phase 4 — Inventory ⬜ NOT STARTED
 
 **Backend:** `apps/inventory`

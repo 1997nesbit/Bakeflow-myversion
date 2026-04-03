@@ -33,7 +33,7 @@ export interface MenuItem {
   price: number
   estimatedMinutes: number
   description?: string
-  isAvailable?: boolean
+  isActive?: boolean
 }
 
 export interface CustomCakeDetails {

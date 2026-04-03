@@ -6,9 +6,9 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from core.permissions import (
-    IsBaker, IsDriver, IsManager, IsManagerOrFrontDesk,
+    IsBaker, IsDriver, IsManagerOrFrontDesk,
 )
-from .models import DailyBatchItem, MenuItem, Order
+from .models import DailyBatchItem, MenuItem, Order, Sale, SaleItem
 from .serializers import (
     AdvanceStatusSerializer,
     DailyBatchItemSerializer,
@@ -19,6 +19,8 @@ from .serializers import (
     OrderDetailSerializer,
     OrderListSerializer,
     RecordPaymentSerializer,
+    SaleCreateSerializer,
+    SaleSerializer,
 )
 from .services import OrderService, ProductionService
 
@@ -210,17 +212,15 @@ class MenuViewSet(viewsets.GenericViewSet):
     pagination_class = None
 
     def get_permissions(self):
-        if self.action in ('create', 'partial_update'):
-            return [IsManager()]
+        write_actions = {'create', 'partial_update', 'destroy', 'category_detail'}
+        if self.action in write_actions:
+            return [IsManagerOrFrontDesk()]
+        if self.action == 'categories' and self.request.method == 'POST':
+            return [IsManagerOrFrontDesk()]
         return [IsAuthenticated()]
 
     def list(self, request):
         return Response(MenuItemSerializer(self.get_queryset(), many=True).data)
-
-    @action(detail=False, methods=['get'])
-    def categories(self, request):
-        categories = MenuItem.objects.values_list('category', flat=True).distinct()
-        return Response(list(categories))
 
     def create(self, request):
         serializer = MenuItemSerializer(data=request.data)
@@ -234,6 +234,54 @@ class MenuViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    def destroy(self, request, pk=None):
+        """Soft-delete — sets is_active=False rather than removing the row."""
+        item = get_object_or_404(MenuItem, pk=pk)
+        item.is_active = False
+        item.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get', 'post'], url_path='categories')
+    def categories(self, request):
+        if request.method == 'GET':
+            cats = (
+                MenuItem.objects
+                .filter(is_active=True)
+                .values_list('category', flat=True)
+                .distinct()
+                .order_by('category')
+            )
+            return Response(list(cats))
+        # POST — validate the name and return the slug; no DB write needed
+        # (the category persists naturally once an item is saved with it)
+        name = (request.data.get('name') or '').strip().lower()
+        if not name:
+            return Response(
+                {'name': ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({'slug': name}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['patch', 'delete'], url_path=r'categories/(?P<slug>[^/.]+)')
+    def category_detail(self, request, slug=None):
+        if request.method == 'PATCH':
+            new_name = (request.data.get('name') or '').strip().lower()
+            if not new_name:
+                return Response(
+                    {'name': ['This field is required.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            MenuItem.objects.filter(category=slug).update(category=new_name)
+            return Response({'slug': new_name})
+        # DELETE — reject if any active items still use this category
+        if MenuItem.objects.filter(category=slug, is_active=True).exists():
+            count = MenuItem.objects.filter(category=slug, is_active=True).count()
+            return Response(
+                {'detail': f'Cannot delete — {count} item(s) still use this category.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProductionViewSet(viewsets.GenericViewSet):
@@ -257,3 +305,44 @@ class ProductionViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         batch = self._service.create_batch(serializer.validated_data, baked_by=request.user)
         return Response(DailyBatchItemSerializer(batch).data, status=status.HTTP_201_CREATED)
+
+
+class SaleViewSet(viewsets.GenericViewSet):
+    """
+    Walk-in sales — POST /api/sales/ to record, GET /api/sales/ for history.
+    No production pipeline. Created and immediately complete.
+    """
+    queryset = Sale.objects.prefetch_related('items').select_related('served_by')
+
+    def get_permissions(self):
+        return [IsManagerOrFrontDesk()]
+
+    def list(self, request):
+        page = self.paginate_queryset(self.get_queryset())
+        if page is not None:
+            return self.get_paginated_response(SaleSerializer(page, many=True).data)
+        return Response(SaleSerializer(self.get_queryset(), many=True).data)
+
+    def create(self, request):
+        serializer = SaleCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        sale = Sale.objects.create(
+            total_price=data['total_price'],
+            payment_method=data['payment_method'],
+            customer_name=data.get('customer_name', ''),
+            served_by=request.user,
+        )
+        SaleItem.objects.bulk_create([
+            SaleItem(
+                sale=sale,
+                name=item['name'],
+                quantity=item['quantity'],
+                unit_price=item['unit_price'],
+            )
+            for item in data['items']
+        ])
+
+        sale.refresh_from_db()
+        return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)

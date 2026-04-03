@@ -73,7 +73,7 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
         <div className="space-y-2">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Items</h3>
           <div className="space-y-2">
-            {order.items.map((item, index) => (
+            {order.items?.map((item, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between rounded-lg bg-accent p-3"

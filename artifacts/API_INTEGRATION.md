@@ -164,12 +164,12 @@ Permissions: `IsManagerOrFrontDesk` on all write endpoints.
 4. In `handleAddCat` / `handleRenameCat` / `handleDeleteCat` — replace local state mutations with the corresponding `menuService.*Category()` calls; refetch `getCategories()` after each.
 5. Remove `emptyCats` state — categories are server-managed once the API is live.
 
-**Phase 4 extension checklist:**
-- [ ] `MenuViewSet` write actions added and registered in `apps/orders/urls.py`
-- [ ] `IsManagerOrFrontDesk` permission applied to all write endpoints
-- [ ] `MenuManagement` `useState` initializer replaced with `useEffect` fetch
-- [ ] All local mutation handlers replaced with `menuService` calls
-- [ ] `emptyCats` state removed; category list fetched from `menuService.getCategories()`
+**Phase 4 extension checklist — COMPLETE ✅ (2026-04-03)**
+- [x] `MenuViewSet` write actions added and registered in `apps/orders/urls.py`
+- [x] `IsManagerOrFrontDesk` permission applied to all write endpoints
+- [x] `MenuManagement` `useState` initializer replaced with `useEffect` fetch
+- [x] All local mutation handlers replaced with `menuService` calls
+- [x] `emptyCats` state removed; category list fetched from `menuService.getCategories()`
 
 ---
 
