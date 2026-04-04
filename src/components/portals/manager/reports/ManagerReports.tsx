@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import type { Order, PaymentMethod } from '@/types/order'
 import type { DailyBatchItem } from '@/types/production'
-import { mockExpenses, mockBusinessExpenses, mockDebts } from '@/data/mock/finance'
+import type { FinancialTransaction } from '@/types/finance'
+import { mockDebts } from '@/data/mock/finance'
 import type { StaffMember } from '@/types/staff'
 import { ordersService, productionService } from '@/lib/api/services/orders'
 import { staffService } from '@/lib/api/services/staff'
 import { customersService } from '@/lib/api/services/customers'
+import { financeService } from '@/lib/api/services/finance'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { statusLabels, paymentMethodLabels } from '@/data/constants/labels'
 import { OverviewTab } from './OverviewTab'
@@ -26,6 +28,8 @@ export function ManagerReports() {
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [customerCount, setCustomerCount] = useState(0)
   const [goldCustomerCount, setGoldCustomerCount] = useState(0)
+  const [stockExpenses, setStockExpenses] = useState<FinancialTransaction[]>([])
+  const [bizExpenses, setBizExpenses] = useState<FinancialTransaction[]>([])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -57,9 +61,20 @@ export function ManagerReports() {
     return () => controller.abort()
   }, [])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    financeService.getTransactions({ type: 'stock_expense', signal: controller.signal })
+      .then(res => setStockExpenses(res.results))
+      .catch(handleApiError)
+    financeService.getTransactions({ type: 'business_expense', signal: controller.signal })
+      .then(res => setBizExpenses(res.results))
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
   const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
-  const bizTotal = mockBusinessExpenses.reduce((s, e) => s + e.amount, 0)
-  const stockTotal = mockExpenses.reduce((s, e) => s + e.amount, 0)
+  const bizTotal = bizExpenses.reduce((s, e) => s + e.amount, 0)
+  const stockTotal = stockExpenses.reduce((s, e) => s + e.amount, 0)
   const totalExpenses = bizTotal + stockTotal
   const netProfit = totalRevenue - totalExpenses
   const totalDebt = mockDebts.reduce((s, d) => s + d.balance, 0)
@@ -82,11 +97,11 @@ export function ManagerReports() {
   ]
 
   const bizExpenseData = Object.entries(
-    mockBusinessExpenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + e.amount; return acc }, {} as Record<string, number>)
+    bizExpenses.reduce((acc, e) => { if (e.category) acc[e.category] = (acc[e.category] || 0) + e.amount; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })).sort((a, b) => b.value - a.value)
 
   const stockExpenseData = Object.entries(
-    mockExpenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + e.amount; return acc }, {} as Record<string, number>)
+    stockExpenses.reduce((acc, e) => { if (e.category) acc[e.category] = (acc[e.category] || 0) + e.amount; return acc }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value })).sort((a, b) => b.value - a.value)
 
   const activeStaff = staff.filter(s => s.status === 'active')

@@ -28,9 +28,9 @@ export function CriticalStockAlert({ criticalStock }: Props) {
           </Badge>
         ))}
       </div>
-      <Link href="/inventory/alerts" className="inline-block mt-2">
+      <Link href="/inventory/stock?tab=critical" className="inline-block mt-2">
         <Button size="sm" variant="link" className="text-red-700 p-0 h-auto">
-          View alerts & reorder <ArrowRight className="ml-1 h-3 w-3" />
+          View critical stock <ArrowRight className="ml-1 h-3 w-3" />
         </Button>
       </Link>
     </div>

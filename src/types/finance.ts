@@ -1,52 +1,51 @@
 // ---- FINANCE TYPES ----
 
-export type ExpenseCategory =
-  | 'raw_materials'
-  | 'packaging'
-  | 'equipment'
-  | 'storage'
-  | 'delivery_logistics'
-  | 'wastage'
-  | 'miscellaneous'
+export type TransactionDirection = 'in' | 'out'
 
-export interface Expense {
+export type TransactionType =
+  | 'order_payment'
+  | 'sale'
+  | 'stock_expense'
+  | 'business_expense'
+
+export type RecurringPeriod = 'weekly' | 'monthly' | 'yearly'
+
+export interface FinancialTransaction {
   id: string
-  title: string
-  category: ExpenseCategory
-  amount: number
   date: string
-  paidTo: string
-  paymentMethod: 'cash' | 'bank_transfer' | 'mobile_money' | 'cheque'
+  amount: number
+  direction: TransactionDirection
+  type: TransactionType
+  paymentMethod: string | null
+  description: string
+  recordedBy: string         // serializer returns recorded_by.name flat string
+  orderId?: string | null
+  saleId?: string | null
+  // Expense-only fields — absent on revenue rows
+  category?: string
+  paidTo?: string
   receiptRef?: string
   notes?: string
   recurring: boolean
-  recurringPeriod?: 'weekly' | 'monthly' | 'yearly'
-  addedBy: string
+  recurringPeriod?: RecurringPeriod | null
+  createdAt: string
 }
 
-export type BusinessExpenseCategory =
-  | 'rent'
-  | 'salaries'
-  | 'utilities'
-  | 'marketing'
-  | 'licenses'
-  | 'transport'
-  | 'cleaning'
-  | 'misc'
-
-export interface BusinessExpense {
-  id: string
-  title: string
-  category: BusinessExpenseCategory
-  amount: number
+export interface NewExpensePayload {
   date: string
-  paidTo: string
-  paymentMethod: 'cash' | 'bank_transfer' | 'mobile_money' | 'card'
-  receiptRef?: string
+  amount: number
+  type: 'stock_expense' | 'business_expense'
+  payment_method: string
+  description: string
+  category: string
+  paid_to: string
+  receipt_ref?: string
   notes?: string
   recurring: boolean
+  recurring_period?: RecurringPeriod
 }
 
+// DebtRecord stays on mock until debts are activated
 export interface DebtRecord {
   id: string
   customerName: string

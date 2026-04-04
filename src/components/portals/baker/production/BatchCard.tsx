@@ -2,40 +2,24 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Layers, Clock, Wheat, Croissant, Cookie, Cake } from 'lucide-react'
+import { Layers, Clock, FlaskConical } from 'lucide-react'
 import type { DailyBatchItem } from '@/types/production'
-
-const categoryIcons: Record<string, typeof Wheat> = {
-  bread: Wheat,
-  pastry: Croissant,
-  snack: Cookie,
-  cake: Cake,
-}
-
-const categoryColors: Record<string, { bg: string; text: string }> = {
-  bread: { bg: '#fce7ea', text: '#CA0123' },
-  pastry: { bg: '#fdf2f4', text: '#e66386' },
-  snack: { bg: '#fce7ea', text: '#CA0123' },
-  cake: { bg: '#fdf2f4', text: '#e66386' },
-}
 
 interface Props {
   batch: DailyBatchItem
 }
 
 export function BatchCard({ batch }: Props) {
-  const Icon = categoryIcons[batch.category] || Layers
-  const colors = categoryColors[batch.category] || { bg: '#fce7ea', text: '#CA0123' }
   const usedPct = Math.round(((batch.quantityBaked - batch.quantityRemaining) / batch.quantityBaked) * 100)
 
   return (
     <Card className="border-0 shadow-sm bg-card overflow-hidden">
-      <div className="px-4 py-2 flex items-center justify-between" style={{ background: colors.bg }}>
+      <div className="px-4 py-2 flex items-center justify-between" style={{ background: '#fce7ea' }}>
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4" style={{ color: colors.text }} />
-          <p className="text-xs font-semibold capitalize" style={{ color: colors.text }}>{batch.category}</p>
+          <Layers className="h-4 w-4" style={{ color: '#CA0123' }} />
+          <p className="text-xs font-semibold" style={{ color: '#CA0123' }}>Batch</p>
         </div>
-        <span className="text-[10px] font-mono" style={{ color: colors.text }}>{batch.id}</span>
+        <span className="text-[10px] font-mono" style={{ color: '#CA0123' }}>{batch.id}</span>
       </div>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between">
@@ -61,6 +45,21 @@ export function BatchCard({ batch }: Props) {
           <span>{usedPct}% fulfilled</span>
           <span>{batch.quantityRemaining} remaining</span>
         </div>
+
+        {batch.ingredients.length > 0 && (
+          <div className="space-y-1 pt-1 border-t border-border">
+            <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              <FlaskConical className="h-3 w-3" />
+              Ingredients
+            </div>
+            {batch.ingredients.map(ing => (
+              <div key={ing.id} className="flex items-center justify-between text-xs">
+                <span className="text-foreground">{ing.itemName}</span>
+                <span className="text-muted-foreground">{ing.quantityUsed} {ing.itemUnit}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">

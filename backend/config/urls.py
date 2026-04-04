@@ -13,5 +13,5 @@ urlpatterns = [
     path('api/customers/', include('apps.customers.urls')),
     path('api/', include(router.urls)),                   # staff
     path('api/', include('apps.inventory.urls')),         # Phase 4: inventory, suppliers
-    # Phases 5-9: add app URL includes here
+    path('api/', include('apps.finance.urls')),           # Phase 5: financial transactions
 ]

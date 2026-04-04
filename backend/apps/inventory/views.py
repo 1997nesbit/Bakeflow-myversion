@@ -1,4 +1,6 @@
-from django.db.models import ExpressionWrapper, F, FloatField
+from decimal import Decimal
+from django.db.models import DecimalField, ExpressionWrapper, F, FloatField, OuterRef, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -114,7 +116,22 @@ class InventoryViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='rollouts')
     def rollouts(self, request):
-        qs = DailyRollout.objects.select_related('inventory_item', 'rolled_out_by')
+        from apps.orders.models import BatchIngredient
+        used_subquery = (
+            BatchIngredient.objects
+            .filter(rollout=OuterRef('pk'))
+            .values('rollout')
+            .annotate(total=Sum('quantity_used'))
+            .values('total')
+        )
+        qs = (
+            DailyRollout.objects
+            .select_related('inventory_item', 'rolled_out_by')
+            .annotate(quantity_used=Coalesce(
+                Subquery(used_subquery, output_field=DecimalField()),
+                Value(Decimal('0'), output_field=DecimalField()),
+            ))
+        )
         date    = request.query_params.get('date')
         item_id = request.query_params.get('item')
         if date:

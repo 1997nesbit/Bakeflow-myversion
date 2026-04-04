@@ -43,8 +43,8 @@ export function StockEntriesTable({ filteredEntries }: Props) {
                       +{entry.quantity} {entry.itemUnit}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-foreground">${entry.costPerUnit.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">${entry.totalCost.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-sm text-foreground">{Number(entry.costPerUnit).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">{Number(entry.totalCost).toFixed(2)}</td>
                   <td className="px-4 py-3">
                     {entry.invoiceRef ? (
                       <div className="flex items-center gap-1.5">

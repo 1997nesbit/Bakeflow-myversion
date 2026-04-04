@@ -172,10 +172,7 @@ class DailyBatchItem(TimestampedModel):
     """Baker's daily production log."""
     id                 = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     menu_item          = models.ForeignKey(MenuItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='batch_items')
-    product_name       = models.CharField(max_length=200)  # denormalized copy of menu_item.name
-    category           = models.CharField(max_length=10, choices=[
-        ('bread', 'Bread'), ('pastry', 'Pastry'), ('snack', 'Snack'), ('cake', 'Cake'),
-    ])  # denormalized copy of menu_item.category
+    product_name       = models.CharField(max_length=200)
     quantity_baked     = models.PositiveIntegerField()
     quantity_remaining = models.PositiveIntegerField()
     unit               = models.CharField(max_length=30, default='pcs')
@@ -189,3 +186,14 @@ class DailyBatchItem(TimestampedModel):
 
     def __str__(self):
         return f'{self.product_name} x{self.quantity_baked} ({self.baked_at.date()})'
+
+
+class BatchIngredient(models.Model):
+    """Records how much of a rolled-out inventory item was consumed by a batch."""
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    batch         = models.ForeignKey(DailyBatchItem, on_delete=models.CASCADE, related_name='ingredients')
+    rollout       = models.ForeignKey('inventory.DailyRollout', on_delete=models.PROTECT, related_name='usages')
+    quantity_used = models.DecimalField(max_digits=10, decimal_places=3)
+
+    def __str__(self):
+        return f'{self.batch.product_name} used {self.quantity_used} from rollout {self.rollout_id}'

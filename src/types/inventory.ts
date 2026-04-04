@@ -63,6 +63,7 @@ export interface DailyRollout {
   itemName: string
   itemUnit: string
   quantity: number
+  quantityUsed: number        // sum of BatchIngredient.quantity_used for this rollout
   purpose: string
   rolledOutByName: string
   date: string

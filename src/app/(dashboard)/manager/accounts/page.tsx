@@ -1,5 +1,5 @@
-import { ManagerAccounts } from '@/components/portals/manager/ManagerAccounts'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <ManagerAccounts />
+  redirect('/manager/expenses')
 }

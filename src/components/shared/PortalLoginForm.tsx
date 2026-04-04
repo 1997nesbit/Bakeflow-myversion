@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
+import type { StaffRole } from '@/types/staff'
 
 interface PortalLoginFormProps {
   /** Page title, e.g. "Front Desk" */
@@ -20,6 +21,8 @@ interface PortalLoginFormProps {
   gradient: string
   /** Path to redirect to on successful login */
   redirectPath: string
+  /** Role that must be present in the JWT for login to succeed */
+  expectedRole?: StaffRole
 }
 
 export function PortalLoginForm({
@@ -28,6 +31,7 @@ export function PortalLoginForm({
   icon,
   gradient,
   redirectPath,
+  expectedRole,
 }: PortalLoginFormProps) {
   const {
     username, setUsername,
@@ -35,7 +39,7 @@ export function PortalLoginForm({
     showPassword, setShowPassword,
     loading,
     handleLogin,
-  } = usePortalLogin({ redirectPath })
+  } = usePortalLogin({ redirectPath, expectedRole })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdf2f4] via-white to-[#fce7ea]">

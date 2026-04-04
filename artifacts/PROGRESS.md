@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-03 (Phase 4 complete + Quick Sale feature + Manager Inventory Management page)
+Last updated: 2026-04-04 (Manager portal: Inventory nav collapsible, Daily Rollout page added, Payments page removed)
 
 ---
 
@@ -301,11 +301,100 @@ The packing status and its associated portal exist in the codebase but are no lo
 
 ---
 
-## Phase 5 — Finance & Payments ⬜ NOT STARTED
+## Phase 5 — Finance & Payments ✅ COMPLETE (2026-04-03)
 
-**Backend:** `apps/finance`
+### Backend (`backend/`)
 
-**Frontend:** Activate `financeService`. Delete `src/data/mock/finance.ts`.
+- `apps/finance/` — new Django app created and registered in `INSTALLED_APPS`
+- `apps/finance/models.py` — `FinancialTransaction` (`TimestampedModel`, UUID PK, `direction` in/out, `type` discriminator, `payment_method`, `description`, `recorded_by` FK, optional `order`/`sale` FKs, expense-only fields: `category`, `paid_to`, `receipt_ref`, `notes`, `recurring`, `recurring_period`)
+- `apps/finance/services.py` — `FinanceService`: `record_order_payment()` and `record_sale()` static methods; called as side effects from `OrderService.record_payment()` and `SaleViewSet.create()`
+- `apps/finance/serializers.py` — `FinancialTransactionSerializer` (read), `ExpenseCreateSerializer` (write; validates `type` is `stock_expense`|`business_expense`; sets `direction='out'`)
+- `apps/finance/views.py` — `FinancialTransactionViewSet`: `list` (`IsManager`) + `create` (`IsManagerOrInventory`)
+- `apps/finance/urls.py` — registered at `/api/transactions/`
+- Migrations: run `python manage.py makemigrations finance && python manage.py migrate`
+
+### Frontend (`src/`)
+
+- `src/types/finance.ts` — `Expense` and `BusinessExpense` removed; replaced with `FinancialTransaction`, `NewExpensePayload`, `TransactionDirection`, `TransactionType`, `RecurringPeriod`; `DebtRecord` retained for deferred debts feature
+- `src/data/constants/categories.ts` — `ExpenseCategory` and `BusinessExpenseCategory` type aliases moved here (were in `finance.ts`)
+- `src/lib/api/services/finance.ts` — fully activated: `getTransactions(params)` → `GET /api/transactions/`; `createExpense(payload)` → `POST /api/transactions/`
+- `InventoryExpenses` — `useEffect` fetch with AbortController; `handleAddExpense` calls `financeService.createExpense()`; month summaries use dynamic current/last month prefixes
+- `ManagerAccounts` — same pattern for `business_expense` type
+- `ManagerReports` — `stockExpenses` and `bizExpenses` fetched via `financeService`; chart data derived from live data; `mockDebts` retained for `totalDebt` until debts phase
+- `AddExpenseDialog` — emits `NewExpensePayload` (not a constructed `Expense`); `expenseCount` prop removed
+- `src/data/mock/finance.ts` — `mockExpenses` and `mockBusinessExpenses` deleted; `mockDebts` retained
+
+### Manager portal — Transactions sidebar section
+
+- `PortalSidebar` — `NavItem` now supports `children?: NavChild[]`; when present the item renders as a `NavGroup` collapsible (chevron, auto-opens if a child is active, indented sub-items with a left border line)
+- `managerNav` — `Account Management → /manager/accounts` replaced with a `Transactions` group containing two children:
+  - `Revenue → /manager/revenue` — all `direction: 'in'` transactions; summary cards for Total Revenue, Order Payments, Walk-in Sales; filter by type + search
+  - `Expenses → /manager/expenses` — all `direction: 'out'` transactions; summary cards for Total, Business, Stock; filter by type + category (category list adapts to selected type); inline Record Expense dialog with Business/Stock toggle
+- `ManagerRevenue` — new component at `src/components/portals/manager/ManagerRevenue.tsx`
+- `ManagerAccounts` — fully overwritten to become the Expenses page (previously business-expense only; now shows all expense types with unified filter + add dialog)
+- `src/app/(dashboard)/manager/revenue/page.tsx` — new 4-line shell
+- `src/app/(dashboard)/manager/expenses/page.tsx` — new 4-line shell
+- `src/app/(dashboard)/manager/accounts/page.tsx` — now redirects to `/manager/expenses` (old URL preserved, no 404)
+
+### Design decisions
+
+- **Unified ledger over separate models** — a single `FinancialTransaction` table covers all money flows; revenue rows are created as service-layer side effects (never via the API directly); expense rows are created via `POST /api/transactions/`
+- **`direction='out'` enforced server-side** — `ExpenseCreateSerializer.validate()` sets it; clients cannot create revenue rows through the API
+- **Collapsible nav groups in `PortalSidebar`** — `NavItem.href` is now optional; items with `children` render as groups, items with `href` render as links; the type change is backward-compatible — all existing nav arrays are unaffected
+- **`DebtRecord` deferred** — the model and UI exist but remain on mock data; no backend `DebtRecord` model created in this phase
+
+---
+
+## Inventory portal restructure (2026-04-04)
+
+### Removed
+
+- `InventoryExpenses` page and all sub-components (`ManagerPINGate`, `ExpenseSummaryCards`, `CategoryBreakdown`, `ExpenseFiltersBar`, `AddExpenseDialog`) — stock expense logging is now handled by the manager's Expenses page (`/manager/expenses`)
+- `InventoryAlerts` page — alerts and reorder functionality merged into the new Stock page
+- Routes deleted: `/inventory/expenses`, `/inventory/alerts`
+- Sidebar entries removed: "Alerts & Reorder", "Expenses"
+
+### Added
+
+- `InventoryStock` (`src/components/portals/inventory/InventoryStock.tsx`) — unified stock status and reorder page
+  - Three tabs: **All** · **Low** · **Critical** — each with a live count badge
+  - Per-item: health bar, health badge (Healthy/Low/Critical), quantity vs min stock, cost/unit, supplier name
+  - Per-item actions: Quick Add (fires `recordStockIn` with suggested fill-to-double-min quantity), Call supplier link, Reorder email link (marks sent in local state)
+  - Search by name + category filter — persist across tab switches
+- `/inventory/stock` route — 4-line shell
+- Sidebar entry: "Stock" (`Package` icon) — replaces both removed entries
+- `CriticalStockAlert` (dashboard sub-component) — link updated from `/inventory/alerts` to `/inventory/stock?tab=critical`
+
+### Design decisions
+
+- **Single page for status + alerts** — the clerk's job is to know what's on hand and act on low stock; having a separate Alerts page just added a navigation step with no new information
+- **Quick Add fills to 2× min stock** — a consistent heuristic; the clerk can always do a full stock-in entry for a precise quantity
+- **Reorder email is a mailto link** — no backend integration needed; opens the clerk's email client with a pre-filled subject and body. Marked "Sent" in local state for the session only
+
+## Manager portal — Inventory nav + Daily Rollout (2026-04-04)
+
+### Added
+
+- `ManagerRollout` (`src/components/portals/manager/ManagerRollout.tsx`) — read-only rollout timeline view using the manager dark theme; fetches today's rollouts and inventory via `inventoryService`; allows recording new rollouts via the same dialog pattern as `InventoryRollout`
+- `/manager/rollout` route — 4-line shell → `<ManagerRollout />`
+
+### Changed
+
+- `managerNav` in `PortalSidebar.tsx` — `Inventory` single link converted to a collapsible group with two children:
+  - `Items & Suppliers → /manager/inventory` (`Package` icon)
+  - `Daily Rollout → /manager/rollout` (`ScrollText` icon)
+- `ManagerDashboard` — "View all" link changed from `/manager/payments` → `/manager/revenue`
+- `CreditCard` icon import removed from `PortalSidebar.tsx` (unused after Payments removal)
+
+### Removed
+
+- `ManagerPayments.tsx` — component deleted (transactions data now in `/manager/revenue`)
+- `/manager/payments` route — folder deleted
+
+### Design decisions
+
+- **Daily Rollout in manager portal** — managers need visibility into what stock has been issued to production; the inventory clerk page uses the same data via the same service, so the component is a thin dark-themed copy
+- **Payments page removed** — the Revenue page (`/manager/revenue`) already shows all `direction: 'in'` transactions including order payments; a separate Payments page was redundant
 
 ---
 

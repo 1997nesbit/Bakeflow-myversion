@@ -5,7 +5,8 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.customers.models import Customer
-from .models import Order, OrderStatus, OrderStatusHistory, DailyBatchItem, MenuItem
+from decimal import Decimal
+from .models import Order, OrderStatus, OrderStatusHistory, DailyBatchItem, BatchIngredient
 
 
 class OrderStateValidator:
@@ -144,7 +145,7 @@ class OrderService:
 
     @transaction.atomic
     def record_payment(self, order: Order, amount: float, method: str, by) -> Order:
-        from apps.accounts.models import User
+        from apps.finance.services import FinanceService
         order.amount_paid = float(order.amount_paid) + amount
         if order.amount_paid >= float(order.total_price):
             order.payment_status = 'paid'
@@ -152,6 +153,7 @@ class OrderService:
             order.payment_status = 'deposit'
         order.payment_method = method
         order.save(update_fields=['amount_paid', 'payment_status', 'payment_method', 'updated_at'])
+        FinanceService.record_order_payment(order=order, amount=amount, method=method, recorded_by=by)
         # Advance to PAID status if currently PENDING
         if order.status == OrderStatus.PENDING and order.payment_status == 'paid':
             order = self.advance_status(order, OrderStatus.PAID, by)
@@ -161,19 +163,46 @@ class OrderService:
 class ProductionService:
     def get_today_batches(self):
         from django.utils import timezone
-        return DailyBatchItem.objects.select_related('baked_by', 'menu_item').filter(
-            baked_at__date=timezone.now().date()
+        return (
+            DailyBatchItem.objects
+            .select_related('baked_by')
+            .prefetch_related('ingredients__rollout__inventory_item')
+            .filter(baked_at__date=timezone.now().date())
         )
 
     @transaction.atomic
     def create_batch(self, validated_data: dict, baked_by) -> DailyBatchItem:
-        from django.shortcuts import get_object_or_404
-        menu_item = get_object_or_404(MenuItem, pk=validated_data['menu_item_id'], is_active=True)
+        from django.db.models import Sum
+        from rest_framework.exceptions import ValidationError
+        from apps.inventory.models import DailyRollout
+
+        ingredients_data = validated_data.get('ingredients', [])
+
+        # Validate each rollout has enough remaining capacity.
+        # select_for_update locks the rows so concurrent batch submissions
+        # cannot both pass validation for the same rollout.
+        for ing in ingredients_data:
+            rollout = (
+                DailyRollout.objects
+                .select_for_update()
+                .select_related('inventory_item')
+                .get(pk=ing['rollout_id'])
+            )
+            already_used = (
+                BatchIngredient.objects
+                .filter(rollout=rollout)
+                .aggregate(total=Sum('quantity_used'))['total']
+            ) or Decimal('0')
+            available = rollout.quantity - already_used
+            if ing['quantity_used'] > available:
+                raise ValidationError(
+                    f"'{rollout.inventory_item.name}': only {available} {rollout.inventory_item.unit} "
+                    f"available from this rollout, but {ing['quantity_used']} was requested."
+                )
+
         qty = validated_data['quantity_baked']
-        return DailyBatchItem.objects.create(
-            menu_item=menu_item,
-            product_name=menu_item.name,
-            category=menu_item.category,
+        batch = DailyBatchItem.objects.create(
+            product_name=validated_data['product_name'],
             quantity_baked=qty,
             quantity_remaining=qty,
             unit='pcs',
@@ -181,3 +210,12 @@ class ProductionService:
             baked_at=timezone.now(),
             notes=validated_data.get('notes', ''),
         )
+
+        for ing in ingredients_data:
+            BatchIngredient.objects.create(
+                batch=batch,
+                rollout_id=ing['rollout_id'],
+                quantity_used=ing['quantity_used'],
+            )
+
+        return batch

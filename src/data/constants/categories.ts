@@ -1,8 +1,24 @@
 // ---- CATEGORY OPTION CONSTANTS ----
 // Used to populate dropdowns in forms.
 
-import type { ExpenseCategory } from '@/types/finance'
-import type { BusinessExpenseCategory } from '@/types/finance'
+export type ExpenseCategory =
+  | 'raw_materials'
+  | 'packaging'
+  | 'equipment'
+  | 'storage'
+  | 'delivery_logistics'
+  | 'wastage'
+  | 'miscellaneous'
+
+export type BusinessExpenseCategory =
+  | 'rent'
+  | 'salaries'
+  | 'utilities'
+  | 'marketing'
+  | 'licenses'
+  | 'transport'
+  | 'cleaning'
+  | 'misc'
 
 export const expenseCategories: { value: ExpenseCategory; label: string }[] = [
   { value: 'raw_materials', label: 'Raw Materials & Ingredients' },

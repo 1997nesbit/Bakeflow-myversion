@@ -27,8 +27,10 @@ src/
 │   │   ├── manager/
 │   │   │   ├── inventory/        # ItemFormDialog.tsx, SupplierFormDialog.tsx (manager-only sub-components)
 │   │   │   ├── reports/          # ManagerReports + tab sub-components
-│   │   │   └── *.tsx             # ManagerDashboard, ManagerInventory, ManagerUsers, ...
-│   │   ├── inventory/            # Inventory clerk portal: InventoryDashboard, InventoryStockIn, InventoryAlerts, InventoryRollout
+│   │   │   └── *.tsx             # ManagerDashboard, ManagerInventory, ManagerUsers,
+│   │   │                         # ManagerRevenue, ManagerAccounts (Expenses),
+│   │   │                         # ManagerRollout, ...
+│   │   ├── inventory/            # Inventory clerk portal: InventoryDashboard, InventoryStockIn, InventoryRollout, InventoryStock
 │   │   ├── decorator/
 │   │   ├── driver/
 │   │   └── packing/              # future enhancement — packing portal exists but step removed from flow
@@ -57,7 +59,8 @@ src/
 │   │   ├── staff.ts              # → replaced in Phase 3 ✅ deleted
 │   │   ├── customers.ts          # → replaced in Phase 3 ✅ deleted
 │   │   ├── inventory.ts          # → replaced in Phase 4 ✅ deleted
-│   │   ├── finance.ts            # → replaced in Phase 5
+│   │   ├── finance.ts            # → partially replaced in Phase 5 (mockDebts retained)
+│   │   │                         # mockExpenses, mockBusinessExpenses deleted
 │   │   ├── production.ts         # → replaced in Phase 2
 │   │   ├── tasks.ts              # → replaced in Phase 6
 │   │   ├── helpers.ts            # generateTrackingId() — mock only, remove in Phase 2
@@ -65,7 +68,7 @@ src/
 │   └── constants/                # Permanent UI config (labels, colours, menus)
 │       ├── labels.ts             # statusLabels, statusColors, orderTypeLabels, ...
 │       ├── menus.ts              # bakeryMenu, cakeFlavours, icingTypes
-│       ├── categories.ts         # expenseCategories
+│       ├── categories.ts         # expenseCategories, businessExpenseCategories, ExpenseCategory, BusinessExpenseCategory
 │       ├── tracking.ts           # trackingStages
 │       └── index.ts
 │

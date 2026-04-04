@@ -1,6 +1,6 @@
 'use client'
 
-import { ChefHat, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { ChefHat, Eye, EyeOff, ArrowLeft, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalLogin } from '@/lib/hooks/use-portal-login'
 
@@ -11,7 +11,7 @@ export function ManagerLogin() {
     showPassword, setShowPassword,
     loading,
     handleLogin,
-  } = usePortalLogin({ redirectPath: '/manager' })
+  } = usePortalLogin({ redirectPath: '/manager', expectedRole: 'manager' })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-manager-bg">
@@ -58,9 +58,20 @@ export function ManagerLogin() {
           <button
             type="button"
             onClick={() => handleLogin()}
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+            disabled={loading}
+            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Sign In
+            {loading ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </>
+            )}
           </button>
         </div>
 

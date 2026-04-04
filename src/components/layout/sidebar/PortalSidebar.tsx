@@ -6,12 +6,13 @@ import {
   ChefHat,
   LayoutDashboard, Users, Settings, Banknote,
   Crown, ListChecks, History, MessageSquare,
-  CreditCard, BarChart3,
+  BarChart3,
   PlusCircle, Search,
-  PackagePlus, ScrollText, AlertTriangle, Receipt,
+  PackagePlus, ScrollText, AlertTriangle,
   Flame, Layers,
   ShoppingCart, Package,
   UtensilsCrossed, Boxes,
+  ArrowRightLeft, TrendingUp, TrendingDown, ChevronDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -24,10 +25,17 @@ import { AppSidebarSection } from './AppSidebarSection'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface NavItem {
+export interface NavChild {
   name: string
   href: string
   icon: LucideIcon
+}
+
+export interface NavItem {
+  name: string
+  href?: string
+  icon: LucideIcon
+  children?: NavChild[]
 }
 
 export interface PortalSidebarProps {
@@ -46,18 +54,29 @@ const ROSE_GRADIENT = 'linear-gradient(160deg, hsl(350,72%,60%) 0%, hsl(350,72%,
 const HEADER_GRADIENT = 'linear-gradient(135deg, hsl(350,72%,58%) 0%, hsl(350,72%,48%) 100%)'
 
 export const managerNav: NavItem[] = [
-  { name: 'Dashboard',          href: '/manager',               icon: LayoutDashboard },
-  { name: 'User Management',    href: '/manager/users',         icon: Users },
-  { name: 'Account Management', href: '/manager/accounts',      icon: Settings },
-  { name: 'Debts',              href: '/manager/debts',         icon: Banknote },
-  { name: 'Customers',          href: '/manager/customers',     icon: Crown },
-  { name: 'Tasks',              href: '/manager/tasks',         icon: ListChecks },
-  { name: 'Menu',               href: '/manager/menu',          icon: UtensilsCrossed },
-  { name: 'Inventory',          href: '/manager/inventory',     icon: Boxes },
-  { name: 'Order History',      href: '/manager/order-history', icon: History },
-  { name: 'Bulk Messages',      href: '/manager/messages',      icon: MessageSquare },
-  { name: 'Payments',           href: '/manager/payments',      icon: CreditCard },
-  { name: 'Reports',            href: '/manager/reports',       icon: BarChart3 },
+  { name: 'Dashboard',       href: '/manager',               icon: LayoutDashboard },
+  { name: 'User Management', href: '/manager/users',         icon: Users },
+  {
+    name: 'Transactions', icon: ArrowRightLeft,
+    children: [
+      { name: 'Revenue',  href: '/manager/revenue',  icon: TrendingUp },
+      { name: 'Expenses', href: '/manager/expenses', icon: TrendingDown },
+    ],
+  },
+  { name: 'Debts',           href: '/manager/debts',         icon: Banknote },
+  { name: 'Customers',       href: '/manager/customers',     icon: Crown },
+  { name: 'Tasks',           href: '/manager/tasks',         icon: ListChecks },
+  { name: 'Menu',            href: '/manager/menu',          icon: UtensilsCrossed },
+  {
+    name: 'Inventory', icon: Boxes,
+    children: [
+      { name: 'Items & Suppliers', href: '/manager/inventory', icon: Package },
+      { name: 'Daily Rollout',     href: '/manager/rollout',   icon: ScrollText },
+    ],
+  },
+  { name: 'Order History',   href: '/manager/order-history', icon: History },
+  { name: 'Bulk Messages',   href: '/manager/messages',      icon: MessageSquare },
+  { name: 'Reports',         href: '/manager/reports',       icon: BarChart3 },
 ]
 
 export const frontDeskNav: NavItem[] = [
@@ -70,11 +89,10 @@ export const frontDeskNav: NavItem[] = [
 ]
 
 export const inventoryNav: NavItem[] = [
-  { name: 'Dashboard',        href: '/inventory',           icon: LayoutDashboard },
-  { name: 'Stock In',         href: '/inventory/stock-in',  icon: PackagePlus },
-  { name: 'Daily Rollout',    href: '/inventory/rollout',   icon: ScrollText },
-  { name: 'Alerts & Reorder', href: '/inventory/alerts',    icon: AlertTriangle },
-  { name: 'Expenses',         href: '/inventory/expenses',  icon: Receipt },
+  { name: 'Dashboard',    href: '/inventory',          icon: LayoutDashboard },
+  { name: 'Stock In',     href: '/inventory/stock-in', icon: PackagePlus },
+  { name: 'Daily Rollout', href: '/inventory/rollout', icon: ScrollText },
+  { name: 'Stock',        href: '/inventory/stock',    icon: Package },
 ]
 
 export const bakerNav: NavItem[] = [
@@ -100,6 +118,52 @@ function getNavLinkClass(isLight: boolean, isActive: boolean): string {
 function getNavIconClass(isLight: boolean, isActive: boolean): string {
   if (!isLight) return 'h-4 w-4 shrink-0'
   return isActive ? 'h-4 w-4 shrink-0 text-white' : 'h-4 w-4 shrink-0 text-rose-400'
+}
+
+// ─── Collapsible nav group ────────────────────────────────────────────────────
+
+function NavGroup({ item, pathname, isLight }: { item: NavItem; pathname: string; isLight: boolean }) {
+  const anyChildActive = item.children?.some(c => pathname === c.href) ?? false
+  const [open, setOpen] = useState(anyChildActive)
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
+          anyChildActive
+            ? getNavLinkClass(isLight, true)
+            : getNavLinkClass(isLight, false)
+        )}
+      >
+        <item.icon className={getNavIconClass(isLight, anyChildActive)} />
+        <span className="flex-1 text-left">{item.name}</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 opacity-60', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+          {item.children?.map(child => {
+            const isActive = pathname === child.href
+            return (
+              <Link
+                key={child.name}
+                href={child.href}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-all duration-150',
+                  getNavLinkClass(isLight, isActive)
+                )}
+              >
+                <child.icon className={cn('h-3.5 w-3.5 shrink-0', isLight ? (isActive ? 'text-white' : 'text-rose-400') : 'opacity-70')} />
+                {child.name}
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Base component ───────────────────────────────────────────────────────────
@@ -150,11 +214,21 @@ export function PortalSidebar({
             <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-rose-300">Menu</p>
           )}
           {nav.map((item) => {
+            if (item.children) {
+              return (
+                <NavGroup
+                  key={item.name}
+                  item={item}
+                  pathname={pathname}
+                  isLight={isLight}
+                />
+              )
+            }
             const isActive = pathname === item.href
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                href={item.href!}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
                   getNavLinkClass(isLight, isActive)

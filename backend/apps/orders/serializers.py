@@ -1,7 +1,8 @@
+from decimal import Decimal
 from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.accounts.models import User
-from .models import Order, OrderItem, OrderStatusHistory, MenuItem, DailyBatchItem, Sale, SaleItem
+from .models import Order, OrderItem, OrderStatusHistory, MenuItem, DailyBatchItem, BatchIngredient, Sale, SaleItem
 
 
 # ---------------------------------------------------------------------------
@@ -191,20 +192,36 @@ class SaleCreateSerializer(serializers.Serializer):
         return value
 
 
+class BatchIngredientSerializer(serializers.ModelSerializer):
+    item_name = serializers.CharField(source='rollout.inventory_item.name', read_only=True)
+    item_unit = serializers.CharField(source='rollout.inventory_item.unit', read_only=True)
+
+    class Meta:
+        model  = BatchIngredient
+        fields = ['id', 'rollout', 'item_name', 'item_unit', 'quantity_used']
+
+
+class BatchIngredientWriteSerializer(serializers.Serializer):
+    rollout_id    = serializers.UUIDField()
+    quantity_used = serializers.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal('0.001'))
+
+
 class DailyBatchItemSerializer(serializers.ModelSerializer):
     baked_by_name = serializers.CharField(source='baked_by.name', read_only=True)
+    ingredients   = BatchIngredientSerializer(many=True, read_only=True)
 
     class Meta:
         model  = DailyBatchItem
         fields = [
-            'id', 'menu_item_id', 'product_name', 'category',
+            'id', 'product_name',
             'quantity_baked', 'quantity_remaining',
-            'baked_by_name', 'baked_at', 'notes',
+            'baked_by_name', 'baked_at', 'notes', 'ingredients',
         ]
 
 
 class DailyBatchItemWriteSerializer(serializers.Serializer):
-    """Accept only the three baker-supplied fields; everything else is derived server-side."""
-    menu_item_id   = serializers.IntegerField()
+    """Baker-supplied fields."""
+    product_name   = serializers.CharField(max_length=200)
     quantity_baked = serializers.IntegerField(min_value=1)
     notes          = serializers.CharField(required=False, allow_blank=True, default='')
+    ingredients    = BatchIngredientWriteSerializer(many=True, required=False, default=list)

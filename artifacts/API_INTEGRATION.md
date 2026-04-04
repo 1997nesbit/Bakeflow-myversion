@@ -185,29 +185,43 @@ Permissions: `IsManagerOrFrontDesk` on all write endpoints.
 - [x] `MenuManagement` item cards show "X in stock today" (green) or "Not baked today" (muted) based on `stockToday`
 - [x] `MenuItemBrowser` (order picker) shows the same stock indicator under each item name
 
-#### Phase 4 extension — Baker batch logging linked to menu (2026-04-03)
+#### Phase 4 extension — Baker batch logging (decoupled from menu) (2026-04-04)
 
-`DailyBatchItem` gains a `menu_item` FK to `MenuItem`. The baker selects a product from the live menu; the backend derives `product_name`, `category`, `quantity_remaining`, `unit`, and `baked_at` server-side. Oven temp and unit fields removed from the form and display.
+`DailyBatchItem` records are independent of the menu. Batches represent cake bases and production runs that have no direct relation to menu items. The baker enters a free-text name and selects a category directly.
 
-- [x] `menu_item` FK added to `DailyBatchItem` model (`null=True, blank=True, SET_NULL`)
-- [x] `unit` field defaulted to `'pcs'` server-side — no longer sent from frontend
-- [x] Migration `0005_dailybatchitem_menu_item` applied
-- [x] `DailyBatchItemWriteSerializer` replaced with a 3-field `Serializer`: `menu_item_id`, `quantity_baked`, `notes`
-- [x] `ProductionService.create_batch` resolves `MenuItem` and fills all derived fields
-- [x] `DailyBatchItem` type updated in `src/types/production.ts` — `menuItemId` added, `ovenTemp` and `unit` removed; `NewBatchPayload` type added
-- [x] `AddBatchForm` fetches menu items via `menuService.getItems()` and replaces free-text product + category + unit + oven temp with a single menu item selector
-- [x] API call moved to `BakerProduction.handleAddBatch` — form emits `NewBatchPayload`, parent posts and adds server response to state
-- [x] `BatchCard` — oven temp row and unit from quantity badge removed
+`menu_item` FK remains on the model as `null=True, blank=True` (no migration needed); it is never set by the current flow.
+
+- [x] `DailyBatchItemWriteSerializer` — 4-field `Serializer`: `product_name`, `category`, `quantity_baked`, `notes`
+- [x] `ProductionService.create_batch` — creates the record from direct fields; no `MenuItem` FK lookup
+- [x] `DailyBatchItem` type in `src/types/production.ts` — `menuItemId` removed; `BatchCategory` union type exported
+- [x] `NewBatchPayload` — `menuItemId` replaced with `productName: string` + `category: BatchCategory`
+- [x] `AddBatchForm` — free-text product name input + category dropdown; `menuService` import removed
+- [x] `orders.ts` `createBatch` — sends `product_name`, `category`, `quantity_baked`, `notes`
+- [x] `BatchCard` — unchanged (reads `productName` and `category` which are still present)
 
 ---
 
-### Phase 5 — Finance & Payments
+### Phase 5 — Finance & Payments ✅ COMPLETE (2026-04-03)
 
-Activate `financeService`. Update `InventoryExpenses`, `ManagerPayments`, `ManagerDebts`. Delete `src/data/mock/finance.ts`.
+Unified `FinancialTransaction` ledger. `financeService` activated. `InventoryExpenses`, `ManagerAccounts`, `ManagerReports` (expenses tab) updated. `mockExpenses` and `mockBusinessExpenses` deleted. `ManagerDebts` and `mockDebts` deferred.
 
-**Phase 5 checklist:**
-- [ ] Apply the AbortController pattern to every new `useEffect` fetch.
-- [ ] Finance list responses are paginated — read `.results`.
+**Phase 5 checklist — COMPLETE ✅ (2026-04-03)**
+- [x] Apply the AbortController pattern to every new `useEffect` fetch.
+- [x] Finance list responses are paginated — read `.results`.
+- [x] `apps/finance/` Django app created — `FinancialTransaction` model with `direction` (`in`|`out`) and `type` discriminator (`order_payment`, `sale`, `stock_expense`, `business_expense`).
+- [x] `GET /api/transactions/` — filterable by `direction`, `type`, `start`, `end`. `IsManager` permission.
+- [x] `POST /api/transactions/` — expense rows only (`stock_expense` | `business_expense`). `IsManagerOrInventory` permission. `direction='out'` set server-side.
+- [x] `OrderService.record_payment()` creates a `direction='in', type='order_payment'` row as a side effect (inside the same `atomic` block).
+- [x] `SaleViewSet.create()` creates a `direction='in', type='sale'` row as a side effect.
+- [x] `Expense` and `BusinessExpense` frontend types removed — replaced by `FinancialTransaction` and `NewExpensePayload` in `src/types/finance.ts`.
+- [x] `ExpenseCategory` and `BusinessExpenseCategory` type aliases moved to `src/data/constants/categories.ts` (they are UI constants, not domain types).
+- [x] `AddExpenseDialog` updated — emits `NewExpensePayload` to parent instead of constructing a local `Expense`; `expenseCount` prop removed.
+- [x] `ManagerDebts` and `mockDebts` deferred — `DebtRecord` type retained in `src/types/finance.ts`.
+- [x] `src/data/mock/finance.ts` — `mockExpenses` and `mockBusinessExpenses` deleted; `mockDebts` retained.
+- [x] **Transactions sidebar section** — `PortalSidebar` extended with `NavItem.children` support; `managerNav` gains a collapsible `Transactions` group with `Revenue` and `Expenses` children. `NavItem.href` is now optional to accommodate group-only entries.
+- [x] `ManagerRevenue` (`/manager/revenue`) — fetches `direction=in`; shows order payments and walk-in sales.
+- [x] `ManagerAccounts` overwritten as unified Expenses page (`/manager/expenses`) — fetches `direction=out`; Business/Stock toggle in the add dialog; category filter adapts to selected type.
+- [x] `/manager/accounts` — redirects to `/manager/expenses`.
 
 ---
 

@@ -34,6 +34,6 @@ class MenuItemAdmin(admin.ModelAdmin):
 
 @admin.register(DailyBatchItem)
 class DailyBatchItemAdmin(admin.ModelAdmin):
-    list_display  = ['product_name', 'category', 'quantity_baked', 'quantity_remaining', 'baked_by', 'baked_at']
-    list_filter   = ['category']
+    list_display  = ['product_name', 'quantity_baked', 'quantity_remaining', 'baked_by', 'baked_at']
+    list_filter   = []
     ordering      = ['-baked_at']

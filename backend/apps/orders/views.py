@@ -364,4 +364,6 @@ class SaleViewSet(viewsets.GenericViewSet):
         ])
 
         sale.refresh_from_db()
+        from apps.finance.services import FinanceService
+        FinanceService.record_sale(sale=sale, recorded_by=request.user)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)

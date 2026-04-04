@@ -97,15 +97,17 @@ class StockEntryWriteSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class DailyRolloutSerializer(serializers.ModelSerializer):
-    item_name       = serializers.CharField(source='inventory_item.name', read_only=True)
-    item_unit       = serializers.CharField(source='inventory_item.unit', read_only=True)
+    item_name          = serializers.CharField(source='inventory_item.name', read_only=True)
+    item_unit          = serializers.CharField(source='inventory_item.unit', read_only=True)
     rolled_out_by_name = serializers.CharField(source='rolled_out_by.name', read_only=True)
+    # Populated by annotation in the rollouts view; 0 when not annotated.
+    quantity_used      = serializers.DecimalField(max_digits=10, decimal_places=3, read_only=True, default=0)
 
     class Meta:
         model  = DailyRollout
         fields = [
             'id', 'inventory_item', 'item_name', 'item_unit',
-            'quantity', 'purpose', 'rolled_out_by_name', 'date', 'time',
+            'quantity', 'quantity_used', 'purpose', 'rolled_out_by_name', 'date', 'time',
         ]
 
 

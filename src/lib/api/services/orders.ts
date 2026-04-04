@@ -119,9 +119,13 @@ export const productionService = {
   /** POST /api/production/batches/ */
   createBatch: async (payload: NewBatchPayload): Promise<DailyBatchItem> => {
     return (await apiClient.post<DailyBatchItem>('/production/batches/', {
-      menu_item_id:   payload.menuItemId,
+      product_name:   payload.productName,
       quantity_baked: payload.quantityBaked,
       notes:          payload.notes ?? '',
+      ingredients:    payload.ingredients.map(i => ({
+        rollout_id:    i.rolloutId,
+        quantity_used: i.quantityUsed,
+      })),
     })).data
   },
 }

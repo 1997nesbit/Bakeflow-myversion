@@ -10,7 +10,6 @@ import { productionService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { Layers, Plus, ChefHat, Flame, CheckCircle } from 'lucide-react'
 import { AddBatchForm } from './AddBatchForm'
-import { CategorySummaryGrid } from './CategorySummaryGrid'
 import { BatchCard } from './BatchCard'
 
 export function BakerProduction() {
@@ -43,10 +42,6 @@ export function BakerProduction() {
   const totalRemaining = batches.reduce((sum, b) => sum + b.quantityRemaining, 0)
   const totalSold = totalBaked - totalRemaining
 
-  const byCategory = batches.reduce((acc, b) => {
-    acc[b.category] = (acc[b.category] || 0) + b.quantityRemaining
-    return acc
-  }, {} as Record<string, number>)
 
   if (!mounted) return null
 
@@ -100,8 +95,6 @@ export function BakerProduction() {
               onCancel={() => setShowForm(false)}
             />
           )}
-
-          <CategorySummaryGrid byCategory={byCategory} />
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Today&apos;s Batches</h3>

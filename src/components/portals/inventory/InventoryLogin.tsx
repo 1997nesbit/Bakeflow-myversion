@@ -12,6 +12,7 @@ export function InventoryLogin() {
       icon={<Package className="h-10 w-10 text-white" />}
       gradient={`linear-gradient(135deg, ${BRAND.secondary}, #d94a70)`}
       redirectPath="/inventory"
+      expectedRole="inventory_clerk"
     />
   )
 }
