@@ -96,6 +96,15 @@ export interface Order {
   statusHistory?: StatusHistoryEntry[]
 }
 
+export interface OrderSummary {
+  count: number
+  totalRevenue: number
+  totalPrice: number
+  totalOutstanding: number
+  byStatus: Record<OrderStatus, number>
+  byPaymentMethod: Record<string, number>
+}
+
 export interface OverdueAlert {
   order: Order
   minutesOver: number
@@ -113,7 +122,6 @@ export interface NewOrderData {
   orderType: OrderType
   items: OrderItem[]
   specialNotes?: string
-  noteForCustomer?: string
   pickupDate: string
   pickupTime: string
   deliveryType: DeliveryType

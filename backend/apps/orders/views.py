@@ -1,4 +1,4 @@
-from django.db.models import IntegerField, OuterRef, Subquery, Sum, Value
+from django.db.models import Count, IntegerField, OuterRef, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -34,12 +34,13 @@ class OrderViewSet(viewsets.GenericViewSet):
     List / detail use different serializers (ISP).
     Action permissions are set per-action (ISP).
     """
+    _service = OrderService()
+
     queryset = (
         Order.objects
         .select_related('customer', 'assigned_to', 'driver', 'created_by')
         .prefetch_related('items', 'status_history__changed_by')
     )
-    _service = OrderService()
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -209,6 +210,67 @@ class OrderViewSet(viewsets.GenericViewSet):
             by=request.user,
         )
         return Response(OrderDetailSerializer(order).data)
+
+    # ------------------------------------------------------------------
+    # Aggregated summary — used by dashboard / reports KPI cards
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        qs = self.get_queryset()
+
+        # Apply the same role-based and query-param filters as list()
+        role = request.user.role
+        if role == 'baker':
+            qs = qs.filter(status__in=['baker', 'quality'])
+        elif role == 'driver':
+            qs = qs.filter(status__in=['ready', 'dispatched', 'delivered'])
+        elif role == 'decorator':
+            qs = qs.filter(status='decorator')
+
+        if status_filter := request.query_params.get('status'):
+            qs = qs.filter(status=status_filter)
+        if date_filter := request.query_params.get('pickup_date'):
+            qs = qs.filter(pickup_date=date_filter)
+
+        from apps.finance.models import FinancialTransaction
+
+        agg = qs.aggregate(
+            count=Count('id'),
+            total_price=Sum('total_price'),
+        )
+
+        total_price = float(agg['total_price'] or 0)
+
+        # Revenue comes from the transaction ledger — single source of truth.
+        total_revenue = float(
+            FinancialTransaction.objects
+            .filter(order__in=qs.values('id'), direction='in')
+            .aggregate(t=Sum('amount'))['t'] or 0
+        )
+
+        by_status = {
+            val: qs.filter(status=val).count()
+            for val in ['pending', 'paid', 'baker', 'quality', 'decorator', 'ready', 'dispatched', 'delivered']
+        }
+
+        by_payment_method = {
+            val: float(
+                FinancialTransaction.objects
+                .filter(order__in=qs.values('id'), direction='in', payment_method=val)
+                .aggregate(t=Sum('amount'))['t'] or 0
+            )
+            for val in ['cash', 'bank_transfer', 'mobile_money', 'card']
+        }
+
+        return Response({
+            'count':              agg['count'],
+            'total_revenue':      total_revenue,
+            'total_price':        total_price,
+            'total_outstanding':  total_price - total_revenue,
+            'by_status':          by_status,
+            'by_payment_method':  by_payment_method,
+        })
 
 
 class MenuViewSet(viewsets.GenericViewSet):

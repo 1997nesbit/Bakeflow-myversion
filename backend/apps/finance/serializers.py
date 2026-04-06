@@ -4,8 +4,8 @@ from .models import FinancialTransaction, TransactionDirection
 
 class FinancialTransactionSerializer(serializers.ModelSerializer):
     recorded_by = serializers.CharField(source='recorded_by.name', read_only=True)
-    order_id    = serializers.UUIDField(source='order_id', read_only=True)
-    sale_id     = serializers.UUIDField(source='sale_id', read_only=True)
+    order_id    = serializers.UUIDField(read_only=True)
+    sale_id     = serializers.UUIDField(read_only=True)
 
     class Meta:
         model = FinancialTransaction

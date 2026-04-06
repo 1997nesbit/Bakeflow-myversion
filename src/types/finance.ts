@@ -45,6 +45,22 @@ export interface NewExpensePayload {
   recurring_period?: RecurringPeriod
 }
 
+export interface TransactionTypeSummary {
+  total: number
+  count: number
+}
+
+export interface TransactionSummary {
+  total: number
+  count: number
+  byType: {
+    order_payment: TransactionTypeSummary
+    sale:          TransactionTypeSummary
+    stock_expense: TransactionTypeSummary
+    business_expense: TransactionTypeSummary
+  }
+}
+
 // DebtRecord stays on mock until debts are activated
 export interface DebtRecord {
   id: string

@@ -71,7 +71,9 @@ class OrderService:
         if updated:
             customer.save(update_fields=['name', 'email'] if customer_email else ['name'])
 
-        items_data = validated_data.pop('items')
+        items_data   = validated_data.pop('items')
+        amount_paid  = float(validated_data.pop('amount_paid', 0) or 0)
+
         order = Order.objects.create(
             **validated_data,
             customer=customer,
@@ -91,6 +93,19 @@ class OrderService:
             changed_by=created_by,
             note='Order created',
         )
+
+        # If payment was collected at creation, write the transaction then
+        # sync amount_paid from the ledger so the stored value is always derived.
+        if amount_paid > 0:
+            from apps.finance.services import FinanceService
+            FinanceService.record_order_payment(
+                order=order,
+                amount=amount_paid,
+                method=order.payment_method or 'cash',
+                recorded_by=created_by,
+            )
+            self._sync_payment(order)
+
         return order
 
     # ------------------------------------------------------------------
@@ -143,18 +158,33 @@ class OrderService:
         )
         return order
 
+    def _sync_payment(self, order: Order) -> None:
+        """
+        Recompute amount_paid and payment_status from the transaction ledger
+        and persist both. Never call order.amount_paid += x directly.
+        """
+        from django.db.models import Sum
+        total_paid = float(
+            order.transactions.filter(direction='in').aggregate(t=Sum('amount'))['t'] or 0
+        )
+        order.amount_paid = total_paid
+        if total_paid >= float(order.total_price):
+            order.payment_status = 'paid'
+        elif total_paid > 0:
+            order.payment_status = 'deposit'
+        else:
+            order.payment_status = 'unpaid'
+        order.save(update_fields=['amount_paid', 'payment_status', 'updated_at'])
+
     @transaction.atomic
     def record_payment(self, order: Order, amount: float, method: str, by) -> Order:
         from apps.finance.services import FinanceService
-        order.amount_paid = float(order.amount_paid) + amount
-        if order.amount_paid >= float(order.total_price):
-            order.payment_status = 'paid'
-        elif order.amount_paid > 0:
-            order.payment_status = 'deposit'
-        order.payment_method = method
-        order.save(update_fields=['amount_paid', 'payment_status', 'payment_method', 'updated_at'])
+
         FinanceService.record_order_payment(order=order, amount=amount, method=method, recorded_by=by)
-        # Advance to PAID status if currently PENDING
+        order.payment_method = method
+        order.save(update_fields=['payment_method', 'updated_at'])
+        self._sync_payment(order)
+
         if order.status == OrderStatus.PENDING and order.payment_status == 'paid':
             order = self.advance_status(order, OrderStatus.PAID, by)
         return order

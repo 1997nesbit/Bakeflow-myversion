@@ -4,7 +4,7 @@
 // Expense rows (stock_expense, business_expense) are created via POST /api/transactions/.
 
 import { apiClient } from '@/lib/api/client'
-import type { FinancialTransaction, NewExpensePayload } from '@/types/finance'
+import type { FinancialTransaction, NewExpensePayload, TransactionSummary } from '@/types/finance'
 import type { PaginatedResponse } from '@/types/api'
 
 export interface GetTransactionsParams {
@@ -23,6 +23,12 @@ export const financeService = {
       params: queryParams,
       signal,
     })).data
+  },
+
+  /** GET /api/transactions/summary/ — pre-aggregated totals, accepts same filters as getTransactions */
+  getSummary: async (params: Omit<GetTransactionsParams, 'signal'> & { signal?: AbortSignal } = {}): Promise<TransactionSummary> => {
+    const { signal, ...queryParams } = params
+    return (await apiClient.get<TransactionSummary>('/transactions/summary/', { params: queryParams, signal })).data
   },
 
   /** POST /api/transactions/ — expense rows only (direction='out') */

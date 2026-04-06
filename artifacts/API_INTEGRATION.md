@@ -55,7 +55,7 @@ The service stubs in `src/lib/api/services/` already have the correct `apiClient
 - [x] Proactive refresh fires 1 minute before access token expiry
 - [x] 401 reactive fallback works — interceptor retries the original request after a silent refresh
 - [x] Logout calls `/auth/logout/`, server blacklists the token, cookie is cleared
-- [x] Role guards decode the JWT and validate the `role` claim matches the portal — wrong-role tokens redirect to the portal login
+- [x] Role guards validate in two places: (1) `usePortalLogin` decodes the JWT immediately after `authService.login()` and rejects with a toast if the role doesn't match `expectedRole` — the token is never stored and no redirect occurs; (2) `useRoleAuth` in the portal sidebar re-validates on every page load as a second defence
 - [x] `django-axes` installed — 5 consecutive failed logins lock the IP/username combination
 
 ---
@@ -113,6 +113,7 @@ Not part of the order pipeline. Use `salesService.create()` from `src/lib/api/se
     handleApiError(err)
   }
   ```
+- [ ] **`OrderListSerializer` must include items** — `BakerActive` and other portals call `ordersService.getAll()` (list endpoint) and need `items[]`, `special_notes`, and `note_for_customer` on every order in the list. `OrderListSerializer` in `apps/orders/serializers.py` must nest `OrderItemSerializer(many=True, read_only=True)` and include those fields. Without this, `order.items` is `undefined` on the list response and card components cannot display item names.
 - [ ] Mock files deleted: `src/data/mock/orders.ts`, `production.ts`, `helpers.ts`
 
 ---
@@ -185,19 +186,47 @@ Permissions: `IsManagerOrFrontDesk` on all write endpoints.
 - [x] `MenuManagement` item cards show "X in stock today" (green) or "Not baked today" (muted) based on `stockToday`
 - [x] `MenuItemBrowser` (order picker) shows the same stock indicator under each item name
 
-#### Phase 4 extension — Baker batch logging (decoupled from menu) (2026-04-04)
+#### Phase 4 extension — Baker batch logging with rollout ingredients (2026-04-05)
 
-`DailyBatchItem` records are independent of the menu. Batches represent cake bases and production runs that have no direct relation to menu items. The baker enters a free-text name and selects a category directly.
+`DailyBatchItem` is fully decoupled from the menu. Batches represent cake bases and production runs. The baker enters a free-text name, quantity, optional notes, and optionally specifies which rolled-out ingredients were consumed. A new `BatchIngredient` join table links batches to `DailyRollout` rows.
 
-`menu_item` FK remains on the model as `null=True, blank=True` (no migration needed); it is never set by the current flow.
+`menu_item` and `category` FKs are removed from the active model (`migration 0006` drops `category`, `migration 0007` creates `BatchIngredient`).
 
-- [x] `DailyBatchItemWriteSerializer` — 4-field `Serializer`: `product_name`, `category`, `quantity_baked`, `notes`
-- [x] `ProductionService.create_batch` — creates the record from direct fields; no `MenuItem` FK lookup
-- [x] `DailyBatchItem` type in `src/types/production.ts` — `menuItemId` removed; `BatchCategory` union type exported
-- [x] `NewBatchPayload` — `menuItemId` replaced with `productName: string` + `category: BatchCategory`
-- [x] `AddBatchForm` — free-text product name input + category dropdown; `menuService` import removed
-- [x] `orders.ts` `createBatch` — sends `product_name`, `category`, `quantity_baked`, `notes`
-- [x] `BatchCard` — unchanged (reads `productName` and `category` which are still present)
+**Write payload — `POST /api/production/batches/`:**
+```json
+{
+  "product_name": "Vanilla Sponge Base",
+  "quantity_baked": 40,
+  "notes": "",
+  "ingredients": [
+    { "rollout_id": "<uuid>", "quantity_used": "30.000" }
+  ]
+}
+```
+
+**Validation rules:**
+- `quantity_used` per ingredient ≤ `rollout.quantity − Σ(existing BatchIngredient.quantity_used for that rollout)`
+- Validated server-side with `select_for_update()` on each rollout row (race-safe)
+- Also validated client-side in `AddBatchForm` — the submit button is disabled until all rows pass
+
+**`GET /api/inventory/rollouts/`** now annotates each rollout with `quantity_used` (Coalesce Subquery over `BatchIngredient`) so the form can show available stock.
+
+**Checklist — COMPLETE ✅ (2026-04-05)**
+- [x] `BatchIngredient(batch FK, rollout FK→inventory.DailyRollout, quantity_used decimal)` model added to `apps/orders`
+- [x] Migration `0006_remove_dailybatchitem_category` — drops `category` column
+- [x] Migration `0007_batchingredient` — creates `orders_batchingredient` table
+- [x] `DailyBatchItemWriteSerializer` — `product_name`, `quantity_baked`, `notes`, `ingredients[]`
+- [x] `BatchIngredientWriteSerializer` — `rollout_id` (UUID), `quantity_used` (Decimal, min 0.001)
+- [x] `ProductionService.create_batch` — validates each rollout with `select_for_update()`, creates batch + ingredients atomically
+- [x] `get_today_batches` — `prefetch_related('ingredients__rollout__inventory_item')` (no N+1)
+- [x] `DailyBatchItemSerializer` — nests `BatchIngredientSerializer` (id, rollout, item_name, item_unit, quantity_used)
+- [x] `DailyRolloutSerializer` — `quantity_used` DecimalField (default 0, populated by annotation)
+- [x] `InventoryViewSet.rollouts` — annotates with `Coalesce(Subquery(Sum BatchIngredient.quantity_used), Value(0))`
+- [x] `src/types/inventory.ts` `DailyRollout` — `quantityUsed: number` added
+- [x] `src/types/production.ts` — `BatchIngredient`, `BatchIngredientPayload` interfaces; `DailyBatchItem.ingredients` and `NewBatchPayload.ingredients` added; `category` and `BatchCategory` removed
+- [x] `orders.ts` `createBatch` — maps `ingredients` to snake_case for the API
+- [x] `AddBatchForm` — fetches today's rollouts on mount; dynamic ingredient rows; per-row available computed accounting for other rows in same form; inline `AlertCircle` error; submit disabled until valid
+- [x] `BatchCard` — ingredients section with item name + quantity_used per row
 
 ---
 
@@ -222,6 +251,58 @@ Unified `FinancialTransaction` ledger. `financeService` activated. `InventoryExp
 - [x] `ManagerRevenue` (`/manager/revenue`) — fetches `direction=in`; shows order payments and walk-in sales.
 - [x] `ManagerAccounts` overwritten as unified Expenses page (`/manager/expenses`) — fetches `direction=out`; Business/Stock toggle in the add dialog; category filter adapts to selected type.
 - [x] `/manager/accounts` — redirects to `/manager/expenses`.
+
+#### Phase 5 extension — Summary endpoints & KPI fixes (2026-04-06)
+
+**Problem solved:** DRF `DecimalField` serializes values as strings by default. Frontend `reduce` operations that assumed numeric values produced string concatenation (e.g. `"0200000.0070000.00"` instead of `270000`). Additionally, computing KPI totals in-component by iterating paginated list results is incorrect — totals would only reflect the current page.
+
+**Solution:** Backend summary endpoints aggregate on the server; frontend components read the pre-aggregated numbers directly.
+
+**New endpoints:**
+
+| Endpoint | Permission | Returns |
+|---|---|---|
+| `GET /api/orders/summary/` | `IsAuthenticated` | `count`, `total_revenue`, `total_price`, `total_outstanding`, `by_status`, `by_payment_method` |
+| `GET /api/transactions/summary/` | `IsAuthenticated` | `total`, `count`, `by_type` (each with `total`, `count`) |
+
+Both endpoints accept the same query params as their list counterparts (`direction`, `type`, `status`, `pickup_date`, `start`, `end`). `total_revenue` in the orders summary is always sourced from `FinancialTransaction` — never from `Order.amount_paid`.
+
+**Frontend types added** (`src/types/`):
+- `OrderSummary` — `count`, `totalRevenue`, `totalPrice`, `totalOutstanding`, `byStatus`, `byPaymentMethod`
+- `TransactionSummary` — `total`, `count`, `byType` (nested `TransactionTypeSummary`)
+
+**Service functions added:**
+- `ordersService.getSummary(options?)` — `GET /api/orders/summary/`
+- `financeService.getSummary(params?)` — `GET /api/transactions/summary/`
+
+**Components updated to use summaries:**
+- `ManagerDashboard` — three summary calls replace three list fetches for KPI cards
+- `ManagerRevenue` — `financeService.getSummary({direction:'in'})` for revenue KPI totals; list kept for table
+- `ManagerReports` — `orderSummary.byStatus` for status chart; `orderSummary.byPaymentMethod` for method chart
+- `ManagerOrderHistory` — `orderSummary` for `totalRevenue` and `totalOutstanding`
+- `ManagerAccounts` — `TransactionSummary` for KPI totals; list kept for category filtering
+- `FrontDeskDashboard` — `orderSummary` for `totalRevenue` and `outstandingBalance`
+
+**`amount_paid` — cached derived field pattern** (2026-04-06):
+
+`Order.amount_paid` is stored on the model for O(1) reads but is **never written directly**. The only write path is `OrderService._sync_payment()`, which recomputes from `SUM(transactions WHERE order=self AND direction='in')` and persists the result. This is called:
+- After `FinanceService.record_order_payment()` in `OrderService.record_payment()`
+- After the initial payment transaction in `OrderService.create_order()`
+
+Never do `order.amount_paid += amount` anywhere in the codebase. The field is a cache, not a counter.
+
+**Phase 5 extension checklist — COMPLETE ✅ (2026-04-06)**
+- [x] `GET /api/orders/summary/` action added to `OrderViewSet`
+- [x] `GET /api/transactions/summary/` action added to `FinancialTransactionViewSet`
+- [x] `OrderSummary` and `TransactionSummary` interfaces added to `src/types/`
+- [x] `ordersService.getSummary` and `financeService.getSummary` service functions added
+- [x] All KPI cards in manager and front-desk portals source totals from summary endpoints
+- [x] `OrderService._sync_payment()` is the single write path for `Order.amount_paid`
+- [x] `OrderService.create_order()` pops `amount_paid` from `validated_data`, creates the order, then creates the transaction and calls `_sync_payment()` if amount > 0
+- [x] Migration `0008` — removes `amount_paid` (intermediate step, now superseded)
+- [x] Migration `0009` — restores `amount_paid` with the cached-field pattern
+- [x] Migration `0010` — data migration: backfills `amount_paid` from transaction ledger for all existing orders
+- [x] `AssertionError` on `GET /api/transactions/` fixed — removed redundant `source='order_id'` kwarg from `FinancialTransactionSerializer`
 
 ---
 
@@ -301,12 +382,13 @@ The access token expires every 15 minutes. When the proactive refresh fires (in 
 
 Auth strategy is **Option C** — access token in JS memory, refresh token in HttpOnly SameSite=Strict cookie.
 
-**When integrating Phase 1:**
-- Install `jwt-decode`: `npm install jwt-decode` (also needed for `client.ts` proactive refresh scheduling)
-- The JWT `access` token encodes `role` and `name`. Decode it client-side with `jwtDecode<JwtPayload>(token)`.
-- `use-role-auth.ts` reads the in-memory token via `getAccessToken()`, decodes it, and validates the `role` claim matches the portal.
-- Redirect to the portal's `/login` if `getAccessToken()` returns null AND `initAuth()` fails (cookie absent or expired).
-- See the full replacement pattern in the TODO comment inside `use-role-auth.ts`.
+**Role validation — two-layer defence:**
+
+1. **At login (`use-portal-login.ts`)** — After `authService.login()` returns the access token, `jwtDecode` is called immediately. If `payload.role !== expectedRole`, `toast.error()` fires and the token is discarded. No redirect, no API calls, no portal access. Each login component passes its `expectedRole` to `usePortalLogin` (or to `PortalLoginForm` via the `expectedRole` prop, which forwards it to the hook).
+
+2. **On every page load (`use-role-auth.ts`)** — Reads the in-memory token, decodes it, and validates the role claim matches the portal. Redirects to the portal's `/login` if the token is absent, expired, or the role doesn't match. This acts as a second defence for direct URL access.
+
+**`PortalLoginForm` `expectedRole` prop** — optional `StaffRole`. When provided, the hook validates the role before storing the token. Omit only for portals without a defined backend role (currently: packing — future enhancement).
 
 **Role → portal mapping:**
 
@@ -477,3 +559,6 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 - **Never store tokens in localStorage** — access token lives in the `client.ts` module variable only; refresh token is in the HttpOnly cookie managed by Django.
 - **camelCase is handled by `djangorestframework-camel-case`** — the DRF renderer converts snake_case response fields to camelCase automatically; the parser converts camelCase request bodies back to snake_case. Frontend types use camelCase; backend serializer fields use snake_case. Services that build request payloads manually must use snake_case keys (e.g. `{ menu_item_id: ... }` not `{ menuItemId: ... }`).
 - **Computed list fields via correlated Subquery** — when a list endpoint needs an aggregated value derived from a related model (e.g. `stock_today` on `MenuItem` from `DailyBatchItem`), use a correlated `Subquery` annotation rather than `Sum(filter=Q(...))` across a JOIN. The subquery approach is unambiguous and avoids phantom NULL results from LEFT JOIN aggregation edge cases. See `MenuViewSet.list()` for the reference pattern.
+- **DRF `DecimalField` returns strings** — `djangorestframework-camel-case` does not coerce `DecimalField` values to numbers. The JSON payload contains `"amount_paid": "240000.00"` (a string). Never use `reduce((sum, x) => sum + x.amountPaid, 0)` on DRF decimal fields — it will concatenate strings. Use `Number(x.amountPaid)` when accessing individual field values, or better yet, use a backend summary endpoint so arithmetic never happens on the frontend at all.
+- **KPI totals come from summary endpoints, not list iteration** — components must never compute totals by summing over a paginated list (which only covers the current page). Use `ordersService.getSummary()` or `financeService.getSummary()` for any aggregated metric (total revenue, outstanding balance, order counts). Keep the list fetch only for rendering rows in the table.
+- **`Order.amount_paid` is a cached derived field** — it is always recomputed from the `FinancialTransaction` ledger by `OrderService._sync_payment()`. Never write to it directly with `+=` or by assigning a literal value. The canonical revenue figure is always `SUM(FinancialTransaction WHERE direction='in')`; `amount_paid` on the order is a read-performance cache only.

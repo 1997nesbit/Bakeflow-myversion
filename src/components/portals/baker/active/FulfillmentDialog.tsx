@@ -1,35 +1,42 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Package, X, Flame } from 'lucide-react'
+import { Package, X, Check } from 'lucide-react'
 import type { Order } from '@/types/order'
-import type { DailyBatchItem, FulfillmentMethod } from '@/types/production'
+import type { DailyBatchItem } from '@/types/production'
 
 interface Props {
   order: Order | null
-  findMatchingBatches: (order: Order) => DailyBatchItem[]
-  onAccept: (orderId: string, method: FulfillmentMethod, batchItem?: DailyBatchItem) => void
+  availableBatches: DailyBatchItem[]
+  onAccept: (orderId: string, method: 'from_batch', batchItem: DailyBatchItem) => void
   onClose: () => void
 }
 
-export function FulfillmentDialog({ order, findMatchingBatches, onAccept, onClose }: Props) {
+export function FulfillmentDialog({ order, availableBatches, onAccept, onClose }: Props) {
+  const [selected, setSelected] = useState<DailyBatchItem | null>(null)
+
   if (!order) return null
-  const matchingBatches = findMatchingBatches(order)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <Card className="w-full max-w-lg mx-4 border-2 shadow-2xl bg-card" style={{ borderColor: '#e66386' }}>
-        <CardContent className="p-6 space-y-5">
+      <Card
+        className="w-full max-w-md mx-4 border-2 shadow-2xl bg-card"
+        style={{ borderColor: '#e66386', maxHeight: '90vh', overflowY: 'auto' }}
+      >
+        <CardContent className="p-6 space-y-4">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#fce7ea' }}>
                 <Package className="h-5 w-5" style={{ color: '#CA0123' }} />
               </div>
               <div>
-                <h2 className="text-base font-bold text-foreground">How to fulfill {order.id}?</h2>
+                <h2 className="text-base font-bold text-foreground">Pick a batch</h2>
                 <p className="text-xs text-muted-foreground">
-                  {order.customer.name} -- {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                  {(order.items ?? []).map(i => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join(', ') || order.id}
+                  {' — '}{order.customer.name}
                 </p>
               </div>
             </div>
@@ -38,71 +45,55 @@ export function FulfillmentDialog({ order, findMatchingBatches, onAccept, onClos
             </button>
           </div>
 
-          <div className="space-y-3">
+          {/* Batch list */}
+          {availableBatches.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
+              <Package className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">No batches available</p>
+              <p className="text-xs text-muted-foreground mt-1">Add items to today's production before accepting this order</p>
+            </div>
+          ) : (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#CA0123' }}>
-                Take from today&apos;s batch
-              </p>
-              {matchingBatches.length === 0 ? (
-                <p className="text-xs text-muted-foreground px-3 py-4 rounded-lg border border-dashed text-center">
-                  No matching batches available
-                </p>
-              ) : (
-                matchingBatches.map(batch => (
-                  <button
-                    key={batch.id}
-                    type="button"
-                    className="w-full flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors hover:border-[#e66386]"
-                    style={{ borderColor: '#fbd5db', background: '#fdf2f4' }}
-                    onClick={() => onAccept(order.id, 'from_batch', batch)}
+              {availableBatches.map(batch => (
+                <button
+                  key={batch.id}
+                  type="button"
+                  className="w-full flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors"
+                  style={{
+                    borderColor: selected?.id === batch.id ? '#CA0123' : '#fbd5db',
+                    background: selected?.id === batch.id ? '#fce7ea' : '#fdf2f4',
+                  }}
+                  onClick={() => setSelected(batch)}
+                >
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white shrink-0"
+                    style={{ background: '#e66386' }}
                   >
-                    <span
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white shrink-0"
-                      style={{ background: '#e66386' }}
-                    >
-                      {batch.quantityRemaining}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground">{batch.productName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {batch.quantityRemaining} {batch.unit} remaining &mdash; baked by {batch.bakedBy} at{' '}
-                        {new Date(batch.bakedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    <Badge className="text-[10px] text-white border-0 shrink-0" style={{ background: '#22c55e' }}>
-                      From Batch
-                    </Badge>
-                  </button>
-                ))
-              )}
+                    {batch.quantityRemaining}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground">{batch.productName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.quantityRemaining} remaining &mdash; baked by {batch.bakedBy}
+                    </p>
+                  </div>
+                  {selected?.id === batch.id && (
+                    <Check className="h-5 w-5 shrink-0" style={{ color: '#CA0123' }} />
+                  )}
+                </button>
+              ))}
             </div>
+          )}
 
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            <button
-              type="button"
-              className="w-full flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors hover:border-[#CA0123]"
-              style={{ borderColor: '#fbd5db' }}
-              onClick={() => onAccept(order.id, 'bake_fresh')}
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0" style={{ background: '#fce7ea' }}>
-                <Flame className="h-5 w-5" style={{ color: '#CA0123' }} />
-              </span>
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">Bake Fresh</p>
-                <p className="text-xs text-muted-foreground">
-                  Start a new bake for this order (custom flavour, special request, etc.)
-                </p>
-              </div>
-              <Badge className="text-[10px] text-white border-0 shrink-0" style={{ background: '#CA0123' }}>
-                Fresh
-              </Badge>
-            </button>
-          </div>
+          {/* Confirm */}
+          <Button
+            className="w-full h-10 text-white border-0"
+            style={selected ? { background: 'linear-gradient(135deg, #CA0123, #e66386)' } : undefined}
+            disabled={!selected}
+            onClick={() => selected && onAccept(order.id, 'from_batch', selected)}
+          >
+            Accept Order
+          </Button>
         </CardContent>
       </Card>
     </div>

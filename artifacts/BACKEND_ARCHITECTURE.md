@@ -166,6 +166,9 @@ class Order(TimestampedModel):
 
     total_price       = DecimalField(max_digits=12, decimal_places=2)
     amount_paid       = DecimalField(max_digits=12, decimal_places=2, default=0)
+    # amount_paid is a cached derived field — always recomputed from
+    # SUM(transactions WHERE order=self AND direction='in') by _sync_payment().
+    # Never increment directly with +=. See OrderService._sync_payment().
     payment_status    = CharField(choices=PaymentStatus, default='unpaid')
     payment_method    = CharField(choices=[...], null=True)
     payment_terms     = CharField(choices=['upfront', 'on_delivery'])
@@ -268,64 +271,81 @@ class DailyRollout(TimestampedModel):
     time           = TimeField()
 
 class DailyBatchItem(TimestampedModel):
-    """Baker's daily production log. Linked to MenuItem via FK (2026-04-03)."""
-    menu_item          = ForeignKey(MenuItem, on_delete=SET_NULL, null=True, related_name='batch_items')
-    product_name       = CharField(max_length=200)  # denormalized copy of menu_item.name
-    category           = CharField(choices=['bread', 'pastry', 'snack', 'cake'])  # denormalized copy of menu_item.category
+    """Baker's daily production log. Decoupled from menu items (2026-04-05)."""
+    product_name       = CharField(max_length=200)  # free-text, baker-supplied
     quantity_baked     = PositiveIntegerField()
     quantity_remaining = PositiveIntegerField()
-    unit               = CharField(max_length=30, default='pcs')  # always 'pcs' — not user-supplied
+    unit               = CharField(max_length=30, default='pcs')
     baked_by           = ForeignKey(User, on_delete=PROTECT)
     baked_at           = DateTimeField()
-    oven_temp          = CharField(max_length=20, blank=True)  # retained in DB; no longer exposed via API
     notes              = TextField(blank=True)
+    # menu_item FK and category field removed (migrations 0005 reverted intent, 0006 drops category)
+
+class BatchIngredient(models.Model):
+    """Records how much of a rolled-out inventory item was consumed by a batch."""
+    id            = UUIDField(primary_key=True)
+    batch         = ForeignKey(DailyBatchItem, on_delete=CASCADE, related_name='ingredients')
+    rollout       = ForeignKey('inventory.DailyRollout', on_delete=PROTECT, related_name='usages')
+    quantity_used = DecimalField(max_digits=10, decimal_places=3)
 
 # Write payload accepted by POST /api/production/batches/:
-#   { menu_item_id, quantity_baked, notes }
-# All other fields are derived server-side by ProductionService.create_batch().
+#   { product_name, quantity_baked, notes?, ingredients: [{rollout_id, quantity_used}] }
+# ProductionService.create_batch() validates each rollout has sufficient remaining
+# capacity (select_for_update) before creating batch + ingredient rows atomically.
 #
-# Read response includes stock_today on MenuItem (see §6 — MENU ITEMS endpoint).
+# GET /api/inventory/rollouts/ annotates each rollout with quantity_used
+# (Coalesce Subquery over BatchIngredient) so the baker form can show availability.
 ```
 
 ### `finance` app
 
+`FinancialTransaction` is the **single source of truth** for all money movement. There is no separate `Payment` or `Expense` model — one table handles both directions via the `direction` discriminator.
+
 ```python
-class DebtRecord(TimestampedModel):
-    id           = UUIDField(primary_key=True)
-    order        = OneToOneField(Order, on_delete=PROTECT)
-    customer     = ForeignKey(Customer, on_delete=PROTECT)
-    total_amount = DecimalField(max_digits=12, decimal_places=2)
-    amount_paid  = DecimalField(max_digits=12, decimal_places=2, default=0)
-    due_date     = DateField()
-    status       = CharField(choices=['overdue', 'pending', 'partial'])
+class TransactionDirection(TextChoices):
+    IN  = 'in'   # revenue: order payment, walk-in sale
+    OUT = 'out'  # expense: stock purchase, business expense
 
-    @property
-    def balance(self):
-        return self.total_amount - self.amount_paid
+class TransactionType(TextChoices):
+    ORDER_PAYMENT    = 'order_payment'
+    SALE             = 'sale'
+    STOCK_EXPENSE    = 'stock_expense'
+    BUSINESS_EXPENSE = 'business_expense'
 
-class Expense(TimestampedModel):
-    id               = UUIDField(primary_key=True)
-    title            = CharField(max_length=300)
-    category         = CharField(choices=ExpenseCategory)
-    expense_type     = CharField(choices=['stock', 'business'], db_index=True)
-    amount           = DecimalField(max_digits=12, decimal_places=2)
-    date             = DateField(db_index=True)
-    paid_to          = CharField(max_length=200)
-    payment_method   = CharField(choices=PaymentMethod)
+class FinancialTransaction(TimestampedModel):
+    id             = UUIDField(primary_key=True)
+    date           = DateField(db_index=True)
+    amount         = DecimalField(max_digits=14, decimal_places=2)
+    direction      = CharField(choices=TransactionDirection, db_index=True)
+    type           = CharField(choices=TransactionType, db_index=True)
+    payment_method = CharField(choices=PaymentMethod, blank=True)
+    description    = CharField(max_length=300)
+    recorded_by    = ForeignKey(User, on_delete=PROTECT)
+
+    # Revenue links — null for expense rows
+    order = ForeignKey('orders.Order', null=True, blank=True, on_delete=SET_NULL, related_name='transactions')
+    sale  = ForeignKey('orders.Sale',  null=True, blank=True, on_delete=SET_NULL, related_name='transactions')
+
+    # Expense-only fields — blank for revenue rows
+    category         = CharField(max_length=50, blank=True)
+    paid_to          = CharField(max_length=200, blank=True)
     receipt_ref      = CharField(max_length=100, blank=True)
     notes            = TextField(blank=True)
     recurring        = BooleanField(default=False)
     recurring_period = CharField(choices=['weekly', 'monthly', 'yearly'], null=True)
-    added_by         = ForeignKey(User, on_delete=PROTECT)
 
-class Payment(TimestampedModel):
-    """Each individual payment transaction against an order."""
-    order          = ForeignKey(Order, related_name='payments', on_delete=PROTECT)
-    amount         = DecimalField(max_digits=12, decimal_places=2)
-    payment_method = CharField(choices=PaymentMethod)
-    recorded_by    = ForeignKey(User, on_delete=PROTECT)
-    note           = TextField(blank=True)
+    class Meta:
+        indexes = [
+            Index(fields=['direction', 'date']),
+            Index(fields=['type', 'date']),
+        ]
 ```
+
+**Revenue rows** are created automatically as side effects inside `OrderService.record_payment()` and `SaleViewSet.create()` — never by direct API calls to `POST /api/transactions/`.
+
+**Expense rows** (`direction='out'`) are the only rows created via `POST /api/transactions/`. The `direction` field is set server-side; clients never supply it.
+
+**`FinancialTransaction` is indexed on `(order_id)` via the FK** — querying a single order's payment history is O(log n).
 
 ---
 
@@ -341,13 +361,29 @@ class BaseService(ABC):
 
 # orders/services.py
 class OrderService(BaseService):
-    def create_order(self, validated_data, created_by) -> Order: ...
+    def create_order(self, validated_data, created_by) -> Order:
+        # Pops amount_paid from validated_data — not stored on Order directly.
+        # If amount_paid > 0, calls FinanceService.record_order_payment() then
+        # _sync_payment() so the stored field is set from the ledger immediately.
+        ...
+
     def post_to_baker(self, order: Order, by: User) -> Order: ...
-    def assign_baker(self, order: Order, baker: User) -> Order: ...
     def advance_status(self, order: Order, to_status: str, by: User) -> Order: ...
-    def record_payment(self, order: Order, amount, method, by: User) -> Order: ...
     def dispatch_order(self, order: Order, driver: User, by: User) -> Order: ...
     def generate_tracking_id(self) -> str: ...
+
+    def record_payment(self, order: Order, amount, method, by: User) -> Order:
+        # 1. Writes FinancialTransaction (direction='in', type='order_payment').
+        # 2. Calls _sync_payment() to recompute amount_paid + payment_status from ledger.
+        # 3. Advances status PENDING → PAID if now fully paid.
+        # Never uses += on amount_paid.
+        ...
+
+    def _sync_payment(self, order: Order) -> None:
+        # Queries SUM(transactions WHERE direction='in') for this order,
+        # stores the result in order.amount_paid, and derives payment_status.
+        # Called after every transaction write — the only place amount_paid is set.
+        ...
 
 class OrderStateValidator(BaseService):
     """OCP: extend allowed transitions without modifying OrderService."""
@@ -369,6 +405,13 @@ class InventoryService(BaseService):
     def record_rollout(self, validated_data, by) -> DailyRollout: ...
     def get_low_stock_items(self) -> QuerySet: ...
     def update_item_quantity(self, item: InventoryItem, delta: Decimal): ...
+
+# orders/services.py — ProductionService
+class ProductionService(BaseService):
+    def get_today_batches(self) -> QuerySet: ...
+    # create_batch: validates rollout capacity with select_for_update(),
+    # then creates DailyBatchItem + BatchIngredient rows atomically.
+    def create_batch(self, validated_data, baked_by) -> DailyBatchItem: ...
 
 # finance/services.py
 class DebtService(BaseService):
@@ -441,7 +484,6 @@ ORDERS
   GET    /api/orders/{id}/                   detail
   PATCH  /api/orders/{id}/                   partial update
   POST   /api/orders/{id}/post_to_baker/
-  POST   /api/orders/{id}/assign_baker/
   POST   /api/orders/{id}/quality_check/
   # POST /api/orders/{id}/mark_packing/  — future enhancement (packing step removed)
   POST   /api/orders/{id}/mark_ready/
@@ -449,6 +491,11 @@ ORDERS
   POST   /api/orders/{id}/mark_delivered/
   POST   /api/orders/{id}/record_payment/
   GET    /api/orders/track/{tracking_id}/   PUBLIC — no auth required
+  GET    /api/orders/summary/               pre-aggregated KPI totals (IsManager/IsFrontDesk)
+                                            → { count, total_revenue, total_price,
+                                                total_outstanding, by_status, by_payment_method }
+                                            total_revenue comes from FinancialTransaction ledger,
+                                            not from Order.amount_paid directly.
 
 MENU ITEMS
   GET    /api/menu/                          list active menu items — includes stock_today (sum of today's DailyBatchItem.quantity_remaining per item)
@@ -474,8 +521,8 @@ INVENTORY
   GET    /api/inventory/rollouts/            filter by date, item
 
 PRODUCTION  (Baker)
-  GET    /api/production/batches/            today's batches — IsBaker or IsAuthenticated
-  POST   /api/production/batches/            IsBaker only — payload: { menu_item_id, quantity_baked, notes? }
+  GET    /api/production/batches/            today's batches (prefetches ingredients) — IsBaker or IsAuthenticated
+  POST   /api/production/batches/            IsBaker only — payload: { product_name, quantity_baked, notes?, ingredients: [{rollout_id, quantity_used}] }
 
 SUPPLIERS
   GET    /api/suppliers/
@@ -483,12 +530,13 @@ SUPPLIERS
   PATCH  /api/suppliers/{id}/
 
 FINANCE
-  GET    /api/expenses/                      filter by type (stock/business), date range
-  POST   /api/expenses/
-  GET    /api/debts/                         filter by status (overdue/pending/partial)
-  GET    /api/debts/{id}/
-  POST   /api/debts/{id}/pay/
-  GET    /api/payments/                      payment history
+  GET    /api/transactions/                  list — filter by direction, type, start, end (IsManager)
+  POST   /api/transactions/                  create expense row only (IsManagerOrInventory)
+                                             direction='out' is set server-side; clients never supply it
+  GET    /api/transactions/summary/          pre-aggregated totals (IsManager)
+                                             accepts same filters as list
+                                             → { total, count, by_type: { order_payment, sale,
+                                                 stock_expense, business_expense } }
 
 STAFF  (Manager only)
   GET    /api/staff/
@@ -518,6 +566,20 @@ REPORTS  (Manager only)
 ---
 
 ## 7. Performance Strategy
+
+### `amount_paid` — cached derived field pattern
+
+`Order.amount_paid` is stored on the model for read performance but is **never written directly**. It is always derived by `_sync_payment()` after a transaction is written:
+
+```
+write transaction → _sync_payment() queries SUM(transactions) → stores result in Order.amount_paid
+```
+
+This gives O(1) reads with guaranteed correctness. The alternative (annotating every order query with a live `SUM JOIN`) was rejected because it added a transaction JOIN to every portal that fetches orders — including bakers and drivers who never display payment amounts.
+
+**Rule:** never do `order.amount_paid += x`. Always call `_sync_payment()` after writing to `FinancialTransaction`.
+
+---
 
 ### Database
 - **`select_related` / `prefetch_related`** on every list endpoint — zero N+1 queries

@@ -54,16 +54,18 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 class OrderListSerializer(serializers.ModelSerializer):
     customer    = CustomerInlineSerializer(read_only=True)
     assigned_to = AssignedUserSerializer(read_only=True)
+    items       = OrderItemSerializer(many=True, read_only=True)
 
     class Meta:
         model  = Order
         fields = [
             'id', 'tracking_id', 'customer', 'order_type', 'status',
+            'special_notes', 'note_for_customer',
             'pickup_date', 'pickup_time', 'delivery_type',
             'total_price', 'amount_paid', 'payment_status', 'payment_terms',
             'is_advance_order', 'estimated_minutes',
             'assigned_to', 'posted_to_baker_at', 'dispatched_at',
-            'created_at',
+            'created_at', 'items',
         ]
 
 

@@ -34,12 +34,6 @@ export interface NewBatchPayload {
 
 export type FulfillmentMethod = 'from_batch' | 'bake_fresh'
 
-export interface TimerState {
-  startedAt: number
-  elapsed: number
-  running: boolean
-}
-
 export interface BulkBatch {
   id: string
   name: string
@@ -47,6 +41,13 @@ export interface BulkBatch {
   notes: string
   createdAt: string
 }
+
+export interface TimerState {
+  startedAt: number
+  elapsed: number
+  running: boolean
+}
+
 
 export interface FulfillmentChoice {
   orderId: string

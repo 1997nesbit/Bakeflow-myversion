@@ -5,7 +5,7 @@ import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import type { Order } from '@/types/order'
+import type { Order, OrderSummary } from '@/types/order'
 import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { daysUntilDue, minutesSincePosted } from '@/lib/utils/date'
@@ -19,6 +19,7 @@ import { DepositTracker } from './DepositTracker'
 
 export function FrontDeskDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [summary, setSummary] = useState<OrderSummary | null>(null)
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
 
@@ -34,13 +35,16 @@ export function FrontDeskDashboard() {
     ordersService.getAll({ signal: controller.signal })
       .then(res => setOrders(res.results))
       .catch(handleApiError)
+    ordersService.getSummary({ signal: controller.signal })
+      .then(setSummary)
+      .catch(handleApiError)
     return () => controller.abort()
   }, [])
 
-  const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
-  const pendingPayments = orders.filter(o => o.paymentStatus === 'unpaid')
-  const depositOrders = orders.filter(o => o.paymentStatus === 'deposit')
-  const outstandingBalance = [...pendingPayments, ...depositOrders].reduce((s, o) => s + (o.totalPrice - o.amountPaid), 0)
+  const totalRevenue       = summary?.totalRevenue ?? 0
+  const outstandingBalance = summary?.totalOutstanding ?? 0
+  const pendingPayments    = orders.filter(o => o.paymentStatus === 'unpaid')
+  const depositOrders      = orders.filter(o => o.paymentStatus === 'deposit')
   const paidReadyToPost = orders.filter(o => o.status === 'paid')
   const inKitchen = orders.filter(o => ['baker', 'decorator', 'quality', 'packing'].includes(o.status))
   const readyOrders = orders.filter(o => o.status === 'ready')

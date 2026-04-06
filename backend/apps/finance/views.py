@@ -1,7 +1,9 @@
+from django.db.models import Count, Sum
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from core.permissions import IsManager, IsManagerOrInventory
-from .models import FinancialTransaction
+from .models import FinancialTransaction, TransactionType
 from .serializers import FinancialTransactionSerializer, ExpenseCreateSerializer
 
 
@@ -49,3 +51,23 @@ class FinancialTransactionViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         tx = serializer.save(recorded_by=request.user)
         return Response(FinancialTransactionSerializer(tx).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        qs = self.get_queryset()
+
+        agg = qs.aggregate(total=Sum('amount'), count=Count('id'))
+
+        by_type = {
+            tx_type: {
+                'total': float(qs.filter(type=tx_type).aggregate(t=Sum('amount'))['t'] or 0),
+                'count': qs.filter(type=tx_type).count(),
+            }
+            for tx_type, _ in TransactionType.choices
+        }
+
+        return Response({
+            'total':   float(agg['total'] or 0),
+            'count':   agg['count'],
+            'by_type': by_type,
+        })

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { FinancialTransaction, NewExpensePayload, RecurringPeriod } from '@/types/finance'
+import type { FinancialTransaction, NewExpensePayload, RecurringPeriod, TransactionSummary } from '@/types/finance'
 import type { PaymentMethod } from '@/types/order'
 import {
   expenseCategories, businessExpenseCategories,
@@ -183,6 +183,7 @@ function AddExpenseDialog({ open, onOpenChange, onAdd }: AddDialogProps) {
 
 export function ManagerAccounts() {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
+  const [summary, setSummary] = useState<TransactionSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
   const [filterCat, setFilterCat] = useState<string>('all')
@@ -195,6 +196,9 @@ export function ManagerAccounts() {
       .then(res => setTransactions(res.results))
       .catch(handleApiError)
       .finally(() => setLoading(false))
+    financeService.getSummary({ direction: 'out', signal: controller.signal })
+      .then(setSummary)
+      .catch(handleApiError)
     return () => controller.abort()
   }, [])
 
@@ -208,10 +212,10 @@ export function ManagerAccounts() {
     return true
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  const total          = transactions.reduce((s, t) => s + t.amount, 0)
-  const bizTotal       = transactions.filter(t => t.type === 'business_expense').reduce((s, t) => s + t.amount, 0)
-  const stockTotal     = transactions.filter(t => t.type === 'stock_expense').reduce((s, t) => s + t.amount, 0)
-  const filteredTotal  = filtered.reduce((s, t) => s + t.amount, 0)
+  const total         = summary?.total ?? 0
+  const bizTotal      = summary?.byType?.business_expense?.total ?? 0
+  const stockTotal    = summary?.byType?.stock_expense?.total ?? 0
+  const filteredTotal = filtered.reduce((s, t) => s + Number(t.amount), 0)
 
   const handleAdd = async (payload: NewExpensePayload) => {
     try {
@@ -352,7 +356,7 @@ export function ManagerAccounts() {
                 </div>
                 {t.notes && <p className="text-xs text-white/20 mt-0.5 italic truncate">{t.notes}</p>}
               </div>
-              <p className="text-sm font-bold text-primary shrink-0">TZS {t.amount.toLocaleString()}</p>
+              <p className="text-sm font-bold text-primary shrink-0">TZS {Number(t.amount).toLocaleString()}</p>
             </div>
           ))}
         </div>

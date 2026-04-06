@@ -5,7 +5,7 @@ import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { FinancialTransaction, TransactionType } from '@/types/finance'
+import type { FinancialTransaction, TransactionType, TransactionSummary } from '@/types/finance'
 import { financeService } from '@/lib/api/services/finance'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { TrendingUp, ShoppingBag, CreditCard, Search, ArrowUpRight } from 'lucide-react'
@@ -27,6 +27,7 @@ const paymentMethodLabels: Record<string, string> = {
 
 export function ManagerRevenue() {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
+  const [summary, setSummary] = useState<TransactionSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
@@ -37,6 +38,9 @@ export function ManagerRevenue() {
       .then(res => setTransactions(res.results))
       .catch(handleApiError)
       .finally(() => setLoading(false))
+    financeService.getSummary({ direction: 'in', signal: controller.signal })
+      .then(setSummary)
+      .catch(handleApiError)
     return () => controller.abort()
   }, [])
 
@@ -49,10 +53,10 @@ export function ManagerRevenue() {
     return true
   })
 
-  const totalRevenue    = transactions.reduce((s, t) => s + t.amount, 0)
-  const orderPayments   = transactions.filter(t => t.type === 'order_payment').reduce((s, t) => s + t.amount, 0)
-  const walkInSales     = transactions.filter(t => t.type === 'sale').reduce((s, t) => s + t.amount, 0)
-  const filteredTotal   = filtered.reduce((s, t) => s + t.amount, 0)
+  const totalRevenue  = summary?.total ?? 0
+  const orderPayments = summary?.byType?.order_payment?.total ?? 0
+  const walkInSales   = summary?.byType?.sale?.total ?? 0
+  const filteredTotal = filtered.reduce((s, t) => s + Number(t.amount), 0)
 
   return (
     <div className="min-h-screen bg-manager-bg">
@@ -155,7 +159,7 @@ export function ManagerRevenue() {
                   <span>by {t.recordedBy}</span>
                 </div>
               </div>
-              <p className="text-sm font-bold text-green-400 shrink-0">+ TZS {t.amount.toLocaleString()}</p>
+              <p className="text-sm font-bold text-green-400 shrink-0">+ TZS {Number(t.amount).toLocaleString()}</p>
             </div>
           ))}
         </div>

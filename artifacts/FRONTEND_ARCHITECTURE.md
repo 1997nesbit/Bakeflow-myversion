@@ -48,7 +48,9 @@ src/
 │   │                             # StockEntryPayload, DailyRolloutPayload, InventoryItemPayload, SupplierPayload
 │   ├── staff.ts
 │   ├── finance.ts
-│   ├── production.ts             # TimerState, BulkBatch, FulfillmentChoice, ...
+│   ├── production.ts             # DailyBatchItem, TimerState, BulkBatch, FulfillmentChoice,
+│   │                             # FulfillmentMethod, BatchIngredient, BatchIngredientPayload,
+│   │                             # NewBatchPayload
 │   ├── task.ts
 │   ├── customer.ts
 │   └── index.ts                  # Re-exports everything from @/types
@@ -87,8 +89,8 @@ src/
 │   │   │   └── messaging.ts      # Phase 8
 │   │   └── index.ts              # Re-exports all services
 │   ├── hooks/
-│   │   ├── use-portal-login.ts   # Demo auth logic — replace body in Phase 1
-│   │   ├── use-role-auth.ts
+│   │   ├── use-portal-login.ts   # Handles login form state; validates JWT role claim before storing token
+│   │   ├── use-role-auth.ts      # Per-page role guard; decodes in-memory JWT and redirects on mismatch
 │   │   └── use-manager-auth.ts
 │   └── utils/
 │       ├── date.ts               # daysUntilDue(), minutesSincePosted() — permanent
@@ -125,7 +127,7 @@ No global state library is used — and none should be added unless a clear need
 | Data type | Where it lives |
 |---|---|
 | Server data (orders, inventory, etc.) | `useState` inside each portal component, fetched in `useEffect` |
-| Auth session | `localStorage` (JWT access + refresh tokens) |
+| Auth session | Access token: JS memory (`client.ts` module variable). Refresh token: HttpOnly SameSite=Strict cookie (managed by Django). |
 | UI state (dialogs, tabs, timers) | Local `useState` in the component or subcomponent that owns it |
 | Global toasts | Sonner — call `toast()` directly, no context needed |
 | Error state | `PortalErrorBoundary` catches render errors; `try/catch` + `handleApiError()` for async errors |
@@ -147,7 +149,35 @@ This keeps components under ~300 lines and makes each section independently test
 
 ---
 
-## 5. Manager Portal Design Language
+## 5. Baker Portal — Order Fulfillment Flow
+
+When a baker clicks Accept on an incoming order in `BakerActive`, the flow is:
+
+1. **Custom order** (`order.orderType === 'custom'`) → accepted immediately as Bake Fresh. No dialog shown.
+2. **Menu order** → `FulfillmentDialog` opens showing **all** today's production batches with quantity remaining > 0 (no item-name matching — the baker picks from the full list).
+   - Baker selects one batch and clicks Accept.
+   - If no batches are available, the dialog shows an empty state and Accept is disabled — the order **cannot** be accepted without a batch.
+3. On confirm, the chosen batch's `quantityRemaining` is decremented optimistically in local state, and `ordersService.accept(orderId)` is called.
+
+**Key decisions recorded here:**
+- Non-custom orders require a batch — Bake Fresh is not an option for menu orders.
+- Batch matching is not filtered by item name — any available batch can be assigned to any order. Strict name-matching was removed as premature at this phase.
+- `FulfillmentChoice` in `src/types/production.ts` stores `{ orderId, method, batchItemId, batchItemName }` — no per-item breakdown.
+- The `BulkBatchPanel` (Group Orders) is a separate feature in the baking tab that lets bakers group in-progress orders for bulk timer/QA control. It is independent of fulfillment.
+
+**Order detail modal (`OrderDetailModal`):**
+- All three card types (incoming, baking, QA) open `OrderDetailModal` on click, showing full order details: customer info, items + custom cake specs, notes, payment, tracking ID.
+- Action buttons (Accept, Start, Pause, Done → QA, Fail/Pass) call `e.stopPropagation()` to prevent triggering the modal.
+- The modal is controlled from `BakerActive` via `detailOrder` state — a single modal instance shared across all tabs.
+
+**"Done → QA" button visibility rule:**
+- The button only appears on a `BakingOrderCard` once `td.pct >= 100` (timer has reached or exceeded the estimated bake time).
+- While the timer is still running below 100%, only Start/Pause is shown. This prevents bakers from sending to QA before the estimated time is up.
+
+---
+
+## 6. Manager Portal Design Language
+
 
 The manager portal uses a custom dark theme distinct from the light `bg-background` theme used by all other portals. Every manager page **must** follow this pattern — mixing conventions produces a broken white page.
 
@@ -175,7 +205,7 @@ Do not use shadcn `<Card>`, `text-foreground`, `text-muted-foreground`, `bg-back
 
 ---
 
-## 6. Error Boundary Coverage
+## 7. Error Boundary Coverage
 
 Every portal layout wraps its children in `<PortalErrorBoundary>`:
 

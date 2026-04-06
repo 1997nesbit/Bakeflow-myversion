@@ -3,7 +3,7 @@
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import type { Order } from '@/types/order'
+import type { Order, OrderSummary } from '@/types/order'
 import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { paymentMethodLabels } from '@/data/constants/labels'
@@ -31,11 +31,15 @@ export function ManagerOrderHistory() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'menu' | 'custom'>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [allOrders, setAllOrders] = useState<Order[]>([])
+  const [summary, setSummary] = useState<OrderSummary | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
     ordersService.getAll({ signal: controller.signal })
       .then(res => setAllOrders([...res.results].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+      .catch(handleApiError)
+    ordersService.getSummary({ signal: controller.signal })
+      .then(setSummary)
       .catch(handleApiError)
     return () => controller.abort()
   }, [])
@@ -56,8 +60,8 @@ export function ManagerOrderHistory() {
     [allOrders, search, typeFilter, statusFilter]
   )
 
-  const totalRevenue = allOrders.reduce((s, o) => s + o.amountPaid, 0)
-  const totalOutstanding = allOrders.reduce((s, o) => s + (o.totalPrice - o.amountPaid), 0)
+  const totalRevenue     = summary?.totalRevenue ?? 0
+  const totalOutstanding = summary?.totalOutstanding ?? 0
 
   return (
     <div className="min-h-screen bg-manager-bg">

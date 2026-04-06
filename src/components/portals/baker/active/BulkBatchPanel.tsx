@@ -126,8 +126,10 @@ export function BulkBatchPanel({
                       className="accent-[#CA0123] h-4 w-4"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{o.id}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{o.items?.map(i => i.name).join(', ')}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {(o.items ?? []).map(i => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join(', ') || o.id}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">{o.customer.name}</p>
                     </div>
                     {fulfillments[o.id] && (
                       <Badge variant="outline" className="text-[10px] shrink-0 bg-transparent">
@@ -202,7 +204,7 @@ export function BulkBatchPanel({
                         className="text-[10px] px-2 py-0.5 rounded-full font-medium"
                         style={{ background: '#fce7ea', color: '#CA0123' }}
                       >
-                        {o.id} - {o.items?.map(i => i.name).join(', ')}
+                        {(o.items ?? []).map(i => i.name).join(', ') || o.id} — {o.customer.name}
                       </span>
                     ))}
                   </div>

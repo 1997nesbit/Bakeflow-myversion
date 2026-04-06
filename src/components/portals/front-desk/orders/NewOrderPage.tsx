@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft } from 'lucide-react'
@@ -19,9 +18,11 @@ import { PaymentMethodSelector } from './PaymentMethodSelector'
 import { PaymentActionButtons } from './PaymentActionButtons'
 import type { OrderItem, MenuItem, DeliveryType, PaymentMethod, PaymentTerms, NewOrderData } from '@/types/order'
 import type { NewSaleData } from '@/types/sale'
+import type { CustomerRecord } from '@/types/customer'
 import { menuService } from '@/lib/api/services/menu'
 import { ordersService } from '@/lib/api/services/orders'
 import { salesService } from '@/lib/api/services/sales'
+import { customersService } from '@/lib/api/services/customers'
 import { handleApiError } from '@/lib/utils/handle-error'
 
 interface NewOrderPageProps {
@@ -50,22 +51,37 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
     return () => controller.abort()
   }, [])
 
+  // Customers list for search
+  const [customers, setCustomers] = useState<CustomerRecord[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    customersService.getAllForSearch({ signal: controller.signal })
+      .then(setCustomers)
+      .catch(handleApiError)
+    return () => controller.abort()
+  }, [])
+
   // Customer
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
   const [isGoldCustomer, setIsGoldCustomer] = useState(false)
 
+  function handleCustomerSelect(customer: CustomerRecord) {
+    setCustomerName(customer.name)
+    setCustomerPhone(customer.phone)
+    setCustomerEmail(customer.email ?? '')
+    setIsGoldCustomer(customer.isGold)
+  }
+
   // Details
   const [specialNotes, setSpecialNotes] = useState('')
-  const [cakeDescription, setCakeDescription] = useState('')
-  const [noteForCustomer, setNoteForCustomer] = useState('')
 
   // Date/Time
   const today = new Date().toISOString().split('T')[0]
   const [pickupDate, setPickupDate] = useState(today)
   const [pickupTime, setPickupTime] = useState('')
-  const [editingDate, setEditingDate] = useState(false)
 
   // Delivery
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
@@ -100,8 +116,6 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
     customerName, customerPhone, customerEmail: customerEmail || undefined,
     orderType: hasCakeItems ? 'custom' : 'menu',
     items, specialNotes: specialNotes || undefined,
-    cakeDescription: hasCakeItems ? cakeDescription || undefined : undefined,
-    noteForCustomer: hasCakeItems ? noteForCustomer || undefined : undefined,
     pickupDate, pickupTime, deliveryType,
     deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : undefined,
     totalPrice, amountPaid, paymentStatus, paymentMethod, paymentTerms,
@@ -188,34 +202,20 @@ export function NewOrderPage({ mode }: NewOrderPageProps) {
             <CustomerDetailsForm
               customerName={customerName} customerPhone={customerPhone}
               customerEmail={customerEmail} isGoldCustomer={isGoldCustomer}
+              customers={customers}
               onNameChange={setCustomerName} onPhoneChange={setCustomerPhone}
               onEmailChange={setCustomerEmail} onGoldChange={setIsGoldCustomer}
+              onCustomerSelect={handleCustomerSelect}
             />
             <DateTimeSection
               pickupDate={pickupDate} pickupTime={pickupTime}
-              editingDate={editingDate} isAdvance={isAdvance}
+              isAdvance={isAdvance}
               onDateChange={setPickupDate} onTimeChange={setPickupTime}
-              onEditingDateChange={setEditingDate}
             />
             <DeliverySection
               deliveryType={deliveryType} deliveryAddress={deliveryAddress}
               onDeliveryTypeChange={setDeliveryType} onAddressChange={setDeliveryAddress}
             />
-            {hasCakeItems && (
-              <div className="space-y-4">
-                <h3 className="font-medium text-foreground">Cake Details</h3>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="cakeDesc">Cake Description (overall design notes)</Label>
-                    <Textarea id="cakeDesc" value={cakeDescription} onChange={(e) => setCakeDescription(e.target.value)} placeholder="Detailed description of how the cake should look, theme, colors, tiers..." rows={3} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="noteForCust">Note for Customer (message on cake)</Label>
-                    <Input id="noteForCust" value={noteForCustomer} onChange={(e) => setNoteForCustomer(e.target.value)} placeholder="e.g., Happy Birthday John!" />
-                  </div>
-                </div>
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="notes">Special Notes</Label>
               <Textarea id="notes" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} placeholder="Any special requests, allergies, etc..." rows={2} />

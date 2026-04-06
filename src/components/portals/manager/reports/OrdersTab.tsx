@@ -12,7 +12,7 @@ export function OrdersTab({ statusDistribution, orders }: OrdersTabProps) {
   const totalOrders = orders.length
   const customOrders = orders.filter(o => o.orderType === 'custom').length
   const deliveryOrders = orders.filter(o => o.deliveryType === 'delivery').length
-  const avgValue = totalOrders > 0 ? Math.round(orders.reduce((s, o) => s + o.totalPrice, 0) / totalOrders) : 0
+  const avgValue = totalOrders > 0 ? Math.round(orders.reduce((s, o) => s + Number(o.totalPrice), 0) / totalOrders) : 0
 
   return (
     <div className="space-y-6">

@@ -13,8 +13,18 @@ import { apiClient } from '@/lib/api/client'
 
 export const customersService = {
   /** GET /api/customers/ */
-  getAll: async (options?: { signal?: AbortSignal }): Promise<PaginatedResponse<CustomerRecord>> => {
-    return (await apiClient.get<PaginatedResponse<CustomerRecord>>('/customers/', { signal: options?.signal })).data
+  getAll: async (options?: { signal?: AbortSignal; pageSize?: number }): Promise<PaginatedResponse<CustomerRecord>> => {
+    const params = options?.pageSize ? { page_size: options.pageSize } : undefined
+    return (await apiClient.get<PaginatedResponse<CustomerRecord>>('/customers/', { signal: options?.signal, params })).data
+  },
+
+  /** GET /api/customers/?page_size=500 — fetches all customers for client-side search */
+  getAllForSearch: async (options?: { signal?: AbortSignal }): Promise<CustomerRecord[]> => {
+    const res = await apiClient.get<PaginatedResponse<CustomerRecord>>('/customers/', {
+      signal: options?.signal,
+      params: { page_size: 500 },
+    })
+    return res.data.results
   },
 
   /** GET /api/customers/{id}/ */

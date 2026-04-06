@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { ManagerSidebar } from '@/components/layout/app-sidebar'
 import { Badge } from '@/components/ui/badge'
-import type { Order } from '@/types/order'
+import type { Order, OrderSummary } from '@/types/order'
+import type { TransactionSummary } from '@/types/finance'
 import { ordersService } from '@/lib/api/services/orders'
 import { financeService } from '@/lib/api/services/finance'
 import { handleApiError } from '@/lib/utils/handle-error'
 import { mockDebts } from '@/data/mock/finance'
 import { mockTasks } from '@/data/mock/tasks'
-import type { FinancialTransaction } from '@/types/finance'
 import { customersService } from '@/lib/api/services/customers'
 import { staffService } from '@/lib/api/services/staff'
 import { statusColorsDark, priorityColorsDark } from '@/data/constants/labels'
@@ -21,17 +21,27 @@ import {
 import Link from 'next/link'
 
 export function ManagerDashboard() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null)
+  const [revenueSummary, setRevenueSummary] = useState<TransactionSummary | null>(null)
+  const [expenseSummary, setExpenseSummary] = useState<TransactionSummary | null>(null)
   const [activeStaff, setActiveStaff] = useState(0)
   const [totalStaff, setTotalStaff] = useState(0)
   const [goldCustomers, setGoldCustomers] = useState(0)
-  const [stockExpenses, setStockExpenses] = useState<FinancialTransaction[]>([])
-  const [bizExpenses, setBizExpenses] = useState<FinancialTransaction[]>([])
 
   useEffect(() => {
     const controller = new AbortController()
     ordersService.getAll({ signal: controller.signal })
-      .then(res => setOrders(res.results))
+      .then(res => setRecentOrders([...res.results].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)))
+      .catch(handleApiError)
+    ordersService.getSummary({ signal: controller.signal })
+      .then(setOrderSummary)
+      .catch(handleApiError)
+    financeService.getSummary({ direction: 'in', signal: controller.signal })
+      .then(setRevenueSummary)
+      .catch(handleApiError)
+    financeService.getSummary({ direction: 'out', signal: controller.signal })
+      .then(setExpenseSummary)
       .catch(handleApiError)
     return () => controller.abort()
   }, [])
@@ -55,24 +65,13 @@ export function ManagerDashboard() {
     return () => controller.abort()
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    financeService.getTransactions({ type: 'stock_expense', signal: controller.signal })
-      .then(res => setStockExpenses(res.results))
-      .catch(handleApiError)
-    financeService.getTransactions({ type: 'business_expense', signal: controller.signal })
-      .then(res => setBizExpenses(res.results))
-      .catch(handleApiError)
-    return () => controller.abort()
-  }, [])
-
-  const totalRevenue = orders.reduce((s, o) => s + o.amountPaid, 0)
-  const totalOrders = orders.length
-  const activeOrders = orders.filter(o => !['delivered', 'pending'].includes(o.status)).length
-  const totalDebt = mockDebts.reduce((s, d) => s + d.balance, 0)
-  const pendingTasks = mockTasks.filter(t => t.status !== 'completed').length
-  const totalBusinessExpenses = bizExpenses.reduce((s, e) => s + e.amount, 0)
-  const totalStockExpenses = stockExpenses.reduce((s, e) => s + e.amount, 0)
+  const totalRevenue        = revenueSummary?.total ?? 0
+  const totalOrders         = orderSummary?.count ?? 0
+  const activeOrders        = totalOrders - (orderSummary?.byStatus.delivered ?? 0) - (orderSummary?.byStatus.pending ?? 0)
+  const totalBusinessExpenses = expenseSummary?.byType?.business_expense?.total ?? 0
+  const totalStockExpenses    = expenseSummary?.byType?.stock_expense?.total ?? 0
+  const totalDebt           = mockDebts.reduce((s, d) => s + d.balance, 0)
+  const pendingTasks        = mockTasks.filter(t => t.status !== 'completed').length
 
   const stats = [
     { label: 'Revenue', value: `TZS ${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10', change: '+12%', up: true },
@@ -80,8 +79,6 @@ export function ManagerDashboard() {
     { label: 'Outstanding Debts', value: `TZS ${totalDebt.toLocaleString()}`, icon: Banknote, color: 'text-amber-400', bg: 'bg-amber-500/10', change: `${mockDebts.length} records`, up: false },
     { label: 'Active Staff', value: activeStaff, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10', change: `${totalStaff} total`, up: true },
   ]
-
-  const recentOrders = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
   const urgentTasks = mockTasks.filter(t => t.status !== 'completed').sort((a, b) => {
     const pri: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
     return (pri[a.priority] ?? 3) - (pri[b.priority] ?? 3)
@@ -228,7 +225,7 @@ export function ManagerDashboard() {
                     </div>
                     <p className="text-xs text-white/40 truncate">{o.items?.map(i => i.name).join(', ')}</p>
                   </div>
-                  <p className="text-sm font-bold text-white shrink-0">TZS {o.totalPrice.toLocaleString()}</p>
+                  <p className="text-sm font-bold text-white shrink-0">TZS {Number(o.totalPrice).toLocaleString()}</p>
                 </div>
               ))}
             </div>

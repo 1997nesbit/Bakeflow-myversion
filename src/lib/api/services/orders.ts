@@ -18,12 +18,17 @@
 //   GET    /api/production/batches/
 //   POST   /api/production/batches/
 
-import type { Order, OrderStatus, NewOrderData } from '@/types/order'
+import type { Order, OrderStatus, NewOrderData, OrderSummary } from '@/types/order'
 import type { DailyBatchItem, NewBatchPayload } from '@/types/production'
 import type { PaginatedResponse } from '@/types/api'
 import { apiClient } from '@/lib/api/client'
 
 export const ordersService = {
+  /** GET /api/orders/summary/ — pre-aggregated KPI totals */
+  getSummary: async (options?: { signal?: AbortSignal }): Promise<OrderSummary> => {
+    return (await apiClient.get<OrderSummary>('/orders/summary/', { signal: options?.signal })).data
+  },
+
   /** GET /api/orders/ — returns paginated list filtered by role on the server */
   getAll: async (options?: { signal?: AbortSignal }): Promise<PaginatedResponse<Order>> => {
     return (await apiClient.get<PaginatedResponse<Order>>('/orders/', { signal: options?.signal })).data
