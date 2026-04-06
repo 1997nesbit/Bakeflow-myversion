@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "pnpm start"
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 3
