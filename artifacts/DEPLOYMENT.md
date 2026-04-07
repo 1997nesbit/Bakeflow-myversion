@@ -50,7 +50,7 @@ Railway terminates TLS at the proxy. Both services receive plain HTTP internally
 | Root directory | `/backend` |
 | Builder | `RAILPACK` |
 | Build command | `pip install -r requirements.txt && python manage.py collectstatic --noinput` |
-| Start command | `python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2` |
+| Start command | `bash start.sh` (delegates to `backend/start.sh`) |
 | Restart policy | `ON_FAILURE` (max 3 retries) |
 
 **Environment variables:**
@@ -58,6 +58,7 @@ Railway terminates TLS at the proxy. Both services receive plain HTTP internally
 | Variable | Value |
 |---|---|
 | `DJANGO_SETTINGS_MODULE` | `config.settings.production` |
+| `DJANGO_ENV` | `production` |
 | `SECRET_KEY` | Generate with `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
 | `ALLOWED_HOSTS` | `<backend-domain>.up.railway.app` |
 | `CORS_ALLOWED_ORIGINS` | `https://<frontend-domain>.up.railway.app` |
