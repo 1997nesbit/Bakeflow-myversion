@@ -5,7 +5,10 @@ env = environ.Env()
 
 DEBUG = False
 
-# HTTPS / HSTS — only enable HSTS_PRELOAD after confirming HTTPS works end-to-end
+# Railway terminates TLS at the proxy and forwards requests as HTTP internally.
+# SECURE_PROXY_SSL_HEADER tells Django to trust the X-Forwarded-Proto header
+# so it knows the original request was HTTPS and stops redirecting.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
