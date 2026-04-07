@@ -4,12 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface NavItem {
-  name: string
-  href: string
-  icon: LucideIcon
-}
+import type { NavItem } from './PortalSidebar'
 
 interface AppSidebarSectionProps {
   label: string
@@ -42,6 +37,7 @@ export function AppSidebarSection({
       {isOpen && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-white/20 pl-3">
           {items.map((item) => {
+            if (!item.href) return null
             const active = pathname === item.href
             return (
               <Link
