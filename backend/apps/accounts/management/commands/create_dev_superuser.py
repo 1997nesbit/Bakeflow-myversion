@@ -17,7 +17,6 @@ Add these to backend/.env to customise:
 """
 
 import environ
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.accounts.models import User
@@ -29,10 +28,6 @@ class Command(BaseCommand):
     help = 'Create a superuser from env vars if none exists (dev only).'
 
     def handle(self, *args, **options):
-        if not settings.DEBUG:
-            self.stderr.write('Skipped: create_dev_superuser only runs when DEBUG=True.')
-            return
-
         if User.objects.filter(is_superuser=True).exists():
             self.stdout.write('Superuser already exists — skipping.')
             return
