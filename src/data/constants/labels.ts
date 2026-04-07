@@ -58,6 +58,7 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
   bank_transfer: 'Bank Transfer',
   mobile_money: 'Mobile Money',
   card: 'Card',
+  cheque: 'Cheque',
 }
 
 export const staffRoleLabels: Record<StaffRole, string> = {

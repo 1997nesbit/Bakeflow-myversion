@@ -16,6 +16,7 @@ export interface BatchIngredientPayload {
 export interface DailyBatchItem {
   id: string
   productName: string
+  category?: string
   quantityBaked: number
   quantityRemaining: number
   bakedBy: string

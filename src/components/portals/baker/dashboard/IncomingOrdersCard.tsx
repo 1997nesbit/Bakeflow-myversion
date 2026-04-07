@@ -57,8 +57,8 @@ export function IncomingOrdersCard({ orders }: Props) {
                     </span>
                   ))}
                 </div>
-                {order.cakeDescription && (
-                  <p className="text-[11px] mb-2" style={{ color: '#e66386' }}>{order.cakeDescription}</p>
+                {order.specialNotes && (
+                  <p className="text-[11px] mb-2" style={{ color: '#e66386' }}>{order.specialNotes}</p>
                 )}
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">

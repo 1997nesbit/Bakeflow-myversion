@@ -14,7 +14,7 @@ export type OrderStatus =
 export type OrderType = 'menu' | 'custom'
 export type DeliveryType = 'pickup' | 'delivery'
 export type PaymentStatus = 'unpaid' | 'deposit' | 'paid'
-export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_money' | 'card'
+export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_money' | 'card' | 'cheque'
 export type PaymentTerms = 'upfront' | 'on_delivery'
 
 /** Nested customer object returned by the backend on every order response. */

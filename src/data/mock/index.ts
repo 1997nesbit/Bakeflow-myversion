@@ -8,6 +8,5 @@
 //   Phase 5 → finance (mockDebts, mockExpenses, mockBusinessExpenses)
 //   Phase 6 → tasks (mockTasks)
 
-export * from './inventory'
 export * from './finance'
 export * from './tasks'

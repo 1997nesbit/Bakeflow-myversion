@@ -31,7 +31,7 @@ export function AddBatchForm({ onAdd, onCancel }: Props) {
   useEffect(() => {
     const controller = new AbortController()
     const today = new Date().toISOString().split('T')[0]
-    inventoryService.getRollouts({ date: today, signal: controller.signal })
+    inventoryService.getRollouts({ date: today }, { signal: controller.signal })
       .then(res => setRollouts(res.results))
       .catch(handleApiError)
     return () => controller.abort()
