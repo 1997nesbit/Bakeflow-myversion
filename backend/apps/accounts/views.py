@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import User
-from .serializers import MeSerializer, StaffDetailSerializer, StaffPublicSerializer
+from .serializers import MeSerializer, StaffCreateSerializer, StaffDetailSerializer, StaffPublicSerializer, StaffUpdateSerializer
 
 _REFRESH_COOKIE = 'bakeflow_refresh'
 _COOKIE_MAX_AGE = 7 * 24 * 3600  # 7 days — matches REFRESH_TOKEN_LIFETIME
@@ -115,7 +115,7 @@ class StaffViewSet(ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
 
     def get_queryset(self):
-        qs = User.objects.exclude(role='manager')
+        qs = User.objects.all()
         role = self.request.query_params.get('role')
         if role:
             qs = qs.filter(role=role)
@@ -125,6 +125,10 @@ class StaffViewSet(ModelViewSet):
         return qs
 
     def get_serializer_class(self):
+        if self.action == 'create':
+            return StaffCreateSerializer
+        if self.action in ('update', 'partial_update'):
+            return StaffUpdateSerializer
         if hasattr(self.request, 'user') and self.request.user.role == 'manager':
             return StaffDetailSerializer
         return StaffPublicSerializer

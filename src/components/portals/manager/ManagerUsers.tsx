@@ -22,12 +22,14 @@ export function ManagerUsers() {
   const [filterRole, setFilterRole] = useState<string>('all')
   const [showAdd, setShowAdd] = useState(false)
   const [editStaff, setEditStaff] = useState<StaffMember | null>(null)
+  const [editPassword, setEditPassword] = useState('')
 
   const [formName, setFormName] = useState('')
   const [formRole, setFormRole] = useState<StaffRole>('front_desk')
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formSalary, setFormSalary] = useState('')
+  const [formPassword, setFormPassword] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -51,16 +53,17 @@ export function ManagerUsers() {
   }
 
   const handleAdd = async () => {
-    if (!formName || !formPhone) return
+    if (!formName || !formPhone || !formPassword) return
     try {
       const created = await staffService.create({
         name: formName, role: formRole, phone: formPhone,
         email: formEmail || undefined, status: 'active',
         joinDate: new Date().toISOString().split('T')[0], salary: Number(formSalary) || 0,
+        password: formPassword,
       })
       setStaff(prev => [...prev, created])
       setShowAdd(false)
-      setFormName(''); setFormPhone(''); setFormEmail(''); setFormSalary('')
+      setFormName(''); setFormPhone(''); setFormEmail(''); setFormSalary(''); setFormPassword('')
       toast.success('Staff member added.')
     } catch (err) {
       handleApiError(err)
@@ -90,10 +93,13 @@ export function ManagerUsers() {
     const prev = staff
     setStaff(staff.map(s => s.id === editStaff.id ? editStaff : s))
     setEditStaff(null)
+    const password = editPassword.trim()
+    setEditPassword('')
     try {
       await staffService.update(editStaff.id, {
         name: editStaff.name, role: editStaff.role,
         phone: editStaff.phone, salary: editStaff.salary,
+        ...(password ? { password } : {}),
       })
       toast.success('Staff member updated.')
     } catch (err) {
@@ -180,9 +186,9 @@ export function ManagerUsers() {
 
         {/* Add Dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent className="bg-manager-card border-white/10 text-white">
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-2xl">
             <DialogHeader><DialogTitle>Add New Staff</DialogTitle></DialogHeader>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-white/60">Full Name</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
               <div>
                 <Label className="text-white/60">Role</Label>
@@ -195,18 +201,19 @@ export function ManagerUsers() {
               </div>
               <div><Label className="text-white/60">Phone</Label><Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
               <div><Label className="text-white/60">Email (optional)</Label><Input value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
+              <div><Label className="text-white/60">Password</Label><Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
               <div><Label className="text-white/60">Monthly Salary (TZS)</Label><Input type="number" value={formSalary} onChange={(e) => setFormSalary(e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-              <Button onClick={() => void handleAdd()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Add Staff Member</Button>
+              <div className="col-span-2"><Button onClick={() => void handleAdd()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Add Staff Member</Button></div>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Edit Dialog */}
-        <Dialog open={!!editStaff} onOpenChange={() => setEditStaff(null)}>
-          <DialogContent className="bg-manager-card border-white/10 text-white">
+        <Dialog open={!!editStaff} onOpenChange={() => { setEditStaff(null); setEditPassword('') }}>
+          <DialogContent className="bg-manager-card border-white/10 text-white sm:max-w-2xl">
             <DialogHeader><DialogTitle>Edit Staff</DialogTitle></DialogHeader>
             {editStaff && (
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-white/60">Full Name</Label><Input value={editStaff.name} onChange={(e) => setEditStaff({ ...editStaff, name: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
                 <div>
                   <Label className="text-white/60">Role</Label>
@@ -217,7 +224,8 @@ export function ManagerUsers() {
                 </div>
                 <div><Label className="text-white/60">Phone</Label><Input value={editStaff.phone} onChange={(e) => setEditStaff({ ...editStaff, phone: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
                 <div><Label className="text-white/60">Salary (TZS)</Label><Input type="number" value={editStaff.salary || ''} onChange={(e) => setEditStaff({ ...editStaff, salary: Number(e.target.value) })} className="bg-white/5 border-white/10 text-white mt-1" /></div>
-                <Button onClick={() => void handleEdit()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Save Changes</Button>
+                <div className="col-span-2"><Label className="text-white/60">New Password <span className="text-white/30">(leave blank to keep current)</span></Label><Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="••••••••" className="bg-white/5 border-white/10 text-white mt-1" /></div>
+                <div className="col-span-2"><Button onClick={() => void handleEdit()} className="w-full bg-manager-accent hover:bg-manager-accent/85 text-white">Save Changes</Button></div>
               </div>
             )}
           </DialogContent>

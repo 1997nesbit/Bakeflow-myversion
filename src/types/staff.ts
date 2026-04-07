@@ -18,3 +18,7 @@ export interface StaffMember {
   joinDate: string
   salary: number
 }
+
+export interface CreateStaffPayload extends Omit<StaffMember, 'id'> {
+  password: string
+}

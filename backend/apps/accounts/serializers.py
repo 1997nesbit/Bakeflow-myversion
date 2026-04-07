@@ -67,3 +67,39 @@ class StaffDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'name', 'role', 'email', 'phone', 'status', 'salary', 'join_date', 'avatar_url']
+
+
+class StaffCreateSerializer(serializers.ModelSerializer):
+    """Used for POST /api/staff/ — accepts a plaintext password and hashes it."""
+
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'role', 'email', 'phone', 'status', 'salary', 'join_date', 'password']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
+class StaffUpdateSerializer(serializers.ModelSerializer):
+    """Used for PATCH /api/staff/{id}/ — password is optional; omitting it leaves it unchanged."""
+
+    password = serializers.CharField(write_only=True, min_length=6, required=False, allow_blank=False)
+
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'role', 'email', 'phone', 'status', 'salary', 'join_date', 'password']
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
