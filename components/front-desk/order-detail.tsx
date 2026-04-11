@@ -68,7 +68,7 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
           </div>
         </div>
 
-        {/* Order Items */}
+        {/* {/* Order Items */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Items</h3>
           <div className="space-y-2">
@@ -168,7 +168,7 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-4 w-4" />
           Estimated production: ~{order.estimatedMinutes} minutes
-        </div>
+        </div> 
 
         {/* Special Notes */}
         {order.specialNotes && (
