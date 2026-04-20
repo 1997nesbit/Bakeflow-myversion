@@ -37,7 +37,8 @@ LOCAL_APPS = [
     'apps.orders',      # Phase 2: full order lifecycle + production batches
     'apps.inventory',   # Phase 4: inventory items, stock-in, rollouts, suppliers
     'apps.finance',     # Phase 5: unified financial transaction ledger
-    # Phases 6-9: add apps here as they are implemented
+    'apps.notifications', # Phase 6: message templates, campaigns, automated triggers
+    # Phases 7-9: add apps here as they are implemented
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -126,6 +127,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------------
+# Notifications — contextual defaults
+# ---------------------------------------------------------------------------
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
+BAKERY_ADDRESS = env('BAKERY_ADDRESS', default='our bakery')
+BAKERY_CLOSING_TIME = env('BAKERY_CLOSING_TIME', default='7:00 PM')
+
+# ---------------------------------------------------------------------------
 # Django REST Framework
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
@@ -184,3 +192,12 @@ AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# ---------------------------------------------------------------------------
+# SMS gateway (Briq.tz) — karibu.briq.tz
+# ---------------------------------------------------------------------------
+BRIQ_API_KEY   = env('BRIQ_API_KEY',   default='')
+BRIQ_SENDER_ID = env('BRIQ_SENDER_ID', default='BakeflowTZ')
+FRONTEND_URL   = env('FRONTEND_URL',   default='http://localhost:3000')
+BAKERY_ADDRESS     = env('BAKERY_ADDRESS',     default='our bakery')
+BAKERY_CLOSING_TIME = env('BAKERY_CLOSING_TIME', default='7:00 PM')

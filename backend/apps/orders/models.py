@@ -76,12 +76,6 @@ class Order(TimestampedModel):
     driver                = models.ForeignKey(User, null=True, blank=True, related_name='deliveries', on_delete=models.SET_NULL)
     driver_accepted       = models.BooleanField(null=True, blank=True)
     driver_delivered      = models.BooleanField(default=False)
-    proof_of_delivery     = models.ImageField(
-        upload_to='proof_of_delivery/',
-        null=True,
-        blank=True,
-        help_text='Photo uploaded by the driver upon delivery.',
-    )
 
     created_by = models.ForeignKey(User, related_name='created_orders', on_delete=models.PROTECT)
 

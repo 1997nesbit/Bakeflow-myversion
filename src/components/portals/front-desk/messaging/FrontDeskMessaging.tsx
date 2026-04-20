@@ -1,115 +1,169 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
 import { FrontDeskSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Order } from '@/types/order'
-import { ordersService } from '@/lib/api/services/orders'
+import { Badge } from '@/components/ui/badge'
+import type { CustomerRecord } from '@/types/customer'
+import type { Campaign, MessageTemplate } from '@/types/notification'
+import { customersService } from '@/lib/api/services/customers'
+import { notificationsService } from '@/lib/api/services/notifications'
 import { handleApiError } from '@/lib/utils/handle-error'
-import { MessageSquare, Users, Clock, CheckCircle, Plus } from 'lucide-react'
+import {
+  MessageSquare, Users, CheckCircle, Plus, Settings2,
+  Send, Clock, Sparkles,
+} from 'lucide-react'
 import { NewCampaignForm } from './NewCampaignForm'
-import { CampaignHistoryItem } from './CampaignHistoryItem'
-import type { Campaign } from './CampaignHistoryItem'
-
-const mockCampaigns: Campaign[] = [
-  {
-    id: 'CAMP-001',
-    name: 'Weekend Special',
-    message: 'Order any cake this weekend and get 10% off! Use code WEEKEND10',
-    recipients: 156,
-    status: 'sent',
-    sentAt: '2026-02-03',
-  },
-  {
-    id: 'CAMP-002',
-    name: 'Valentine Promotion',
-    message: 'Make this Valentine special with our heart-shaped cakes! Pre-order now.',
-    recipients: 200,
-    status: 'scheduled',
-    scheduledFor: '2026-02-10',
-  },
-]
-
-const messageTemplates = [
-  { id: 1, name: 'Order Ready', message: 'Hi {name}! Your order {orderId} is ready for pickup.' },
-  { id: 2, name: 'Delivery Update', message: 'Hi {name}! Your order {orderId} is on its way!' },
-  { id: 3, name: 'Special Offer', message: 'Hi {name}! We have a special offer just for you: {offer}' },
-  { id: 4, name: 'Thank You', message: 'Thank you for your order, {name}! We hope you enjoy your treats from Bbr Bakeflow.' },
-]
+import { TemplateManagement } from './TemplateManagement'
 
 export function FrontDeskMessaging() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns)
+  const [campaigns, setCampaigns]             = useState<Campaign[]>([])
+  const [templates, setTemplates]             = useState<MessageTemplate[]>([])
+  // M-2: use the dedicated customers endpoint, not orders, for the contact list
+  const [customers, setCustomers]             = useState<CustomerRecord[]>([])
   const [showNewCampaign, setShowNewCampaign] = useState(false)
-  const [campaignName, setCampaignName] = useState('')
-  const [campaignMessage, setCampaignMessage] = useState('')
-  const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [showTemplates, setShowTemplates]     = useState(false)
+
+  // ── Campaign form state ──────────────────────────────────────────────────
+  const [campaignName, setCampaignName]             = useState('')
+  const [campaignMessage, setCampaignMessage]       = useState('')
+  const [selectedTemplate, setSelectedTemplate]     = useState('')
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
+  const [sending, setSending]                       = useState(false)
+  const [sendResult, setSendResult]                 = useState<'success' | 'error' | 'timeout' | null>(null)
+  const [sentCount, setSentCount]                   = useState(0)
+  // M-3: track the current search term here so select-all can use the filtered list
+  const [recipientSearch, setRecipientSearch]       = useState('')
+
+  const loadCampaigns = useCallback(async () => {
+    try {
+      const res = await notificationsService.getCampaigns()
+      setCampaigns(res.results)
+    } catch { /* silent */ }
+  }, [])
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await notificationsService.getTemplates()
+      setTemplates(res.results.filter(t => t.isActive))
+    } catch { /* silent */ }
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
-    ordersService.getAll({ signal: controller.signal })
-      .then(res => setOrders(res.results))
+    // M-2: fetch customers directly — no longer derived from orders list
+    customersService.getAllForSearch({ signal: controller.signal })
+      .then(setCustomers)
       .catch(handleApiError)
+    loadCampaigns()
+    loadTemplates()
     return () => controller.abort()
-  }, [])
+  }, [loadCampaigns, loadTemplates])
 
-  const uniqueCustomers = Array.from(
-    new Map(orders.map((o) => [o.customer.phone, { name: o.customer.name, phone: o.customer.phone }])).values()
+  // M-2: build unique customer list with phone directly from Customer records
+  const uniqueCustomers = customers
+    .filter(c => c.phone)
+    .map(c => ({ name: c.name, phone: c.phone }))
+
+  // M-3: compute filtered list here so select-all can reference it
+  const filteredCustomers = uniqueCustomers.filter(c =>
+    c.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
+    c.phone.includes(recipientSearch)
   )
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId)
-    const template = messageTemplates.find((t) => t.id.toString() === templateId)
-    if (template) setCampaignMessage(template.message)
+    const tpl = templates.find(t => t.id === templateId)
+    if (tpl) setCampaignMessage(tpl.content)
   }
 
-  const handleSendCampaign = () => {
+  const handleSendCampaign = async () => {
     if (!campaignName || !campaignMessage || selectedRecipients.length === 0) return
-    const newCampaign: Campaign = {
-      id: `CAMP-${String(campaigns.length + 1).padStart(3, '0')}`,
-      name: campaignName,
-      message: campaignMessage,
-      recipients: selectedRecipients.length,
-      status: 'sent',
-      sentAt: new Date().toISOString().split('T')[0],
+    setSending(true)
+    setSendResult(null)
+    try {
+      const campaign = await notificationsService.sendCampaign({
+        name: campaignName,
+        messageContent: campaignMessage,
+        recipients: selectedRecipients,
+      })
+      setCampaigns(prev => [campaign, ...prev])
+      setSentCount(campaign.recipientsCount)
+      setSendResult('success')
+      // Reset form fields after a beat so the user sees the success banner
+      setTimeout(() => {
+        setShowNewCampaign(false)
+        setCampaignName('')
+        setCampaignMessage('')
+        setSelectedRecipients([])
+        setSelectedTemplate('')
+        setRecipientSearch('')
+        setSendResult(null)
+      }, 2000)
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code
+      const message = (err as { message?: string })?.message ?? ''
+      if (code === 'ECONNABORTED' || message.includes('timeout')) {
+        setSendResult('timeout')
+      } else {
+        setSendResult('error')
+      }
+    } finally {
+      setSending(false)
     }
-    setCampaigns([newCampaign, ...campaigns])
-    setShowNewCampaign(false)
-    setCampaignName('')
-    setCampaignMessage('')
-    setSelectedRecipients([])
-    setSelectedTemplate('')
   }
 
   const toggleRecipient = (phone: string) => {
-    setSelectedRecipients((prev) =>
-      prev.includes(phone) ? prev.filter((p) => p !== phone) : [...prev, phone]
-    )
+    setSelectedRecipients(prev => {
+      const s = new Set(prev)
+      s.has(phone) ? s.delete(phone) : s.add(phone)
+      return Array.from(s)
+    })
   }
 
-  const selectAllRecipients = () => {
-    setSelectedRecipients(
-      selectedRecipients.length === uniqueCustomers.length ? [] : uniqueCustomers.map((c) => c.phone)
-    )
+  // O(n) select-all using Set union/difference — no O(n²) includes() scans
+  const selectAllFiltered = () => {
+    const filteredPhones = filteredCustomers.map(c => c.phone)
+    const currentSet = new Set(selectedRecipients)
+    const allSelected = filteredPhones.every(p => currentSet.has(p))
+    if (allSelected) {
+      const removeSet = new Set(filteredPhones)
+      setSelectedRecipients(selectedRecipients.filter(p => !removeSet.has(p)))
+    } else {
+      filteredPhones.forEach(p => currentSet.add(p))
+      setSelectedRecipients(Array.from(currentSet))
+    }
   }
+
+  const sentCampaignCount = campaigns.filter(c => c.status === 'sent').length
+  const scheduledCount     = campaigns.filter(c => c.status === 'scheduled').length
 
   return (
     <div className="min-h-screen bg-background">
       <FrontDeskSidebar />
       <main className="ml-64 p-6">
+
+        {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Messaging</h1>
             <p className="text-muted-foreground">Send promotions and updates to customers</p>
           </div>
-          <Button onClick={() => setShowNewCampaign(true)} className="bg-primary hover:bg-primary/90">
-            <Plus className="mr-2 h-5 w-5" />
-            New Campaign
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowTemplates(true)}>
+              <Settings2 className="mr-2 h-4 w-4" />
+              Manage Templates
+            </Button>
+            <Button onClick={() => setShowNewCampaign(true)} className="bg-primary hover:bg-primary/90">
+              <Plus className="mr-2 h-5 w-5" />
+              New Campaign
+            </Button>
+          </div>
         </div>
 
+        {/* ── Stats ───────────────────────────────────────────────────── */}
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <Card className="border-0 shadow-sm">
             <CardContent className="flex items-center gap-4 p-4">
@@ -117,8 +171,9 @@ export function FrontDeskMessaging() {
                 <Users className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Customers</p>
-                <p className="text-2xl font-bold text-foreground">{uniqueCustomers.length}</p>
+                <p className="text-sm text-muted-foreground">Customers</p>
+                {/* M-2: now reflects the real customer count, not order-derived */}
+                <p className="text-2xl font-bold">{uniqueCustomers.length}</p>
               </div>
             </CardContent>
           </Card>
@@ -129,7 +184,7 @@ export function FrontDeskMessaging() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Campaigns Sent</p>
-                <p className="text-2xl font-bold text-foreground">{campaigns.filter((c) => c.status === 'sent').length}</p>
+                <p className="text-2xl font-bold">{sentCount}</p>
               </div>
             </CardContent>
           </Card>
@@ -140,31 +195,39 @@ export function FrontDeskMessaging() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Scheduled</p>
-                <p className="text-2xl font-bold text-foreground">{campaigns.filter((c) => c.status === 'scheduled').length}</p>
+                <p className="text-2xl font-bold">{scheduledCount}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* ── New campaign form ────────────────────────────────────── */}
           {showNewCampaign && (
-            <NewCampaignForm
+          <NewCampaignForm
               campaignName={campaignName}
               campaignMessage={campaignMessage}
               selectedTemplate={selectedTemplate}
               selectedRecipients={selectedRecipients}
               uniqueCustomers={uniqueCustomers}
-              messageTemplates={messageTemplates}
+              filteredCustomers={filteredCustomers}
+              recipientSearch={recipientSearch}
+              messageTemplates={templates.map(t => ({ id: t.id, name: t.name, message: t.content }))}
               onNameChange={setCampaignName}
               onMessageChange={setCampaignMessage}
               onTemplateSelect={handleTemplateSelect}
               onToggleRecipient={toggleRecipient}
-              onSelectAll={selectAllRecipients}
+              onSelectAllFiltered={selectAllFiltered}
+              onSearchChange={setRecipientSearch}
               onSend={handleSendCampaign}
               onCancel={() => setShowNewCampaign(false)}
+              isSending={sending}
+              sendResult={sendResult}
+              sentCount={sentCount}
             />
           )}
 
+          {/* ── Campaign history ──────────────────────────────────────── */}
           <Card className="border-0 shadow-sm lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -173,15 +236,53 @@ export function FrontDeskMessaging() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {campaigns.map((campaign) => (
-                  <CampaignHistoryItem key={campaign.id} campaign={campaign} />
-                ))}
-              </div>
+              {campaigns.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed py-10 text-center">
+                  <Sparkles className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                  <p className="text-muted-foreground text-sm">No campaigns sent yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {campaigns.map(c => (
+                    <div key={c.id} className="flex items-start justify-between rounded-lg border p-3 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm text-foreground truncate">{c.name}</p>
+                          <Badge className={
+                            c.status === 'sent' ? 'bg-green-100 text-green-800 border-0 text-xs'
+                            : c.status === 'scheduled' ? 'bg-blue-100 text-blue-800 border-0 text-xs'
+                            : 'bg-secondary text-secondary-foreground border-0 text-xs'
+                          }>
+                            {c.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{c.messageContent}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" /> {c.recipientsCount} recipients
+                          </span>
+                          {c.sentAt && (
+                            <span className="flex items-center gap-1">
+                              <Send className="h-3 w-3" /> {new Date(c.sentAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </main>
+
+      {/* ── Template management dialog ──────────────────────────────── */}
+      <TemplateManagement
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onTemplatesChanged={loadTemplates}
+      />
     </div>
   )
 }

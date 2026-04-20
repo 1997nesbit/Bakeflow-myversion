@@ -93,7 +93,6 @@ export interface Order {
   dispatchedAt?: string
   driverAccepted?: boolean
   driverDelivered?: boolean
-  proofOfDelivery?: string   // URL returned by Django when a proof image is uploaded
   statusHistory?: StatusHistoryEntry[]
 }
 

@@ -86,6 +86,12 @@ export function handleApiError(err: unknown, fallback = 'An unexpected error occ
   if (isAxiosError(err)) {
     const { response } = err
 
+    // Axios timeout — request was sent but no response within the configured limit
+    if ((err as { code?: string }).code === 'ECONNABORTED' || (err as { message?: string }).message?.includes('timeout')) {
+      toast.error('The request timed out. The SMS gateway may be slow — please try again.')
+      return
+    }
+
     // No response received — server unreachable or CORS issue
     if (!response) {
       toast.error('Could not reach the server. Please check your connection or try again later.')

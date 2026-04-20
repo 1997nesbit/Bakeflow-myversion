@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-04 (Manager portal: Inventory nav collapsible, Daily Rollout page added, Payments page removed)
+Last updated: 2026-04-20 (Phase 8 Polish: SMS status UI, payment status integrity fixes, inline send feedback, custom deposit amounts)
 
 ---
 
@@ -57,21 +57,21 @@ Last updated: 2026-04-04 (Manager portal: Inventory nav collapsible, Daily Rollo
 - `apps/orders/models.py` — `Order`, `OrderItem`, `OrderStatusHistory`, `MenuItem`, `DailyBatchItem` (all TextChoices enums defined)
 - `apps/orders/services.py` — `OrderStateValidator` (allowed transitions map, OCP), `OrderService`, `ProductionService`
 - `apps/orders/serializers.py` — `CustomerInlineSerializer`, `OrderListSerializer`, `OrderDetailSerializer`, `OrderCreateSerializer`, payment/dispatch serializers, batch serializers
-- `apps/orders/views.py` — `OrderViewSet` with all state-transition actions (`post_to_baker`, `accept`, `quality_check`, `mark_ready`, `dispatch`, `mark_delivered`, `record_payment`), `MenuViewSet`, `ProductionViewSet`; `mark_packing` commented out (future enhancement)
+- `apps/orders/views.py` — `OrderViewSet` with all state-transition actions (`post_to_baker`, `accept`, `quality_check`, `mark_ready`, `dispatch`, `mark_delivered`, `record_payment`); `dispatch_order` rejects orders where `payment_status != 'paid'` (HTTP 400); `mark_packing` commented out (future enhancement)
 - `apps/orders/urls.py` — registered: `/api/orders/`, `/api/menu/`, `/api/production/batches/`
 - `djangorestframework-camel-case` installed — auto-converts snake_case ↔ camelCase; no field renames needed in frontend
 - Migrations generated and applied for `customers` and `orders` apps
 
 ### Frontend (`src/`)
 
-- `src/lib/api/services/orders.ts` — fully activated; all order actions + `productionService`
-- `src/types/order.ts` — `Order` now uses nested `customer: OrderCustomer` object; `NewOrderData` keeps flat fields for creation form
+- `src/lib/api/services/orders.ts` — fully activated; all order actions + `productionService` (including `uploadProof`)
+- `src/types/order.ts` — `Order` now uses nested `customer: OrderCustomer` object; `NewOrderData` keeps flat fields for creation form; `OrderTrackingResponse` added for public track page.
 - All portal components updated to use real API calls with AbortController pattern:
   - `BakerActive`, `BakerDashboard`, `BakerHistory`, `BakerProduction`
   - `FrontDeskOrders`, `FrontDeskDashboard`, `FrontDeskSearch`, `FrontDeskMessaging`
-  - `DriverDashboard`, `PackingDashboard` (portal retained as future enhancement), `DecoratorDashboard`
+  - `DriverDashboard` (now using `uploadProof` with image preview modal and filtered orders via `views.py`), `PackingDashboard` (portal retained as future enhancement), `DecoratorDashboard`
   - `ManagerDashboard`, `ManagerOrderHistory`, `ManagerPayments`, `ManagerReports`
-  - `OrderTracking` (public) — now fetches from `/api/orders/track/{id}/`
+  - `OrderTracking` (public) — now fetches from `/api/orders/track/{id}/` and renders an animated UI tracker via `OrderTracker.tsx`.
 - All subcomponents updated to use `order.customer.name` / `order.customer.phone` / `order.customer.isGold`
 - `OrderForm` — removed `generateTrackingId` (backend generates tracking IDs); removed tracking link preview from step 3
 - `src/data/mock/orders.ts`, `production.ts`, `helpers.ts` — deleted
@@ -414,11 +414,82 @@ The packing status and its associated portal exist in the codebase but are no lo
 
 ---
 
-## Phase 8 — Messaging ⬜ NOT STARTED
+## Phase 8 — Customer Messaging ✅ COMPLETE (2026-04-18)
 
-**Backend:** `apps/messaging`
+### Backend (`backend/`)
 
-**Frontend:** Activate `messagingService`.
+- `apps/notifications/` — new Django app, registered in `INSTALLED_APPS`
+- `apps/notifications/models.py` — `MessageTemplate` (`{{variable}}` syntax, `trigger_event` choices, `is_automated`, `is_active`), `Campaign` (template FK, `recipients` JSONField, `message_content`, `sent_at`), `NotificationLog` (per-recipient status rows)
+- `apps/notifications/services.py` — `NotificationService.send_campaign()` resolves variables, creates `Campaign` + `NotificationLog` rows, calls `_send_via_gateway()` stub (Briq.tz integration point)
+- `apps/notifications/views.py` — `MessageTemplateViewSet` (CRUD), `CampaignViewSet` (list + send), `NotificationLogViewSet` (read-only); all `IsManagerOrFrontDesk`
+- `apps/notifications/urls.py` — registered at `/api/notifications/`
+- `apps/orders/views.py` — `dispatch_order` rejects HTTP 400 if `payment_status != 'paid'`
+- `apps/orders/serializers.py` — `proof_of_delivery` removed (migration `0012` dropped the field)
+
+### Frontend (`src/`)
+
+- `src/types/notification.ts` — `MessageTemplate`, `Campaign`, `NotificationLog`, `TriggerEvent`
+- `src/lib/api/services/notifications.ts` — `getTemplates`, `createTemplate`, `updateTemplate`, `deleteTemplate`, `sendCampaign`, `getCampaigns`
+- `src/components/portals/front-desk/messaging/TemplateManagement.tsx` — template CRUD dialog with variable chips
+- `src/components/portals/front-desk/messaging/NewCampaignForm.tsx` — recipient search + order tracking ID insertion + send via campaign API
+- `src/components/portals/front-desk/orders/MessageCustomerDialog.tsx` — upgraded: loads real templates, resolves `{{variables}}` inline for preview, sends via `notificationsService.sendCampaign()`
+- `src/components/portals/front-desk/orders/ActionCenterTab.tsx` — clean rewrite: 3-column layout; inline "Convert to Delivery" address capture on pickup cards; amber unpaid warning cards in dispatch column
+- `src/components/portals/front-desk/orders/DispatchDriverDialog.tsx` — loads active drivers (`GET /api/staff/?role=driver`), calls `ordersService.dispatch(orderId, driverId)`
+- `src/components/portals/front-desk/orders/FrontDeskOrders.tsx` — `handleConvertToDelivery` (PATCH order + open driver picker); pickup guard; `readyDeliveryUnpaid` filter
+
+### Design decisions
+
+- **SMS gateway stub** — `_send_via_gateway()` is the only change needed to go live. Set `BRIQ_API_KEY` + `BRIQ_SENDER_ID` env vars and implement `requests.post('https://karibu.briq.tz/v1/messaging/send/', ...)`.
+- **Payment enforcement — triple layer** — (1) backend dispatch guard HTTP 400, (2) UI dispatch queue hides unpaid orders, (3) pickup guard prevents marking unpaid orders as picked up.
+- **Convert to Delivery** — dispatches inline from the pickup card; address → PATCH order → driver picker. No separate page or dialog needed.
+
+---
+
+
+## Phase 8 — Polish & Bugfixes ✅ COMPLETE (2026-04-20)
+
+### Payment Status Integrity
+
+- **`AwaitingPaymentTab` filter fix** — `FrontDeskOrders.tsx`: the Awaiting Payment tab previously showed all `pending` orders regardless of payment status. Fixed to `status === 'pending' && paymentStatus !== 'paid'`. Fully paid orders now move to Action Center (Post to Baker).
+- **`FrontDeskOrders.tsx` Action Center** — Updated to include `pending` orders that are fully paid so they can be posted to the baker queue.
+- **Optimistic update removed** — `handleConfirmPayment` no longer prematurely sets `status = 'paid'` during a deposit. UI now waits for the API response before updating state.
+- **Custom deposit amounts** — `PaymentConfirmDialog.tsx` rewritten: shows a numeric input pre-filled to 50% (editable), validates the amount is between 1 and `totalPrice − 1`, and displays a live "Balance remaining: TZS X" indicator. Passes the exact collected amount to the parent.
+- **Toast distinction** — Success toast now correctly shows "Full payment confirmed! Moving to baker queue" vs "Deposit of TZS X recorded. Balance: TZS Y outstanding."
+- **Stale DB record repaired** — `TRK-TNL2PL` was fully paid but stuck in `unpaid` state. Repaired via Django shell: `payment_status → paid`.
+
+### Self-Healing Reminder Guard (Backend)
+
+- **`orders/views.py` — `send_payment_reminder` / `send_overdue_notice`** — if an order's `balance == 0` but `payment_status` is stale, the action now auto-syncs `payment_status = 'paid'`, saves the record, and returns HTTP 400 with `"Order is fully paid. Status has been corrected."` This prevents misleading reminder SMS and self-corrects data without needing a manual shell fix.
+- **`send_payment_reminder` / `send_overdue_notice`** — now pass `balance` and `total_price` explicitly as `extra_context` so the SMS body never shows "Balance: TZS 0" for stale records.
+
+### SMS Status UI (Frontend)
+
+#### `AwaitingPaymentTab.tsx` — per-button state machine
+- Each Reminder/Overdue button tracks its own `SendStatus`: `idle → sending → success | error | timeout`
+- Button icon changes: `Bell` / `AlertCircle` → `Loader2` (sending) → `CheckCircle2` (success) → `XCircle` (error/timeout)
+- Button border tint changes to match the status
+- `StatusPill` component appears below each button on terminal states; auto-clears after 4 seconds
+- Both buttons disabled while any send is in progress (prevents duplicate requests)
+
+#### `MessageCustomerDialog.tsx` — inline status banner
+- `SendStatus` state replaces plain `sending: boolean`
+- After send: compose area is replaced by a `StatusBanner`
+  - **Success** (green): "Message sent! Delivered to [name]." Dialog auto-closes after 1.8 s
+  - **Error** (red): "Failed to send. Check gateway settings and try again." Button turns red → "Retry"
+  - **Timeout** (amber): "Request timed out. The SMS gateway may not have delivered the message." Button turns red → "Retry"
+- Cancel button relabelled "Close" after success
+
+#### `NewCampaignForm.tsx` / `FrontDeskMessaging.tsx` — campaign inline result
+- `sendResult: 'success' | 'error' | 'timeout' | null` and `sentCount` state added to `FrontDeskMessaging`
+- `StatusBanner` component inside `NewCampaignForm` appears between recipient list and footer buttons
+  - **Success** (green): "✓ Campaign delivered to N recipients." Form resets and closes after 2 s; button changes to "Send Another"
+  - **Error** (red): "Failed to send. Check gateway settings." Button turns red → "Retry"
+  - **Timeout** (amber): "Request timed out. The SMS gateway may be slow — please retry." Button turns red → "Retry"
+- `sentCampaignCount` renamed from `sentCount` (stats derived variable) to avoid naming collision with the new state
+
+### Error Handling
+
+- **`handle-error.ts` — axios `ECONNABORTED` detection** — Added explicit check for `code === 'ECONNABORTED'` or `message.includes('timeout')` before the generic "no response" fallback. Now shows: `"The request timed out. The SMS gateway may be slow — please try again."` instead of the misleading "Could not reach the server."
 
 ---
 

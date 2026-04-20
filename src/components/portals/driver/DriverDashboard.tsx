@@ -6,11 +6,9 @@ import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { Order } from '@/types/order'
 import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
-import { ProofUploadModal } from './ProofUploadModal'
 import { PaymentCollectionModal } from './PaymentCollectionModal'
 import {
   Truck,
@@ -22,10 +20,7 @@ import {
   Navigation,
   Bell,
   X,
-  Camera,
   Banknote,
-  ImageIcon,
-  Package,
 } from 'lucide-react'
 
 type DriverOrderStatus = 'pending' | 'accepted' | 'delivered'
@@ -36,11 +31,7 @@ interface DriverOrder extends Order {
 
 export function DriverDashboard() {
   const [orders, setOrders] = useState<DriverOrder[]>([])
-
-  // Modal state
-  const [proofOrder, setProofOrder]     = useState<DriverOrder | null>(null)
   const [paymentOrder, setPaymentOrder] = useState<DriverOrder | null>(null)
-  const [viewProofUrl, setViewProofUrl] = useState<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -79,11 +70,6 @@ export function DriverDashboard() {
     toast.success('Marked as delivered! Front desk updated.')
     try {
       await ordersService.markDelivered(order.id)
-      // After marking delivered, open proof upload modal if no proof yet
-      if (!order.proofOfDelivery) {
-        const updated = orders.find(o => o.id === order.id)
-        if (updated) setProofOrder({ ...updated, driverStatus: 'delivered' })
-      }
     } catch (err) {
       setOrders(prev)
       handleApiError(err)
@@ -250,18 +236,6 @@ export function DriverDashboard() {
                       </div>
                     </div>
 
-                    {/* Proof upload status */}
-                    {order.proofOfDelivery ? (
-                      <button
-                        onClick={() => setViewProofUrl(order.proofOfDelivery!)}
-                        className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700 hover:bg-green-100 transition-colors w-full text-left"
-                      >
-                        <ImageIcon className="h-3.5 w-3.5" />
-                        <span className="flex-1">Proof uploaded</span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Tap to view</span>
-                      </button>
-                    ) : null}
-
                     {/* Action row */}
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -298,31 +272,17 @@ export function DriverDashboard() {
                       )}
                     </div>
 
-                    {/* Secondary action row */}
-                    <div className="flex gap-2">
-                      {!order.proofOfDelivery && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-transparent text-xs"
-                          onClick={() => setProofOrder(order)}
-                        >
-                          <Camera className="mr-1 h-3.5 w-3.5" />
-                          Upload Proof
-                        </Button>
-                      )}
-                      {/* Show "Delivered" only when payment has been collected (for COD) */}
-                      {needsPaymentCollection(order) && order.paymentStatus === 'paid' && (
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
-                          onClick={() => handleDelivered(order)}
-                        >
-                          <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                          Mark Delivered
-                        </Button>
-                      )}
-                    </div>
+                    {/* Show "Delivered" only when COD payment has been collected */}
+                    {needsPaymentCollection(order) && order.paymentStatus === 'paid' && (
+                      <Button
+                        size="sm"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
+                        onClick={() => handleDelivered(order)}
+                      >
+                        <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                        Mark Delivered
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -348,35 +308,12 @@ export function DriverDashboard() {
                         <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                         <p className="text-xs text-muted-foreground">{order.customer.name}</p>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge className="bg-green-100 text-green-800 border-0 text-xs">
-                          <CheckCircle className="mr-1 h-3 w-3" />
-                          Done
-                        </Badge>
-                        {order.proofOfDelivery && (
-                          <button
-                            onClick={() => setViewProofUrl(order.proofOfDelivery!)}
-                            className="flex items-center gap-1 rounded bg-blue-50 text-blue-700 px-1.5 py-0.5 text-[10px] hover:bg-blue-100 transition-colors"
-                          >
-                            <ImageIcon className="h-3 w-3" />
-                            Proof ✓
-                          </button>
-                        )}
-                      </div>
+                      <Badge className="bg-green-100 text-green-800 border-0 text-xs">
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        Done
+                      </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">{order.deliveryAddress}</p>
-                    {/* Proof upload if missed */}
-                    {!order.proofOfDelivery && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-7 w-full text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => setProofOrder(order)}
-                      >
-                        <Camera className="mr-1 h-3 w-3" />
-                        Upload proof
-                      </Button>
-                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -385,19 +322,6 @@ export function DriverDashboard() {
         )}
 
       </main>
-
-      {/* ── Modals ──────────────────────────────────────────────────────── */}
-      {proofOrder && (
-        <ProofUploadModal
-          order={proofOrder}
-          open={!!proofOrder}
-          onClose={() => setProofOrder(null)}
-          onUploaded={(updated) => {
-            handleOrderUpdated(updated)
-            setProofOrder(null)
-          }}
-        />
-      )}
 
       {paymentOrder && (
         <PaymentCollectionModal
@@ -410,29 +334,6 @@ export function DriverDashboard() {
           }}
         />
       )}
-
-      {/* ── Image Preview Modal ────────────────────────────────────────── */}
-      <Dialog open={!!viewProofUrl} onOpenChange={(o) => (!o ? setViewProofUrl(null) : null)}>
-        <DialogContent className="sm:max-w-md bg-transparent border-0 shadow-none p-0 flex justify-center">
-          <DialogTitle className="sr-only">Proof of Delivery Preview</DialogTitle>
-          {viewProofUrl && (
-            <div className="relative inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={viewProofUrl.startsWith('http') ? viewProofUrl : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'}${viewProofUrl}`}
-                alt="Proof of Delivery"
-                className="max-h-[85vh] max-w-full rounded-lg object-contain bg-black/40 backdrop-blur-sm"
-              />
-              <button
-                className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white shadow-xl hover:bg-black/80 transition-colors"
-                onClick={() => setViewProofUrl(null)}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

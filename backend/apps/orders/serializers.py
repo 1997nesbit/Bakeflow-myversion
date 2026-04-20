@@ -89,7 +89,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'total_price', 'amount_paid', 'payment_status', 'payment_method', 'payment_terms',
             'is_advance_order', 'estimated_minutes',
             'assigned_to', 'posted_to_baker_at', 'dispatched_at',
-            'driver', 'driver_accepted', 'driver_delivered', 'proof_of_delivery',
+            'driver', 'driver_accepted', 'driver_delivered',
             'items', 'status_history',
             'created_at', 'updated_at',
         ]

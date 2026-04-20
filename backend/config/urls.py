@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/', include(router.urls)),                   # staff
     path('api/', include('apps.inventory.urls')),         # Phase 4: inventory, suppliers
     path('api/', include('apps.finance.urls')),           # Phase 5: financial transactions
+    path('api/', include('apps.notifications.urls')),     # Phase 6: templates, campaigns, logs
 ]
 
 # Serve uploaded media files in development

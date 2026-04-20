@@ -1,51 +1,50 @@
 'use client'
 
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import type { Order } from '@/types/order'
 import {
-  ChefHat,
-  Truck,
-  Package,
-  CreditCard,
-  Calendar,
-  Clock,
-  Timer,
-  MapPin,
-  Phone,
-  MessageSquare,
-  CheckCircle,
-  Send,
-  Link2,
-  Copy,
+  ChefHat, Truck, Package, CreditCard, Calendar, Clock, Timer,
+  MapPin, Phone, MessageSquare, CheckCircle, Send, Link2, Copy,
 } from 'lucide-react'
 
 interface ActionCenterTabProps {
   paidOrders: Order[]
   readyDeliveryOrders: Order[]
+  readyDeliveryUnpaid: Order[]
   readyPickupOrders: Order[]
   onPostToBaker: (orderId: string) => void
   onDispatchToDriver: (orderId: string) => void
   onMarkPickedUp: (orderId: string) => void
   onOpenMessage: (order: Order) => void
   copyTrackingLink: (trackingId: string) => void
+  onCollectPayment: (order: Order) => void
+  onConvertToDelivery: (orderId: string, deliveryAddress: string) => void
 }
 
 export function ActionCenterTab({
-  paidOrders,
-  readyDeliveryOrders,
-  readyPickupOrders,
-  onPostToBaker,
-  onDispatchToDriver,
-  onMarkPickedUp,
-  onOpenMessage,
-  copyTrackingLink,
+  paidOrders, readyDeliveryOrders, readyDeliveryUnpaid, readyPickupOrders,
+  onPostToBaker, onDispatchToDriver, onMarkPickedUp, onOpenMessage,
+  copyTrackingLink, onCollectPayment, onConvertToDelivery,
 }: ActionCenterTabProps) {
+  const [convertingId, setConvertingId] = useState<string | null>(null)
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+
+  const handleConfirmConvert = (orderId: string) => {
+    if (!deliveryAddress.trim()) { toast.error('Please enter a delivery address.'); return }
+    onConvertToDelivery(orderId, deliveryAddress.trim())
+    setConvertingId(null)
+    setDeliveryAddress('')
+  }
+
   return (
     <div className="grid gap-5 lg:grid-cols-3">
-      {/* Post to Baker */}
+
+      {/* ── Post to Baker ──────────────────────────────────────────── */}
       <section className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">{paidOrders.length}</span>
@@ -64,7 +63,7 @@ export function ActionCenterTab({
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-foreground">{order.id}</p>
+                      <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                       <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs shrink-0">
@@ -78,11 +77,8 @@ export function ActionCenterTab({
                     <Clock className="h-3 w-3 ml-1" />{order.pickupTime}
                     <Timer className="h-3 w-3 ml-1" />~{order.estimatedMinutes}min
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyTrackingLink(order.trackingId)}
-                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
-                  >
+                  <button type="button" onClick={() => copyTrackingLink(order.trackingId)}
+                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full">
                     <Link2 className="h-3 w-3 shrink-0" />
                     <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
                     <Copy className="h-3 w-3 shrink-0" />
@@ -97,14 +93,14 @@ export function ActionCenterTab({
         )}
       </section>
 
-      {/* Dispatch to Driver */}
+      {/* ── Dispatch to Driver ─────────────────────────────────────── */}
       <section className="rounded-2xl border-2 border-blue-200 bg-blue-50/50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">{readyDeliveryOrders.length}</span>
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-800">Dispatch to Driver</h2>
         </div>
         <p className="text-xs text-blue-700/70 mb-3">Packed orders that need delivery dispatch</p>
-        {readyDeliveryOrders.length === 0 ? (
+        {readyDeliveryOrders.length === 0 && readyDeliveryUnpaid.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-blue-200 py-8 text-center">
             <Truck className="mx-auto h-8 w-8 text-blue-300 mb-2" />
             <p className="text-sm text-muted-foreground">No delivery orders ready</p>
@@ -116,7 +112,7 @@ export function ActionCenterTab({
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-foreground">{order.id}</p>
+                      <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                       <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-blue-100 text-blue-800 border-0 text-xs shrink-0">
@@ -132,11 +128,8 @@ export function ActionCenterTab({
                       <Phone className="h-3 w-3" />{order.customer.phone}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyTrackingLink(order.trackingId)}
-                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
-                  >
+                  <button type="button" onClick={() => copyTrackingLink(order.trackingId)}
+                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full">
                     <Link2 className="h-3 w-3 shrink-0" />
                     <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
                     <Copy className="h-3 w-3 shrink-0" />
@@ -147,11 +140,28 @@ export function ActionCenterTab({
                 </CardContent>
               </Card>
             ))}
+            {readyDeliveryUnpaid.map(order => (
+              <Card key={order.id} className="border-0 shadow-sm border border-amber-200 bg-amber-50/80">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-800 border-0 text-xs shrink-0">⚠ Unpaid</Badge>
+                  </div>
+                  <p className="text-xs text-amber-700">Balance: TZS {(order.totalPrice - order.amountPaid).toLocaleString()} — pay before dispatch</p>
+                  <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => onCollectPayment(order)}>
+                    <CreditCard className="mr-1 h-3.5 w-3.5" /> Collect Payment
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </section>
 
-      {/* Customer Pickup */}
+      {/* ── Customer Pickup ────────────────────────────────────────── */}
       <section className="rounded-2xl border-2 border-green-200 bg-green-50/50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white">{readyPickupOrders.length}</span>
@@ -170,7 +180,7 @@ export function ActionCenterTab({
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-foreground">{order.id}</p>
+                      <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                       <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
                     <Badge className="bg-green-100 text-green-800 border-0 text-xs shrink-0">
@@ -178,31 +188,61 @@ export function ActionCenterTab({
                     </Badge>
                   </div>
                   <p className="text-xs text-foreground truncate">{order.items?.map(i => i.name).join(', ')}</p>
-                  <button
-                    type="button"
-                    onClick={() => copyTrackingLink(order.trackingId)}
-                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full"
-                  >
+                  <button type="button" onClick={() => copyTrackingLink(order.trackingId)}
+                    className="flex items-center gap-1.5 rounded bg-blue-50 border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 transition-colors w-full">
                     <Link2 className="h-3 w-3 shrink-0" />
                     <span className="truncate font-mono flex-1 text-left">{order.trackingId}</span>
                     <Copy className="h-3 w-3 shrink-0" />
                   </button>
-                  <div className="flex flex-col gap-2">
-                    <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={() => {
-                      if (order.customer.phone) window.open(`tel:${order.customer.phone}`, '_self')
-                      toast.info(`Calling ${order.customer.name}...`)
-                    }}>
-                      <Phone className="mr-1 h-3.5 w-3.5" /> Call Customer
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent" onClick={() => onOpenMessage(order)}>
-                        <MessageSquare className="mr-1 h-3.5 w-3.5" /> Text
+
+                  {/* Convert to Delivery inline */}
+                  {convertingId === order.id ? (
+                    <div className="space-y-2 rounded-lg bg-blue-50 border border-blue-200 p-2">
+                      <p className="text-xs font-medium text-blue-700">Enter delivery address:</p>
+                      <Input
+                        value={deliveryAddress}
+                        onChange={e => setDeliveryAddress(e.target.value)}
+                        placeholder="e.g. 45 Samora Ave, Dar es Salaam"
+                        className="h-8 text-xs"
+                        autoFocus
+                        onKeyDown={e => e.key === 'Enter' && handleConfirmConvert(order.id)}
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1 text-xs h-7"
+                          onClick={() => { setConvertingId(null); setDeliveryAddress('') }}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="flex-1 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => handleConfirmConvert(order.id)}>
+                          Confirm &amp; Dispatch
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                        onClick={() => { if (order.customer.phone) window.open(`tel:${order.customer.phone}`, '_self'); toast.info(`Calling ${order.customer.name}...`) }}>
+                        <Phone className="mr-1 h-3.5 w-3.5" /> Call Customer
                       </Button>
-                      <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => onMarkPickedUp(order.id)}>
-                        <CheckCircle className="mr-1 h-3.5 w-3.5" /> Picked Up
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline"
+                          className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+                          onClick={() => onOpenMessage(order)}>
+                          <MessageSquare className="mr-1 h-3.5 w-3.5" /> Text
+                        </Button>
+                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => onMarkPickedUp(order.id)}>
+                          <CheckCircle className="mr-1 h-3.5 w-3.5" /> Picked Up
+                        </Button>
+                      </div>
+                      <Button size="sm" variant="outline"
+                        className="w-full text-blue-600 border-blue-300 hover:bg-blue-50 text-xs"
+                        onClick={() => { setConvertingId(order.id); setDeliveryAddress('') }}>
+                        <Truck className="mr-1.5 h-3.5 w-3.5" />
+                        Customer wants Delivery instead
                       </Button>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

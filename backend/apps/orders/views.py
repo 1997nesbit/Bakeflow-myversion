@@ -5,11 +5,11 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.accounts.models import User
+from apps.notifications.models import TriggerEvent
 from core.permissions import (
     IsBaker, IsDriver, IsDriverOrFrontDesk, IsManagerOrFrontDesk,
 )
@@ -28,6 +28,15 @@ from .serializers import (
     SaleSerializer,
 )
 from .services import OrderService, ProductionService
+
+
+def _trigger_notification(order, event: str, extra_context: dict | None = None):
+    """Fire-and-forget wrapper — a notification failure never breaks the order flow."""
+    try:
+        from apps.notifications.services import NotificationService
+        NotificationService.dispatch_for_order(order, event, extra_context=extra_context)
+    except Exception:
+        pass
 
 
 class OrderViewSet(viewsets.GenericViewSet):
@@ -57,13 +66,13 @@ class OrderViewSet(viewsets.GenericViewSet):
         if self.action in ('create', 'post_to_baker', 'dispatch_order'):
             return [IsManagerOrFrontDesk()]
         if self.action == 'record_payment':
-            # Front desk/manager handles pre-delivery payments;
-            # drivers collect payment on delivery.
             return [IsDriverOrFrontDesk()]
         if self.action in ('accept', 'quality_check'):
             return [IsBaker()]
         if self.action in ('mark_delivered', 'upload_proof'):
             return [IsDriverOrFrontDesk()]
+        if self.action in ('send_payment_reminder', 'send_overdue_notice'):
+            return [IsManagerOrFrontDesk()]
         return [IsAuthenticated()]
 
     # ------------------------------------------------------------------
@@ -109,6 +118,10 @@ class OrderViewSet(viewsets.GenericViewSet):
         serializer = OrderCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = self._service.create_order(serializer.validated_data, created_by=request.user)
+        # Fire confirmation SMS — event is chosen by delivery_type × payment_status
+        from apps.notifications.services import NotificationService
+        event = NotificationService.get_order_created_event(order)
+        _trigger_notification(order, event)
         return Response(OrderDetailSerializer(order).data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
@@ -188,15 +201,28 @@ class OrderViewSet(viewsets.GenericViewSet):
     def mark_ready(self, request, pk=None):
         order = get_object_or_404(self.get_queryset(), pk=pk)
         order = self._service.advance_status(order, 'ready', by=request.user)
+        # Trigger notification: different message if pickup vs delivery
+        event = (
+            TriggerEvent.ORDER_READY_DELIVERY
+            if order.delivery_type == 'delivery'
+            else TriggerEvent.ORDER_READY_PICKUP
+        )
+        _trigger_notification(order, event)
         return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='dispatch')
     def dispatch_order(self, request, pk=None):
         order = get_object_or_404(self.get_queryset(), pk=pk)
+        if order.payment_status != 'paid':
+            return Response(
+                {'detail': 'Order must be fully paid before it can be dispatched to a driver.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = DispatchSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         driver = get_object_or_404(User, pk=serializer.validated_data['driver_id'], role='driver')
         order = self._service.dispatch_order(order, driver=driver, by=request.user)
+        _trigger_notification(order, TriggerEvent.ORDER_DISPATCHED)
         return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='mark_delivered')
@@ -205,25 +231,7 @@ class OrderViewSet(viewsets.GenericViewSet):
         order = self._service.advance_status(order, 'delivered', by=request.user)
         order.driver_delivered = True
         order.save(update_fields=['driver_delivered', 'updated_at'])
-        return Response(OrderDetailSerializer(order).data)
-
-    @action(
-        detail=True,
-        methods=['post'],
-        url_path='upload_proof',
-        parser_classes=[MultiPartParser, FormParser],
-    )
-    def upload_proof(self, request, pk=None):
-        """POST /api/orders/{id}/upload_proof/  — multipart image upload."""
-        order = get_object_or_404(self.get_queryset(), pk=pk)
-        image = request.FILES.get('proof')
-        if not image:
-            return Response(
-                {'detail': 'No image file provided. Use field name \'proof\'.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        order.proof_of_delivery = image
-        order.save(update_fields=['proof_of_delivery', 'updated_at'])
+        _trigger_notification(order, TriggerEvent.ORDER_DELIVERED)
         return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='record_payment')
@@ -237,7 +245,54 @@ class OrderViewSet(viewsets.GenericViewSet):
             method=serializer.validated_data['method'],
             by=request.user,
         )
+        # Pass the exact payment amount recorded in *this* transaction as extra_context.
+        # Without this, {{amount}} resolves to order.amount_paid (cumulative total),
+        # which doubles when a second payment is made on a deposit order.
+        payment_amount = float(serializer.validated_data['amount'])
+        _trigger_notification(
+            order,
+            TriggerEvent.PAYMENT_RECEIVED,
+            extra_context={'amount': f'{payment_amount:,.0f}'},
+        )
         return Response(OrderDetailSerializer(order).data)
+
+    @action(detail=True, methods=['post'], url_path='send_payment_reminder')
+    def send_payment_reminder(self, request, pk=None):
+        """Staff action: manually send a payment-reminder SMS to the customer."""
+        order = get_object_or_404(self.get_queryset(), pk=pk)
+        outstanding = max(0.0, float(order.total_price) - float(order.amount_paid))
+        if outstanding == 0:
+            # amount_paid already covers the total — payment_status may be stale.
+            # Self-heal the status so the order leaves the Awaiting Payment tab.
+            self._service._sync_payment(order)
+            return Response(
+                {'detail': 'Order is already fully paid. Payment status has been corrected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        _trigger_notification(
+            order,
+            TriggerEvent.PAYMENT_REMINDER,
+            extra_context={'balance': f'{outstanding:,.0f}', 'total_price': f'{float(order.total_price):,.0f}'},
+        )
+        return Response({'detail': 'Payment reminder sent.'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='send_overdue_notice')
+    def send_overdue_notice(self, request, pk=None):
+        """Staff action: manually send an overdue-payment SMS to the customer."""
+        order = get_object_or_404(self.get_queryset(), pk=pk)
+        outstanding = max(0.0, float(order.total_price) - float(order.amount_paid))
+        if outstanding == 0:
+            self._service._sync_payment(order)
+            return Response(
+                {'detail': 'Order is already fully paid. Payment status has been corrected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        _trigger_notification(
+            order,
+            TriggerEvent.PAYMENT_OVERDUE,
+            extra_context={'balance': f'{outstanding:,.0f}', 'total_price': f'{float(order.total_price):,.0f}'},
+        )
+        return Response({'detail': 'Overdue notice sent.'}, status=status.HTTP_200_OK)
 
     # ------------------------------------------------------------------
     # Aggregated summary — used by dashboard / reports KPI cards

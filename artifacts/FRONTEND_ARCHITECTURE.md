@@ -23,7 +23,28 @@ src/
 ├── components/
 │   ├── portals/                  # All portal UI — one folder per role
 │   │   ├── baker/                # BakerActive, BakerLogin, BulkBatchPanel, ...
-│   │   ├── front-desk/           # FrontDeskOrders, OrderAlertsBar, PaymentConfirmDialog, ...
+│   │   ├── front-desk/
+│   │   ├── orders/
+│   │   │   ├── FrontDeskOrders.tsx          # parent — owns orders state + all handlers
+│   │   │   │                                #   Awaiting Payment: filters pending && paymentStatus !== 'paid'
+│   │   │   │                                #   Action Center: includes pending orders that are fully paid
+│   │   │   ├── ActionCenterTab.tsx          # 3-column kanban: Post to Baker / Dispatch to Driver / Pickup
+│   │   │   │                                #   Convert to Delivery inline flow on pickup cards
+│   │   │   ├── DispatchDriverDialog.tsx     # loads drivers from /api/staff/?role=driver, calls ordersService.dispatch()
+│   │   │   ├── MessageCustomerDialog.tsx    # upgraded: loads real templates, resolves vars, sends via campaign API
+│   │   │   │                                #   inline StatusBanner (success/error/timeout), auto-close after 1.8 s,
+│   │   │   │                                #   Retry button on failure, compose area hidden while banner visible
+│   │   │   ├── PaymentConfirmDialog.tsx     # rewritten: editable deposit input, live balance remaining, validates 1–totalPrice−1
+│   │   │   ├── AwaitingPaymentTab.tsx       # per-button SendStatus state machine (idle→sending→success|error|timeout)
+│   │   │   │                                #   StatusPill auto-clears after 4 s; both buttons disabled while sending
+│   │   │   └── TrackingTab.tsx
+│   │   └── messaging/
+│   │       ├── FrontDeskMessaging.tsx       # fetches real templates + campaigns from API
+│   │       │                                #   sendResult/sentCount state; handleSendCampaign sets result, resets after 2 s
+│   │       ├── TemplateManagement.tsx       # CRUD dialog for message templates with variable chips
+│   │       └── NewCampaignForm.tsx          # recipient search + order tracking ID insertion
+│   │                                        #   StatusBanner prop (sendResult/sentCount) between recipient list and footer
+│   │                                        #   Send button: Loader2 spinner, turns red → "Retry" on error/timeout
 │   │   ├── manager/
 │   │   │   ├── inventory/        # ItemFormDialog.tsx, SupplierFormDialog.tsx (manager-only sub-components)
 │   │   │   ├── reports/          # ManagerReports + tab sub-components
@@ -32,13 +53,14 @@ src/
 │   │   │                         # ManagerRollout, ...
 │   │   ├── inventory/            # Inventory clerk portal: InventoryDashboard, InventoryStockIn, InventoryRollout, InventoryStock
 │   │   ├── decorator/
-│   │   ├── driver/
+│   │   ├── driver/               # DriverDashboard.tsx (with PaymentCollectionModal, ProofUploadModal), DriverLogin
 │   │   └── packing/              # future enhancement — packing portal exists but step removed from flow
 │   ├── shared/                   # Cross-portal reusable components
 │   │   ├── PortalLoginForm.tsx       # Generic login card used by all portals
 │   │   ├── PortalErrorBoundary.tsx
 │   │   ├── MenuManagement.tsx        # Menu item + category management page (manager + front-desk)
-│   │   └── MenuItemFormDialog.tsx    # Add/edit menu item dialog; used by MenuManagement
+│   │   ├── MenuItemFormDialog.tsx    # Add/edit menu item dialog; used by MenuManagement
+│   │   └── OrderTracker.tsx          # Public-facing animated timeline for order status
 │   ├── layout/                   # Sidebars, nav
 │   └── ui/                       # shadcn/ui primitives (do not edit)
 │
@@ -46,6 +68,7 @@ src/
 │   ├── order.ts                  # Order, OrderStatus, NewOrderData, OverdueAlert, ...
 │   ├── inventory.ts              # InventoryItem, StockEntry, DailyRollout, Supplier, SupplierInline,
 │   │                             # StockEntryPayload, DailyRolloutPayload, InventoryItemPayload, SupplierPayload
+│   ├── notification.ts           # MessageTemplate, Campaign, NotificationLog, TriggerEvent
 │   ├── staff.ts
 │   ├── finance.ts
 │   ├── production.ts             # DailyBatchItem, TimerState, BulkBatch, FulfillmentChoice,
@@ -86,7 +109,9 @@ src/
 │   │   │   ├── staff.ts          # Phase 3
 │   │   │   ├── tasks.ts          # Phase 6
 │   │   │   ├── reports.ts        # Phase 7
-│   │   │   └── messaging.ts      # Phase 8
+│   │   │   ├── notifications.ts  # Phase 8 ✅ — getTemplates, createTemplate, updateTemplate,
+│   │   │   │                     #              deleteTemplate, sendCampaign, getCampaigns
+│   │   │   └── messaging.ts      # Phase 8 (WebSocket — deferred)
 │   │   └── index.ts              # Re-exports all services
 │   ├── hooks/
 │   │   ├── use-portal-login.ts   # Handles login form state; validates JWT role claim before storing token
@@ -95,6 +120,8 @@ src/
 │   └── utils/
 │       ├── date.ts               # daysUntilDue(), minutesSincePosted() — permanent
 │       └── handle-error.ts       # handleApiError() — maps DRF errors to toasts
+│                                 #   ECONNABORTED / 'timeout' detected first → SMS-specific message
+│                                 #   'no response' → generic server unreachable message
 │
 └── config/
     ├── constants.ts              # Business rules, timing, brand colours

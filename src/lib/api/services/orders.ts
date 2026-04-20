@@ -14,6 +14,8 @@
 //   POST   /api/orders/{id}/dispatch/
 //   POST   /api/orders/{id}/mark_delivered/
 //   POST   /api/orders/{id}/record_payment/
+//   POST   /api/orders/{id}/send_payment_reminder/
+//   POST   /api/orders/{id}/send_overdue_notice/
 //   GET    /api/orders/track/{trackingId}/   ← public, no auth
 //   GET    /api/production/batches/
 //   POST   /api/production/batches/
@@ -92,17 +94,6 @@ export const ordersService = {
     return (await apiClient.post<Order>(`/orders/${id}/mark_delivered/`)).data
   },
 
-  /** POST /api/orders/{id}/upload_proof/ — multipart image */
-  uploadProof: async (id: string, file: File): Promise<Order> => {
-    const form = new FormData()
-    form.append('proof', file)
-    return (
-      await apiClient.post<Order>(`/orders/${id}/upload_proof/`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    ).data
-  },
-
   /** POST /api/orders/{id}/record_payment/ */
   recordPayment: async (id: string, amount: number, method: string): Promise<Order> => {
     return (await apiClient.post<Order>(`/orders/${id}/record_payment/`, { amount, method })).data
@@ -123,6 +114,16 @@ export const ordersService = {
     }
     const endpoint = endpointMap[toStatus] ?? toStatus
     return (await apiClient.post<Order>(`/orders/${id}/${endpoint}/`)).data
+  },
+
+  /** POST /api/orders/{id}/send_payment_reminder/ — sends a reminder SMS to the customer */
+  sendPaymentReminder: async (id: string): Promise<{ detail: string }> => {
+    return (await apiClient.post<{ detail: string }>(`/orders/${id}/send_payment_reminder/`)).data
+  },
+
+  /** POST /api/orders/{id}/send_overdue_notice/ — sends an overdue-payment SMS to the customer */
+  sendOverdueNotice: async (id: string): Promise<{ detail: string }> => {
+    return (await apiClient.post<{ detail: string }>(`/orders/${id}/send_overdue_notice/`)).data
   },
 }
 

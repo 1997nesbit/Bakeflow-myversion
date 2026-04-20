@@ -74,6 +74,8 @@ The service stubs in `src/lib/api/services/` already have the correct `apiClient
    PackingDashboard.tsx, DecoratorDashboard.tsx, ManagerOrderHistory.tsx
    ```
    Replace `useState<Order[]>(mockOrders)` with a `useEffect` that calls `ordersService.getAll()`.
+   
+   For **Customer Order Tracking**, `OrderTracking.tsx` calls `ordersService.getByTrackingId(trackingId)` internally to fetch data from the unauthenticated `GET /api/orders/track/{tracking_id}/` endpoint.
 
 4. **`src/data/mock/helpers.ts`** — `generateTrackingId()` is mock-only. The backend assigns tracking IDs; remove all calls and delete the file.
 
@@ -326,9 +328,56 @@ Activate `reportsService`. Update `ManagerReports`. This is read-only — no mut
 
 ---
 
-### Phase 8 — Messaging (WebSocket)
+### Phase 8 — Messaging (REST API) ✅ COMPLETE (2026-04-18)
 
-`messagingService` has no mock fallback — it was always deferred. Connect via Django Channels WebSocket. Update `FrontDeskMessaging`, `ManagerMessages`.
+The messaging system uses a REST API (not WebSocket) for template management and campaign sending. The real-time WebSocket phase (internal notifications) remains deferred.
+
+**Backend app: `apps/notifications/`**
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/notifications/templates/` | `GET` | List active templates |
+| `/api/notifications/templates/` | `POST` | Create template (`IsManagerOrFrontDesk`) |
+| `/api/notifications/templates/{id}/` | `PATCH` | Update template |
+| `/api/notifications/templates/{id}/` | `DELETE` | Deactivate template |
+| `/api/notifications/campaigns/` | `GET` | List sent campaigns |
+| `/api/notifications/campaigns/` | `POST` | Send campaign (resolves `{{variables}}`, logs to `NotificationLog`) |
+| `/api/notifications/logs/` | `GET` | Read-only notification audit log |
+
+**Environment variables (backend `config/settings/base.py`):**
+```env
+BRIQ_API_KEY=your_key_here
+BRIQ_SENDER_ID=BakeflowTZ
+```
+
+> [!IMPORTANT]
+> Until `BRIQ_API_KEY` is set and `NotificationService._send_via_gateway()` is wired to `POST https://karibu.briq.tz/v1/messaging/send/`, all campaign sends succeed in the DB (`NotificationLog` rows created) but no actual SMS is sent.
+
+**Variable syntax in templates:** `{{customer_name}}`, `{{order_no}}`, `{{tracking_link}}`, `{{balance}}`, `{{total_price}}`, `{{driver_name}}`
+
+**Phase 8 checklist — COMPLETE ✅ (2026-04-20)**
+- [x] `apps/notifications/` Django app created and in `INSTALLED_APPS`
+- [x] `MessageTemplate`, `Campaign`, `NotificationLog` models with migrations applied
+- [x] `NotificationService.send_campaign()` resolves variables, creates log rows
+- [x] `_send_via_gateway()` stub ready for Briq.tz integration
+- [x] `notificationsService` in `src/lib/api/services/notifications.ts` — all CRUD + `sendCampaign`
+- [x] `TemplateManagement.tsx` — CRUD dialog with variable chips
+- [x] `NewCampaignForm.tsx` — recipient search + tracking ID insert + send
+- [x] `MessageCustomerDialog.tsx` — upgraded: fetches real templates, resolves vars inline, sends via campaign API
+- [x] `dispatch_order` backend guard — returns HTTP 400 if `payment_status != 'paid'`
+- [x] Frontend dispatch queue — filters out unpaid orders; shows amber "Collect Payment" warning cards instead
+- [x] `handleMarkPickedUp` guard — toast + early return if `paymentStatus !== 'paid'`
+- [x] `PATCH /api/orders/{id}/` — used by "Convert to Delivery" to update `delivery_type` + `delivery_address` before opening driver picker
+- [x] `OrderDetailSerializer` — `proof_of_delivery` field removed (migration `0012` dropped the column)
+- [x] **Reminder/Overdue self-healing guard** — `send_payment_reminder` and `send_overdue_notice` in `views.py` now check `balance == 0` and auto-sync `payment_status = 'paid'` before returning HTTP 400. Prevents misleading reminder SMS for fully-paid orders.
+- [x] **`extra_context` fix** — both reminder actions pass `balance` and `total_price` as `extra_context` so the SMS body never shows "Balance: TZS 0" due to stale DB values.
+- [x] **`AwaitingPaymentTab` filter** — Awaiting Payment tab now correctly shows only `pending` orders where `paymentStatus !== 'paid'`.
+- [x] **`PaymentConfirmDialog` rewrite** — Supports custom deposit amounts via editable numeric input (pre-filled to 50%, validates 1–totalPrice−1, shows live balance remaining).
+- [x] **Optimistic update fix** — `handleConfirmPayment` no longer prematurely sets `status = 'paid'` during a deposit; UI waits for API response.
+- [x] **`AwaitingPaymentTab` per-button SMS status** — Each Reminder/Overdue button tracks `idle→sending→success|error|timeout` with icon, border-tint, and auto-clearing `StatusPill` label.
+- [x] **`MessageCustomerDialog` inline status banner** — Compose area replaced by a coloured `StatusBanner` after send; success auto-closes after 1.8 s; error/timeout shows Retry button.
+- [x] **`NewCampaignForm` inline result banner** — `StatusBanner` and `sendResult` prop show green/red/amber result between recipient list and footer; button changes to "Retry" on failure.
+- [x] **`handle-error.ts` timeout detection** — `ECONNABORTED` code and `message.includes('timeout')` detected explicitly, showing SMS-specific timeout message instead of generic "could not reach server".
 
 ---
 
@@ -469,6 +518,7 @@ Located at `src/lib/utils/handle-error.ts`. It handles every error shape Django 
 | `{ "detail": "..." }` | `"Not found."` | `"Not found."` |
 | `{ "non_field_errors": ["..."] }` | `"Passwords do not match."` | `"Passwords do not match."` |
 | `{ "field": ["..."] }` | `"quantity": ["Must be > 0"]` | `"Quantity: Must be > 0"` |
+| Axios timeout (`ECONNABORTED`) | 15 s limit exceeded | `"The request timed out. The SMS gateway may be slow — please try again."` |
 | No response (network down) | — | `"Could not reach the server..."` |
 | HTTP 401 | Token expired | `"Your session has expired..."` |
 | HTTP 403 | Wrong role | `"You do not have permission..."` |

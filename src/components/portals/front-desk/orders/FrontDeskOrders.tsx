@@ -13,6 +13,7 @@ import { MessageCustomerDialog } from '@/components/portals/front-desk/orders/Me
 import { ActionCenterTab } from '@/components/portals/front-desk/orders/ActionCenterTab'
 import { AwaitingPaymentTab } from '@/components/portals/front-desk/orders/AwaitingPaymentTab'
 import { TrackingTab } from '@/components/portals/front-desk/orders/TrackingTab'
+import { DispatchDriverDialog } from '@/components/portals/front-desk/orders/DispatchDriverDialog'
 import type { Order, OrderStatus, OverdueAlert } from '@/types/order'
 import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
@@ -24,6 +25,10 @@ export function FrontDeskOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [activeTab, setActiveTab] = useState('actions')
   const [mounted, setMounted] = useState(false)
+
+  // Dispatch dialog
+  const [showDispatchDialog, setShowDispatchDialog] = useState(false)
+  const [dispatchOrder, setDispatchOrder] = useState<Order | null>(null)
 
   // Message dialog
   const [showMessageDialog, setShowMessageDialog] = useState(false)
@@ -101,10 +106,14 @@ export function FrontDeskOrders() {
     return days <= 2 && days >= 0
   })
 
-  // Categorize orders
-  const pendingPayment = orders.filter(o => o.status === 'pending')
-  const paidOrders = orders.filter(o => o.status === 'paid')
+  // Awaiting Payment: only orders that still have an outstanding balance
+  const pendingPayment = orders.filter(o => o.status === 'pending' && o.paymentStatus !== 'paid')
+  // Action Center: paid orders ready to be posted to baker
+  const paidOrders = orders.filter(o => o.status === 'paid' || (o.status === 'pending' && o.paymentStatus === 'paid'))
+  // Only fully paid delivery orders can be dispatched
   const readyDeliveryOrders = orders.filter(o => o.status === 'ready' && o.deliveryType === 'delivery' && o.paymentStatus === 'paid')
+  // Unpaid ready delivery orders — shown separately as blocked
+  const readyDeliveryUnpaid = orders.filter(o => o.status === 'ready' && o.deliveryType === 'delivery' && o.paymentStatus !== 'paid')
   const readyPickupOrders = orders.filter(o => o.status === 'ready' && o.deliveryType === 'pickup')
   const dispatchedOrders = orders.filter(o => o.status === 'dispatched')
   const inKitchenOrders = orders.filter(o => ['baker', 'decorator', 'quality', 'packing'].includes(o.status))
@@ -131,13 +140,40 @@ export function FrontDeskOrders() {
   }
 
   const handleDispatchToDriver = (orderId: string) => {
-    setOrders(orders.map(o =>
-      o.id === orderId ? { ...o, status: 'dispatched' as OrderStatus, dispatchedAt: new Date().toISOString(), driverAccepted: false } : o
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+    setDispatchOrder(order)
+    setShowDispatchDialog(true)
+  }
+
+  const handleConvertToDelivery = async (orderId: string, deliveryAddress: string) => {
+    const prev = orders
+    // Optimistic update
+    setOrders(p => p.map(o =>
+      o.id === orderId ? { ...o, deliveryType: 'delivery' as const, deliveryAddress } : o
     ))
-    toast.info('Order sent to Driver Portal. Waiting for driver to accept.')
+    try {
+      const updated = await ordersService.update(orderId, {
+        deliveryType: 'delivery' as const,
+        deliveryAddress,
+      })
+      setOrders(p => p.map(o => o.id === orderId ? updated : o))
+      toast.success('Order converted to delivery!')
+      // Open driver dispatch immediately
+      setDispatchOrder(updated)
+      setShowDispatchDialog(true)
+    } catch (err) {
+      setOrders(prev)
+      handleApiError(err)
+    }
   }
 
   const handleMarkPickedUp = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId)
+    if (order && order.paymentStatus !== 'paid') {
+      toast.error('This order has an outstanding balance. Please collect full payment before marking as picked up.')
+      return
+    }
     const prev = orders
     setOrders(p => p.map(o => o.id === orderId ? { ...o, status: 'delivered' as OrderStatus } : o))
     toast.success('Order marked as picked up!')
@@ -150,18 +186,27 @@ export function FrontDeskOrders() {
     }
   }
 
-  const handleConfirmPayment = async (orderId: string, paymentType: 'full' | 'deposit') => {
+  const handleConfirmPayment = async (orderId: string, paymentType: 'full' | 'deposit', amountOverride?: number) => {
     const order = orders.find(o => o.id === orderId)
     if (!order) return
-    const amount = paymentType === 'full' ? order.totalPrice : Math.ceil(order.totalPrice / 2)
+    // Use the amount passed from the dialog (which may differ from 50% for deposits)
+    const amount = amountOverride ?? (paymentType === 'full' ? order.totalPrice : Math.ceil(order.totalPrice / 2))
     const prev = orders
     setOrders(p => p.map(o => {
       if (o.id !== orderId) return o
-      return { ...o, status: 'paid' as OrderStatus, amountPaid: amount, paymentStatus: paymentType === 'full' ? 'paid' as const : 'deposit' as const }
+      // Don't optimistically set status='paid' — only the backend knows if the full
+      // amount has been paid. Just update the financial fields and let the API
+      // response set the authoritative status.
+      const newPaymentStatus = paymentType === 'full' ? 'paid' as const : 'deposit' as const
+      return { ...o, amountPaid: amount, paymentStatus: newPaymentStatus }
     }))
     setShowPaymentDialog(false)
     setPaymentOrder(null)
-    toast.success('Payment confirmed! Order moved to Post to Baker queue.')
+    toast.success(
+      paymentType === 'full'
+        ? 'Full payment confirmed! Order moved to baker queue.'
+        : `Deposit of TZS ${amount.toLocaleString()} recorded.`
+    )
     try {
       const updated = await ordersService.recordPayment(orderId, amount, order.paymentMethod ?? 'cash')
       setOrders(p => p.map(o => o.id === orderId ? updated : o))
@@ -178,7 +223,7 @@ export function FrontDeskOrders() {
   }
 
   const pendingPaymentCount = pendingPayment.length
-  const actionCount = paidOrders.length + readyDeliveryOrders.length + readyPickupOrders.length
+  const actionCount = paidOrders.length + readyDeliveryOrders.length + readyDeliveryUnpaid.length + readyPickupOrders.length
   const trackingCount = inKitchenOrders.length + dispatchedOrders.length
 
   return (
@@ -246,12 +291,15 @@ export function FrontDeskOrders() {
             <ActionCenterTab
               paidOrders={paidOrders}
               readyDeliveryOrders={readyDeliveryOrders}
+              readyDeliveryUnpaid={readyDeliveryUnpaid}
               readyPickupOrders={readyPickupOrders}
               onPostToBaker={handlePostToBaker}
               onDispatchToDriver={handleDispatchToDriver}
               onMarkPickedUp={handleMarkPickedUp}
               onOpenMessage={handleOpenMessage}
               copyTrackingLink={copyTrackingLink}
+              onCollectPayment={(order: Order) => { setPaymentOrder(order); setShowPaymentDialog(true) }}
+              onConvertToDelivery={handleConvertToDelivery}
             />
           </TabsContent>
 
@@ -308,6 +356,18 @@ export function FrontDeskOrders() {
           }}
           getTrackingUrl={getTrackingUrl}
           onCopyLink={copyTrackingLink}
+        />
+
+        <DispatchDriverDialog
+          order={dispatchOrder}
+          open={showDispatchDialog}
+          onOpenChange={open => {
+            setShowDispatchDialog(open)
+            if (!open) setDispatchOrder(null)
+          }}
+          onDispatched={updatedOrder => {
+            setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o))
+          }}
         />
       </main>
     </div>

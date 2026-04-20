@@ -38,7 +38,8 @@ bakeflow_backend/
 │   ├── customers/                 # Customer records + loyalty
 │   ├── finance/                   # Expenses, debts, payments
 │   ├── tasks/                     # Staff task management
-│   ├── messaging/                 # Internal + customer messaging
+│   ├── notifications/             # ✅ Customer messaging: MessageTemplate, Campaign, NotificationLog
+│   ├── messaging/                 # Internal messaging (future)
 │   └── reports/                   # Analytics aggregation
 │
 ├── core/                          # Shared utilities (SOLID: SRP)
@@ -179,6 +180,7 @@ class Order(TimestampedModel):
     driver            = ForeignKey(User, null=True, related_name='deliveries', on_delete=SET_NULL)
     driver_accepted   = BooleanField(null=True)
     driver_delivered  = BooleanField(default=False)
+    proof_of_delivery = ImageField(upload_to='proofs/', null=True, blank=True)
 
     created_by        = ForeignKey(User, related_name='created_orders', on_delete=PROTECT)
 
@@ -347,9 +349,63 @@ class FinancialTransaction(TimestampedModel):
 
 **`FinancialTransaction` is indexed on `(order_id)` via the FK** — querying a single order's payment history is O(log n).
 
+### `notifications` app
+
+```python
+class TriggerEvent(TextChoices):
+    ORDER_READY_PICKUP   = 'ORDER_READY_PICKUP'
+    ORDER_READY_DELIVERY = 'ORDER_READY_DELIVERY'
+    ORDER_DISPATCHED     = 'ORDER_DISPATCHED'
+    ORDER_DELIVERED      = 'ORDER_DELIVERED'
+    PAYMENT_RECEIVED     = 'PAYMENT_RECEIVED'
+    CUSTOM               = 'CUSTOM'
+
+class MessageTemplate(TimestampedModel):
+    id            = UUIDField(primary_key=True)
+    name          = CharField(max_length=200)
+    content       = TextField()       # supports {{variable}} placeholders
+    trigger_event = CharField(choices=TriggerEvent, default='CUSTOM')
+    is_automated  = BooleanField(default=False)
+    is_active     = BooleanField(default=True)
+    created_by    = ForeignKey(User, on_delete=PROTECT)
+
+class Campaign(TimestampedModel):
+    id              = UUIDField(primary_key=True)
+    name            = CharField(max_length=200)
+    template        = ForeignKey(MessageTemplate, null=True, on_delete=SET_NULL)
+    message_content = TextField()     # resolved copy — may differ from template after edit
+    recipients      = JSONField()     # list of phone number strings
+    sent_at         = DateTimeField(null=True)
+    created_by      = ForeignKey(User, on_delete=PROTECT)
+
+class NotificationLog(TimestampedModel):
+    id        = UUIDField(primary_key=True)
+    campaign  = ForeignKey(Campaign, on_delete=CASCADE, related_name='logs')
+    recipient = CharField(max_length=20)   # phone number
+    status    = CharField(choices=['queued','sent','failed'], default='queued')
+    sent_at   = DateTimeField(null=True)
+    error_msg = TextField(blank=True)
+```
+
+**`NotificationService`:** resolves `{{variable}}` placeholders from a context dict, creates a `Campaign` + `NotificationLog` rows, calls `_send_via_gateway()` (Briq.tz stub).
+
+**Self-healing reminder guard (in `OrderViewSet`, not `NotificationService`):**
+`send_payment_reminder` and `send_overdue_notice` actions:
+1. Compute `balance = total_price − amount_paid`
+2. If `balance == 0` but `payment_status` is stale → auto-sync `payment_status = 'paid'`, save, return HTTP 400 (`"Order is fully paid. Status has been corrected."`)
+3. Otherwise, pass `balance` and `total_price` as explicit `extra_context` so SMS templates never receive a stale zero-balance from the DB field.
+
+```env
+# Required in backend .env for production SMS:
+BRIQ_API_KEY=your_key_here
+BRIQ_SENDER_ID=BakeflowTZ
+# Endpoint: POST https://karibu.briq.tz/v1/messaging/send/
+```
+
 ---
 
 ## 4. Service Layer (SOLID: SRP + OCP)
+
 
 Every non-trivial business operation lives in a **service class**, not in views or serializers. Views handle HTTP only.
 
@@ -490,7 +546,8 @@ ORDERS
   POST   /api/orders/{id}/dispatch/
   POST   /api/orders/{id}/mark_delivered/
   POST   /api/orders/{id}/record_payment/
-  GET    /api/orders/track/{tracking_id}/   PUBLIC — no auth required
+  POST   /api/orders/{id}/upload_proof/      accepts multipart/form-data for proof_of_delivery ImageField
+  GET    /api/orders/track/{tracking_id}/    PUBLIC — no auth required, returns tracking timeline data
   GET    /api/orders/summary/               pre-aggregated KPI totals (IsManager/IsFrontDesk)
                                             → { count, total_revenue, total_price,
                                                 total_outstanding, by_status, by_payment_method }
@@ -549,6 +606,17 @@ TASKS
   POST   /api/tasks/
   PATCH  /api/tasks/{id}/
   POST   /api/tasks/{id}/complete/
+
+NOTIFICATIONS  (IsManagerOrFrontDesk)
+  GET    /api/notifications/templates/      list templates
+  POST   /api/notifications/templates/      create template
+  PATCH  /api/notifications/templates/{id}/ update template
+  DELETE /api/notifications/templates/{id}/ deactivate template (soft-delete)
+  GET    /api/notifications/campaigns/      list sent campaigns
+  POST   /api/notifications/campaigns/      send campaign (resolves {{vars}}, creates Campaign + NotificationLog rows)
+  GET    /api/notifications/logs/           read-only per-recipient audit log
+  POST   /api/orders/{id}/send_payment_reminder/  SMS reminder; self-heals stale payment_status if balance==0
+  POST   /api/orders/{id}/send_overdue_notice/    SMS overdue notice; same self-heal guard
 
 MESSAGING
   GET    /api/messages/
