@@ -66,10 +66,18 @@ export function ActionCenterTab({
                       <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                       <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs shrink-0">
-                      <CreditCard className="mr-1 h-3 w-3" />
-                      {order.paymentStatus === 'deposit' ? 'Deposit' : 'Paid'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {order.paymentTerms === 'on_delivery' && order.paymentStatus !== 'paid' ? (
+                        <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">
+                          <CreditCard className="mr-1 h-3 w-3" /> Pay on Delivery
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs">
+                          <CreditCard className="mr-1 h-3 w-3" />
+                          {order.paymentStatus === 'deposit' ? 'Deposit' : 'Paid'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <p className="text-xs text-foreground truncate">{order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -115,10 +123,22 @@ export function ActionCenterTab({
                       <p className="font-semibold text-sm text-foreground">{order.trackingId}</p>
                       <p className="text-xs text-muted-foreground truncate">{order.customer.name}</p>
                     </div>
-                    <Badge className="bg-blue-100 text-blue-800 border-0 text-xs shrink-0">
-                      <Truck className="mr-1 h-3 w-3" /> Delivery
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge className="bg-blue-100 text-blue-800 border-0 text-xs">
+                        <Truck className="mr-1 h-3 w-3" /> Delivery
+                      </Badge>
+                      {order.paymentTerms === 'on_delivery' && order.paymentStatus !== 'paid' && (
+                        <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">
+                          <CreditCard className="mr-1 h-3 w-3" /> COD
+                        </Badge>
+                      )}
+                    </div>
                   </div>
+                  {order.paymentTerms === 'on_delivery' && order.paymentStatus !== 'paid' && (
+                    <p className="text-xs text-amber-700 font-medium">
+                      TZS {order.totalPrice.toLocaleString()} — driver collects on delivery
+                    </p>
+                  )}
                   <div className="rounded-lg bg-blue-50 border border-blue-200 p-2 space-y-1">
                     <div className="flex items-start gap-1.5 text-xs text-foreground">
                       <MapPin className="h-3 w-3 mt-0.5 text-blue-600 shrink-0" />

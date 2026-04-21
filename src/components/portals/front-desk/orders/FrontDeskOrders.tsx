@@ -108,12 +108,22 @@ export function FrontDeskOrders() {
 
   // Awaiting Payment: only orders that still have an outstanding balance
   const pendingPayment = orders.filter(o => o.status === 'pending' && o.paymentStatus !== 'paid')
-  // Action Center: paid orders ready to be posted to baker
-  const paidOrders = orders.filter(o => o.status === 'paid' || (o.status === 'pending' && o.paymentStatus === 'paid'))
-  // Only fully paid delivery orders can be dispatched
-  const readyDeliveryOrders = orders.filter(o => o.status === 'ready' && o.deliveryType === 'delivery' && o.paymentStatus === 'paid')
-  // Unpaid ready delivery orders — shown separately as blocked
-  const readyDeliveryUnpaid = orders.filter(o => o.status === 'ready' && o.deliveryType === 'delivery' && o.paymentStatus !== 'paid')
+  // Action Center: paid orders + COD orders ready to be posted to baker
+  const paidOrders = orders.filter(o =>
+    o.status === 'paid' ||
+    (o.status === 'pending' && o.paymentStatus === 'paid') ||
+    (o.status === 'pending' && o.paymentTerms === 'on_delivery')
+  )
+  // Paid + COD delivery orders can be dispatched directly
+  const readyDeliveryOrders = orders.filter(
+    o => o.status === 'ready' && o.deliveryType === 'delivery' &&
+         (o.paymentStatus === 'paid' || o.paymentTerms === 'on_delivery')
+  )
+  // Truly blocked: non-COD delivery orders with outstanding balance
+  const readyDeliveryUnpaid = orders.filter(
+    o => o.status === 'ready' && o.deliveryType === 'delivery' &&
+         o.paymentStatus !== 'paid' && o.paymentTerms !== 'on_delivery'
+  )
   const readyPickupOrders = orders.filter(o => o.status === 'ready' && o.deliveryType === 'pickup')
   const dispatchedOrders = orders.filter(o => o.status === 'dispatched')
   const inKitchenOrders = orders.filter(o => ['baker', 'decorator', 'quality', 'packing'].includes(o.status))
@@ -170,7 +180,8 @@ export function FrontDeskOrders() {
 
   const handleMarkPickedUp = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId)
-    if (order && order.paymentStatus !== 'paid') {
+    // Block only non-COD unpaid pickup orders
+    if (order && order.paymentStatus !== 'paid' && order.paymentTerms !== 'on_delivery') {
       toast.error('This order has an outstanding balance. Please collect full payment before marking as picked up.')
       return
     }

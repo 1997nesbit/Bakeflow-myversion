@@ -106,6 +106,13 @@ class OrderService:
             )
             self._sync_payment(order)
 
+            # _sync_payment only updates payment fields — it does NOT advance the
+            # order status.  Mirror what record_payment() does: if the order is now
+            # fully paid, move it straight from pending → paid so front-desk can
+            # immediately post it to the baker queue.
+            if order.status == OrderStatus.PENDING and order.payment_status == 'paid':
+                order = self.advance_status(order, OrderStatus.PAID, by=created_by)
+
         return order
 
     # ------------------------------------------------------------------
@@ -127,6 +134,22 @@ class OrderService:
 
     @transaction.atomic
     def post_to_baker(self, order: Order, by) -> Order:
+        # COD orders skip the paid status — payment collected on delivery.
+        # Allow pending → baker for them; all others still require paid → baker.
+        if order.status == OrderStatus.PENDING and order.payment_terms == 'on_delivery':
+            from_status = order.status
+            order.status = OrderStatus.BAKER
+            order.posted_to_baker_at = timezone.now()
+            order.save(update_fields=['status', 'posted_to_baker_at', 'updated_at'])
+            OrderStatusHistory.objects.create(
+                order=order,
+                from_status=from_status,
+                to_status=OrderStatus.BAKER,
+                changed_by=by,
+                note='Posted to baker queue (COD — pay on delivery)',
+            )
+            return order
+
         self._validator.validate(order.status, OrderStatus.BAKER)
         from_status = order.status
         order.status = OrderStatus.BAKER

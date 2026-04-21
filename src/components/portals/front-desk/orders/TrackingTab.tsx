@@ -15,6 +15,7 @@ import {
   Loader2,
   Link2,
   Copy,
+  Banknote,
 } from 'lucide-react'
 
 interface TrackingTabProps {
@@ -58,6 +59,11 @@ export function TrackingTab({
                     ) : (
                       <Badge className="bg-purple-100 text-purple-800 border-0 text-xs animate-pulse">
                         <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Waiting for Driver
+                      </Badge>
+                    )}
+                    {order.paymentTerms === 'on_delivery' && order.paymentStatus !== 'paid' && (
+                      <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">
+                        <Banknote className="mr-1 h-3 w-3" /> Pay on Delivery
                       </Badge>
                     )}
                   </div>
@@ -115,7 +121,14 @@ export function TrackingTab({
                         <p className="font-semibold text-sm text-foreground">{order.id} - {order.customer.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{order.items?.map(i => i.name).join(', ')}</p>
                       </div>
-                      <Badge className={`${statusColors[order.status]} border-0 text-xs shrink-0`}>{statusLabels[order.status]}</Badge>
+                      <div className="flex flex-wrap items-center gap-1 shrink-0">
+                        <Badge className={`${statusColors[order.status]} border-0 text-xs`}>{statusLabels[order.status]}</Badge>
+                        {order.paymentTerms === 'on_delivery' && order.paymentStatus !== 'paid' && (
+                          <Badge className="bg-amber-100 text-amber-800 border-0 text-xs">
+                            <Banknote className="mr-1 h-3 w-3" /> Pay on Delivery
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">

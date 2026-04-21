@@ -54,9 +54,17 @@ export function DriverDashboard() {
   const deliveredOrders = orders.filter(o => o.driverStatus === 'delivered')
 
   // ── handlers ───────────────────────────────────────────────────────────────
-  const handleAccept = (orderId: string) => {
+  const handleAccept = async (orderId: string) => {
+    // Optimistically update local state so the UI feels instant
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, driverStatus: 'accepted' } : o))
-    toast.success('Delivery accepted! Front desk has been notified.')
+    try {
+      await ordersService.acceptDelivery(orderId)
+      toast.success('Delivery accepted! Customer has been notified.')
+    } catch (err) {
+      // Roll back if the API call fails
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, driverStatus: 'pending' } : o))
+      handleApiError(err)
+    }
   }
 
   const handleDecline = (orderId: string) => {

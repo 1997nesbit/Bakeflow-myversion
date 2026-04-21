@@ -116,6 +116,11 @@ export const ordersService = {
     return (await apiClient.post<Order>(`/orders/${id}/${endpoint}/`)).data
   },
 
+  /** POST /api/orders/{id}/accept_delivery/ — driver self-confirms delivery, triggers customer SMS */
+  acceptDelivery: async (id: string): Promise<Order> => {
+    return (await apiClient.post<Order>(`/orders/${id}/accept_delivery/`)).data
+  },
+
   /** POST /api/orders/{id}/send_payment_reminder/ — sends a reminder SMS to the customer */
   sendPaymentReminder: async (id: string): Promise<{ detail: string }> => {
     return (await apiClient.post<{ detail: string }>(`/orders/${id}/send_payment_reminder/`)).data

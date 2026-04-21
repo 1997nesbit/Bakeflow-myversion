@@ -71,6 +71,8 @@ class OrderViewSet(viewsets.GenericViewSet):
             return [IsBaker()]
         if self.action in ('mark_delivered', 'upload_proof'):
             return [IsDriverOrFrontDesk()]
+        if self.action == 'accept_delivery':
+            return [IsDriver()]
         if self.action in ('send_payment_reminder', 'send_overdue_notice'):
             return [IsManagerOrFrontDesk()]
         return [IsAuthenticated()]
@@ -184,6 +186,18 @@ class OrderViewSet(viewsets.GenericViewSet):
         order.save(update_fields=['assigned_to', 'updated_at'])
         return Response(OrderDetailSerializer(order).data)
 
+    @action(detail=True, methods=['post'], url_path='accept_delivery')
+    def accept_delivery(self, request, pk=None):
+        """Driver confirms they are accepting and heading out for delivery.
+        Persists driver_accepted=True and sends the ORDER_DISPATCHED SMS to the customer.
+        """
+        order = get_object_or_404(self.get_queryset(), pk=pk)
+        order.driver = request.user          # needed so notification context resolves driver_name/phone
+        order.driver_accepted = True
+        order.save(update_fields=['driver', 'driver_accepted', 'updated_at'])
+        _trigger_notification(order, TriggerEvent.ORDER_DISPATCHED)
+        return Response(OrderDetailSerializer(order).data)
+
     @action(detail=True, methods=['post'], url_path='quality_check')
     def quality_check(self, request, pk=None):
         order = get_object_or_404(self.get_queryset(), pk=pk)
@@ -213,7 +227,9 @@ class OrderViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=['post'], url_path='dispatch')
     def dispatch_order(self, request, pk=None):
         order = get_object_or_404(self.get_queryset(), pk=pk)
-        if order.payment_status != 'paid':
+        # COD orders (payment_terms='on_delivery') are intentionally dispatched unpaid —
+        # the driver collects payment at the door. Only block non-COD unpaid orders.
+        if order.payment_status != 'paid' and order.payment_terms != 'on_delivery':
             return Response(
                 {'detail': 'Order must be fully paid before it can be dispatched to a driver.'},
                 status=status.HTTP_400_BAD_REQUEST,
