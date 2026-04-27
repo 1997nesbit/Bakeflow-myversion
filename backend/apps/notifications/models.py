@@ -71,6 +71,10 @@ class Campaign(TimestampedModel):
     id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name            = models.CharField(max_length=200)
     message_content = models.TextField()
+    recipient_phones = models.JSONField(
+        default=list,
+        help_text='Stored list of phone numbers selected at campaign creation time.',
+    )
     recipients_count = models.PositiveIntegerField(default=0)
     status          = models.CharField(max_length=15, choices=CampaignStatus.choices, default=CampaignStatus.DRAFT)
     sent_at         = models.DateTimeField(null=True, blank=True)

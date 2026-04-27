@@ -62,7 +62,7 @@ export function BakerDashboard() {
   const getElapsed = useCallback(
     (postedAt?: string) => {
       if (!postedAt || !mounted) return 0
-      return Math.floor((Date.now() - new Date(postedAt).getTime()) / (1000 * 60))
+      return Math.floor(Date.now() - new Date(postedAt).getTime())
     },
     [mounted]
   )

@@ -1,6 +1,6 @@
 # Bakeflow — Implementation Progress
 
-Last updated: 2026-04-20 (Phase 8 Polish: SMS status UI, payment status integrity fixes, inline send feedback, custom deposit amounts)
+Last updated: 2026-04-27 (Phase 8 Continued: scheduled campaign automation, recipient persistence, auth race condition fix, SameSite cookie fix)
 
 ---
 
@@ -490,6 +490,40 @@ The packing status and its associated portal exist in the codebase but are no lo
 ### Error Handling
 
 - **`handle-error.ts` — axios `ECONNABORTED` detection** — Added explicit check for `code === 'ECONNABORTED'` or `message.includes('timeout')` before the generic "no response" fallback. Now shows: `"The request timed out. The SMS gateway may be slow — please try again."` instead of the misleading "Could not reach the server."
+
+---
+
+## Phase 8 — Scheduled Campaign Automation ✅ COMPLETE (2026-04-27)
+
+### Problem
+
+Campaigns saved with a future `scheduled_for` time were never sent — there was no Celery beat task, cron job, or management command to process the queue. The backend code had a "future TODO" comment acknowledging this.
+
+Additionally:
+- Campaigns sent to **all customers** regardless of who was selected in the UI (recipient list was discarded after save)
+- Scheduled times were stored as UTC but entered as local (EAT UTC+3), causing 3-hour scheduling drift
+- Multiple SMS sends per campaign due to duplicate scheduler threads during Django hot-reload
+
+### Backend changes
+
+- **`apps/notifications/campaign_scheduler.py`** — New in-process daemon thread that polls every 60 s for `Campaign` objects where `status='scheduled'` and `scheduled_for__lte=now`. Dispatches synchronously via `NotificationService._send_via_gateway()`. Uses a promise-singleton guard (`_start_lock`) to ensure only one thread is ever spawned.
+- **`apps/notifications/apps.py`** — `NotificationsConfig.ready()` now starts the scheduler thread with a `RUN_MAIN` environment variable check to prevent duplicate threads during Django dev-server hot-reload.
+- **`apps/notifications/models.py`** — Added `recipient_phones = JSONField(default=list)` to `Campaign`. Stores the exact phone number list selected at campaign creation time.
+- **`apps/notifications/migrations/0002_add_recipient_phones.py`** — migration generated and applied.
+- **`apps/notifications/views.py`** — Campaign create view now saves `recipient_phones=data['recipients']` so the scheduler uses the exact selected list.
+- **`apps/accounts/views.py`** — Changed refresh cookie `samesite` from `'Strict'` to `'Lax'` so the HttpOnly cookie is sent on cross-origin requests from `localhost:3000` → `localhost:8000` during development.
+
+### Frontend changes
+
+- **`src/components/portals/front-desk/messaging/FrontDeskMessaging.tsx`** — Converts the `datetime-local` string to a UTC ISO string (`new Date(scheduledFor).toISOString()`) before sending to the backend. Prevents local time being interpreted as UTC on the Django side.
+- **`src/lib/api/client.ts`** — Added promise deduplication to `silentRefresh()`. On page load, `AuthBootstrap`, `useRoleAuth`, and the 401 interceptor from the first API call all fire `initAuth()`/`silentRefresh()` simultaneously. With refresh token rotation, the first to succeed invalidates the cookie for the rest. A `_refreshInFlight` promise singleton ensures only one HTTP request fires and all concurrent callers share the result.
+
+### Scheduler behaviour (post-fix)
+
+- Terminal shows `[SCHEDULER] Dispatching "<name>" to N recipients…` on every dispatch cycle
+- `CAMPAIGN_SCHEDULER_POLL_SECONDS` setting overrides the 60 s default
+- If `recipient_phones` is empty (legacy campaigns from before the fix), scheduler falls back to all customers with a phone number
+- No Celery, Redis, or external process required — runs inside the Django web process
 
 ---
 

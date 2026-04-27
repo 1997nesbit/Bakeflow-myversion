@@ -60,6 +60,7 @@ class CampaignViewSet(viewsets.ReadOnlyModelViewSet):
         campaign = Campaign.objects.create(
             name=data['name'],
             message_content=data['message_content'],
+            recipient_phones=data['recipients'],
             recipients_count=len(data['recipients']),
             status=CampaignStatus.SCHEDULED if is_future_schedule else CampaignStatus.SENT,
             sent_at=None if is_future_schedule else now,

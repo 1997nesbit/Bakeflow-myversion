@@ -152,17 +152,24 @@ class OrderViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='track/(?P<tracking_id>[^/.]+)')
     def track(self, request, tracking_id=None):
         order = get_object_or_404(
-            Order.objects.select_related('customer').prefetch_related('status_history'),
+            Order.objects
+                .select_related('customer')
+                .prefetch_related('items', 'status_history'),
             tracking_id=tracking_id,
         )
         # Minimal public response — no pricing, no internal notes
         return Response({
-            'tracking_id':  order.tracking_id,
-            'status':       order.status,
-            'pickup_date':  order.pickup_date,
-            'pickup_time':  str(order.pickup_time),
-            'delivery_type': order.delivery_type,
-            'customer_name': order.customer.name,
+            'tracking_id':      order.tracking_id,
+            'status':           order.status,
+            'pickup_date':      order.pickup_date,
+            'pickup_time':      str(order.pickup_time),
+            'delivery_type':    order.delivery_type,
+            'customer_name':    order.customer.name,
+            'estimated_minutes': order.estimated_minutes,
+            'items': [
+                {'name': i.name, 'quantity': i.quantity}
+                for i in order.items.all()
+            ],
             'status_history': [
                 {'to_status': h.to_status, 'changed_at': h.changed_at}
                 for h in order.status_history.all()

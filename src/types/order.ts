@@ -121,6 +121,8 @@ export interface OrderTrackingResponse {
   pickupTime: string
   deliveryType: DeliveryType
   customerName: string
+  estimatedMinutes: number
+  items: { name: string; quantity: number }[]
   statusHistory: StatusHistoryEntry[]
 }
 

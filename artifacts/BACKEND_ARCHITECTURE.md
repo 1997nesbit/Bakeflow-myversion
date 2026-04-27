@@ -374,8 +374,11 @@ class Campaign(TimestampedModel):
     name            = CharField(max_length=200)
     template        = ForeignKey(MessageTemplate, null=True, on_delete=SET_NULL)
     message_content = TextField()     # resolved copy — may differ from template after edit
-    recipients      = JSONField()     # list of phone number strings
+    recipient_phones = JSONField(default=list)  # persisted phone list from creation time
+    recipients_count = PositiveIntegerField(default=0)
+    status          = CharField(choices=['draft','scheduled','sent'], default='draft')
     sent_at         = DateTimeField(null=True)
+    scheduled_for   = DateTimeField(null=True)  # None = send immediately
     created_by      = ForeignKey(User, on_delete=PROTECT)
 
 class NotificationLog(TimestampedModel):
@@ -388,6 +391,9 @@ class NotificationLog(TimestampedModel):
 ```
 
 **`NotificationService`:** resolves `{{variable}}` placeholders from a context dict, creates a `Campaign` + `NotificationLog` rows, calls `_send_via_gateway()` (Briq.tz stub).
+
+**In-process campaign scheduler (`apps/notifications/campaign_scheduler.py`):**
+A daemon thread started in `NotificationsConfig.ready()` polls every 60 s for `Campaign` objects where `status='scheduled'` and `scheduled_for__lte=now`. Dispatches via `_send_via_gateway()` synchronously. Uses `_start_lock` singleton guard + `RUN_MAIN` env check to prevent duplicate threads during dev-server hot-reload. Fall-back: if `recipient_phones` is empty (old campaigns), queries all customers with a phone number. Override poll interval with `CAMPAIGN_SCHEDULER_POLL_SECONDS` in `settings.py`.
 
 **Self-healing reminder guard (in `OrderViewSet`, not `NotificationService`):**
 `send_payment_reminder` and `send_overdue_notice` actions:
@@ -717,7 +723,7 @@ WebSocket consumer groups by role:
 | Concern | Solution |
 |---|---|
 | Authentication | JWT — access token: 15 min, refresh token: 7 days |
-| Token storage | **Option C** — access token in JS memory only; refresh token in HttpOnly SameSite=Strict cookie |
+| Token storage | **Option C** — access token in JS memory only; refresh token in HttpOnly SameSite=Lax cookie (changed from Strict: Strict blocked cross-origin sends between `localhost:3000` and `localhost:8000` during development) |
 | Token rotation | `ROTATE_REFRESH_TOKENS = True` + `BLACKLIST_AFTER_ROTATION = True` (SimpleJWT) |
 | Token blacklisting | `rest_framework_simplejwt.token_blacklist` app — logout endpoint must call `token.blacklist()` |
 | Role enforcement | `IsRole` permission class on every endpoint, no exceptions |

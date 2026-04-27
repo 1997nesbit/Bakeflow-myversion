@@ -27,9 +27,10 @@ export function BakingProgressPanel({ orders, getElapsed }: Props) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {orders.slice(0, 6).map(order => {
-            const elapsed = getElapsed(order.postedToBakerAt)
-            const isOverdue = elapsed > order.estimatedMinutes
-            const pct = Math.min(100, Math.round((elapsed / order.estimatedMinutes) * 100))
+            const elapsedMs = getElapsed(order.postedToBakerAt)
+            const elapsedMin = Math.floor(elapsedMs / (1000 * 60))
+            const isOverdue = elapsedMin >= order.estimatedMinutes
+            const pct = Math.min(100, (elapsedMs / (order.estimatedMinutes * 60 * 1000)) * 100)
             return (
               <div
                 key={order.id}
@@ -51,7 +52,7 @@ export function BakingProgressPanel({ orders, getElapsed }: Props) {
                     </div>
                   </div>
                   <p className={`text-sm font-mono font-bold tabular-nums ${isOverdue ? 'text-[#CA0123]' : 'text-foreground'}`}>
-                    {elapsed}m / {order.estimatedMinutes}m
+                    {elapsedMin}m / {order.estimatedMinutes}m
                   </p>
                 </div>
                 <div className="h-1.5 rounded-full bg-border overflow-hidden">

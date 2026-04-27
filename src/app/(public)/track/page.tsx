@@ -62,6 +62,17 @@ function TrackOrderContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  /** Silent re-fetch used by the polling interval — never resets the loading spinner */
+  const silentRefresh = async (id: string) => {
+    if (!id.trim()) return
+    try {
+      const data = await ordersService.getByTrackingId(id.trim())
+      setOrder(data)
+    } catch {
+      // swallow silently — don't replace a loaded order with an error
+    }
+  }
+
   const doSearch = async (id: string) => {
     if (!id.trim()) return
     setLoading(true)
@@ -80,6 +91,15 @@ function TrackOrderContent() {
       setLoading(false)
     }
   }
+
+  /** Auto-poll every 30 s while an order is displayed */
+  useEffect(() => {
+    if (!order) return
+    const id = order.trackingId
+    const timer = setInterval(() => silentRefresh(id), 30_000)
+    return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.trackingId])
 
   useEffect(() => {
     const id = searchParams.get('id')
@@ -192,6 +212,11 @@ function TrackOrderContent() {
         {order && (
           <div className="w-full max-w-xl mt-6 animate-in fade-in zoom-in-95 duration-500">
             <OrderTracker order={order} />
+            {/* Live refresh indicator */}
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#CA0123' }} />
+              <p className="text-xs text-gray-400">Live · auto-refreshing every 30s</p>
+            </div>
           </div>
         )}
 

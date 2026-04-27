@@ -378,6 +378,12 @@ BRIQ_SENDER_ID=BakeflowTZ
 - [x] **`MessageCustomerDialog` inline status banner** — Compose area replaced by a coloured `StatusBanner` after send; success auto-closes after 1.8 s; error/timeout shows Retry button.
 - [x] **`NewCampaignForm` inline result banner** — `StatusBanner` and `sendResult` prop show green/red/amber result between recipient list and footer; button changes to "Retry" on failure.
 - [x] **`handle-error.ts` timeout detection** — `ECONNABORTED` code and `message.includes('timeout')` detected explicitly, showing SMS-specific timeout message instead of generic "could not reach server".
+- [x] **Scheduled campaign dispatch** — `apps/notifications/campaign_scheduler.py` daemon thread started in `NotificationsConfig.ready()`. Polls every 60 s for `status='scheduled'` campaigns whose `scheduled_for` is in the past and dispatches them via `_send_via_gateway()`. No Celery or external process required.
+- [x] **`Campaign.recipient_phones` field** — Added `JSONField(default=list)` to persist the exact recipient list at creation time. Migration `0002_add_recipient_phones` applied. Campaign create view saves `recipient_phones=data['recipients']`. Scheduler uses the stored list (falls back to all customers for legacy campaigns with an empty list).
+- [x] **Timezone fix** — `FrontDeskMessaging.tsx` converts `datetime-local` string to UTC ISO (`new Date(s).toISOString()`) before sending to the backend, preventing 3-hour EAT→UTC drift.
+- [x] **Duplicate scheduler thread guard** — `_start_lock` singleton in `campaign_scheduler.start()` prevents double-spawning; `RUN_MAIN` env check prevents extra threads during Django hot-reload.
+- [x] **`SameSite=Lax` cookie** — Changed from `Strict` in `accounts/views.py`. `SameSite=Strict` blocked the `bakeflow_refresh` cookie on cross-origin requests from `localhost:3000` → `localhost:8000`, causing logout on every page refresh.
+- [x] **`silentRefresh` promise deduplication** — `_refreshInFlight` singleton in `src/lib/api/client.ts` ensures only one `/auth/token/refresh/` request fires on page load, regardless of how many callers invoke `initAuth()` concurrently. Prevents token rotation race condition that logged users out on refresh.
 
 ---
 
@@ -429,7 +435,13 @@ The access token expires every 15 minutes. When the proactive refresh fires (in 
 
 ## 2. Auth & Role Guards
 
-Auth strategy is **Option C** — access token in JS memory, refresh token in HttpOnly SameSite=Strict cookie.
+Auth strategy is **Option C** — access token in JS memory, refresh token in HttpOnly SameSite=Lax cookie.
+
+> [!NOTE]
+> Changed from `SameSite=Strict` to `SameSite=Lax` (2026-04-27). `Strict` caused the `bakeflow_refresh` cookie to be stripped by the browser on cross-origin requests between `localhost:3000` (Next.js) and `localhost:8000` (Django), logging users out on every page refresh. `Lax` preserves CSRF protection while allowing the cookie on XHR/fetch calls with `withCredentials: true`. For production (same domain), `Strict` can be safely restored.
+
+> [!NOTE]
+> `silentRefresh()` uses a promise singleton (`_refreshInFlight`) so that concurrent callers on page load (AuthBootstrap + useRoleAuth + the 401 interceptor from the first data fetch) all share the same in-flight request. Without this, token rotation would succeed for the first caller and invalidate the cookie for the others, causing an immediate logout.
 
 **Role validation — two-layer defence:**
 

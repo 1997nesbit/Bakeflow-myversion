@@ -1,7 +1,7 @@
 import React from 'react'
 import {
   Check, Clock, ChefHat, PackageCheck, Truck, Phone,
-  CalendarDays, ShoppingBag, Home, MapPin, AlertCircle, BadgeCheck,
+  CalendarDays, ShoppingBag, Home, MapPin, AlertCircle, BadgeCheck, Timer, UtensilsCrossed,
 } from 'lucide-react'
 import type { OrderTrackingResponse } from '@/types/order'
 
@@ -18,7 +18,7 @@ const STATUS_INDEX: Record<string, number> = {
   delivered: 4,
 }
 
-/* Friendly status labels (icon-only in the badge, text only) */
+/* Friendly status labels */
 const STATUS_META: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
   pending:   { label: 'Awaiting confirmation', Icon: Clock,       color: 'bg-amber-50 text-amber-700 border-amber-200' },
   paid:      { label: 'Confirmed',             Icon: BadgeCheck,  color: 'bg-green-50 text-green-700 border-green-200' },
@@ -31,8 +31,12 @@ const STATUS_META: Record<string, { label: string; Icon: React.ElementType; colo
   delivered: { label: 'Delivered',             Icon: Check,       color: 'bg-green-50 text-green-700 border-green-200' },
 }
 
+/* Statuses where showing an ETA makes sense */
+const ACTIVE_STATUSES = new Set(['baker', 'quality', 'decorator', 'packing', 'ready', 'dispatched'])
+
 export function OrderTracker({ order }: OrderTrackerProps) {
   const isDelivery = order.deliveryType === 'delivery'
+  const showEta    = ACTIVE_STATUSES.has(order.status) && order.estimatedMinutes > 0
 
   /* Each stage: Icon rendered directly (no emoji) */
   const STAGES: { label: string; sub: string; Icon: React.ElementType }[] = [
@@ -68,7 +72,7 @@ export function OrderTracker({ order }: OrderTrackerProps) {
               Hello, <span className="font-bold text-white">{order.customerName.split(' ')[0]}</span>
             </p>
           </div>
-          {/* Status badge — icon + text, no emoji */}
+          {/* Status badge */}
           <span className={`shrink-0 text-[11px] font-bold border rounded-xl px-3 py-1.5 flex items-center gap-1.5 ${meta.color}`}>
             <StatusIcon className="h-3.5 w-3.5" />
             {meta.label}
@@ -77,7 +81,7 @@ export function OrderTracker({ order }: OrderTrackerProps) {
       </div>
 
       {/* ── Details grid ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 px-6 pt-5">
+      <div className={`grid gap-3 px-6 pt-5 ${showEta ? 'grid-cols-3' : 'grid-cols-2'}`}>
         {/* Date & Time */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 flex items-center gap-1">
@@ -87,7 +91,8 @@ export function OrderTracker({ order }: OrderTrackerProps) {
           <p className="font-bold text-gray-900 text-sm leading-tight">{order.pickupDate}</p>
           <p className="text-gray-500 text-xs mt-0.5">{order.pickupTime}</p>
         </div>
-        {/* Type */}
+
+        {/* Delivery / Pickup type */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 flex items-center gap-1">
             {isDelivery ? <Truck className="h-3 w-3" /> : <ShoppingBag className="h-3 w-3" />}
@@ -96,7 +101,42 @@ export function OrderTracker({ order }: OrderTrackerProps) {
           <p className="font-bold text-gray-900 text-sm">{isDelivery ? 'Home delivery' : 'In-store pickup'}</p>
           <p className="text-gray-500 text-xs mt-0.5">{isDelivery ? 'To your door' : 'Visit the shop'}</p>
         </div>
+
+        {/* ETA chip — only for active orders */}
+        {showEta && (
+          <div className="rounded-2xl border shadow-sm p-4" style={{ background: '#FFF0F3', borderColor: '#e66386' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1" style={{ color: '#e66386' }}>
+              <Timer className="h-3 w-3" />
+              Est. Time
+            </p>
+            <p className="font-bold text-sm leading-tight" style={{ color: '#CA0123' }}>~{order.estimatedMinutes} min</p>
+            <p className="text-xs mt-0.5" style={{ color: '#e66386' }}>from order receipt</p>
+          </div>
+        )}
       </div>
+
+      {/* ── Items list ───────────────────────────────────────────── */}
+      {order.items && order.items.length > 0 && (
+        <div className="px-6 pt-4">
+          <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 flex items-center gap-1">
+              <UtensilsCrossed className="h-3 w-3" />
+              Your Order
+            </p>
+            <ul className="space-y-1.5">
+              {order.items.map((item, i) => (
+                <li key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-800 font-medium">{item.name}</span>
+                  <span className="text-xs font-bold text-white rounded-full px-2 py-0.5 ml-2 shrink-0"
+                    style={{ background: '#CA0123' }}>
+                    ×{item.quantity}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* ── Progress bar ─────────────────────────────────────────── */}
       <div className="px-6 pt-5">

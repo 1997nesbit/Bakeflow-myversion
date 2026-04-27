@@ -61,20 +61,33 @@ function scheduleProactiveRefresh(token: string): void {
 // Calls /auth/token/refresh/ using the HttpOnly cookie (withCredentials: true).
 // Backend reads the cookie, validates it, and returns a new access token in the
 // JSON body. The rotated refresh cookie is set automatically via Set-Cookie.
+//
+// IMPORTANT: Only one refresh request can be in-flight at a time.
+// On page load, AuthBootstrap, useRoleAuth AND the 401 interceptor from the
+// first API call all fire initAuth()/silentRefresh() simultaneously.
+// With token rotation, the first one to succeed invalidates the others → logout.
+// The promise singleton below ensures all concurrent callers share one request.
+
+let _refreshInFlight: Promise<boolean> | null = null
 
 async function silentRefresh(): Promise<boolean> {
-  try {
-    const { data } = await axios.post(
-      `${API_BASE_URL}/auth/token/refresh/`,
-      {},
-      { withCredentials: true },  // sends the HttpOnly refresh cookie
-    )
-    setAccessToken(data.access)
-    return true
-  } catch {
-    setAccessToken(null)
-    return false
-  }
+  if (_refreshInFlight) return _refreshInFlight
+
+  _refreshInFlight = axios
+    .post(`${API_BASE_URL}/auth/token/refresh/`, {}, { withCredentials: true })
+    .then(({ data }) => {
+      setAccessToken(data.access)
+      return true
+    })
+    .catch(() => {
+      setAccessToken(null)
+      return false
+    })
+    .finally(() => {
+      _refreshInFlight = null
+    })
+
+  return _refreshInFlight
 }
 
 // ── initAuth ─────────────────────────────────────────────────────────────────

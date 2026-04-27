@@ -36,6 +36,8 @@ export function FrontDeskMessaging() {
   const [sentCount, setSentCount]                   = useState(0)
   // M-3: track the current search term here so select-all can use the filtered list
   const [recipientSearch, setRecipientSearch]       = useState('')
+  const [isScheduled, setIsScheduled]               = useState(false)
+  const [scheduledFor, setScheduledFor]             = useState('')
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -88,6 +90,9 @@ export function FrontDeskMessaging() {
         name: campaignName,
         messageContent: campaignMessage,
         recipients: selectedRecipients,
+        scheduledFor: isScheduled && scheduledFor
+          ? new Date(scheduledFor).toISOString()   // convert local time → UTC ISO
+          : undefined,
       })
       setCampaigns(prev => [campaign, ...prev])
       setSentCount(campaign.recipientsCount)
@@ -100,6 +105,8 @@ export function FrontDeskMessaging() {
         setSelectedRecipients([])
         setSelectedTemplate('')
         setRecipientSearch('')
+        setIsScheduled(false)
+        setScheduledFor('')
         setSendResult(null)
       }, 2000)
     } catch (err: unknown) {
@@ -219,11 +226,15 @@ export function FrontDeskMessaging() {
               onToggleRecipient={toggleRecipient}
               onSelectAllFiltered={selectAllFiltered}
               onSearchChange={setRecipientSearch}
+              onIsScheduledChange={setIsScheduled}
+              onScheduledForChange={setScheduledFor}
               onSend={handleSendCampaign}
               onCancel={() => setShowNewCampaign(false)}
               isSending={sending}
               sendResult={sendResult}
               sentCount={sentCount}
+              isScheduled={isScheduled}
+              scheduledFor={scheduledFor}
             />
           )}
 

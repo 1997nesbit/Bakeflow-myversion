@@ -24,7 +24,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         value=refresh_token,
         httponly=True,
         secure=not getattr(settings, 'DEBUG', False),  # False in dev (HTTP), True in prod (HTTPS)
-        samesite='Strict',
+        samesite='Lax',   # Strict blocks cross-origin cookie sends (port 3000 → 8000 in dev)
         max_age=_COOKIE_MAX_AGE,
         path=_COOKIE_PATH,
     )

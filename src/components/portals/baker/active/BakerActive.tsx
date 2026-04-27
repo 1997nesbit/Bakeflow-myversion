@@ -16,6 +16,7 @@ import { BulkBatchPanel } from './BulkBatchPanel'
 import { BakingOrderCard } from './BakingOrderCard'
 import { IncomingOrderCard } from './IncomingOrderCard'
 import { QAOrderCard } from './QAOrderCard'
+import { ProductionSummaryProgress } from './ProductionSummaryProgress'
 import {
   ChefHat,
   Flame,
@@ -86,8 +87,8 @@ export function BakerActive() {
       const totalSec = Math.floor(totalMs / 1000)
       const min = Math.floor(totalSec / 60)
       const sec = totalSec % 60
-      const pct = Math.min(100, Math.round((min / estimatedMin) * 100))
-      return { min, sec, pct, running: t.running, overdue: min > estimatedMin }
+      const pct = Math.min(100, (totalSec / (estimatedMin * 60)) * 100)
+      return { min, sec, pct, running: t.running, overdue: min >= estimatedMin }
     },
     [now, timers, mounted]
   )
@@ -300,6 +301,11 @@ export function BakerActive() {
             </TabsContent>
 
             <TabsContent value="baking" className="mt-0 space-y-4">
+              <ProductionSummaryProgress 
+                bakingOrders={bakingOrders} 
+                timers={timers} 
+                now={now} 
+              />
               {bakingOrders.length >= 2 && (
                 <BulkBatchPanel
                   bakingOrders={bakingOrders}

@@ -41,6 +41,7 @@ src/
 │   │   └── messaging/
 │   │       ├── FrontDeskMessaging.tsx       # fetches real templates + campaigns from API
 │   │       │                                #   sendResult/sentCount state; handleSendCampaign sets result, resets after 2 s
+│   │       │                                #   Converts datetime-local → UTC ISO before sending (timezone fix)
 │   │       ├── TemplateManagement.tsx       # CRUD dialog for message templates with variable chips
 │   │       └── NewCampaignForm.tsx          # recipient search + order tracking ID insertion
 │   │                                        #   StatusBanner prop (sendResult/sentCount) between recipient list and footer
@@ -99,7 +100,9 @@ src/
 │
 ├── lib/
 │   ├── api/
-│   │   ├── client.ts             # Axios instance with JWT interceptors (activate in Phase 1)
+│   │   ├── client.ts             # Axios instance with JWT interceptors
+│   │   │                         #   silentRefresh() uses _refreshInFlight promise singleton
+│   │   │                         #   (prevents token rotation race on page load)
 │   │   ├── services/             # One file per domain — swap TODOs for real calls
 │   │   │   ├── auth.ts           # Phase 1
 │   │   │   ├── orders.ts         # Phase 2
@@ -154,7 +157,7 @@ No global state library is used — and none should be added unless a clear need
 | Data type | Where it lives |
 |---|---|
 | Server data (orders, inventory, etc.) | `useState` inside each portal component, fetched in `useEffect` |
-| Auth session | Access token: JS memory (`client.ts` module variable). Refresh token: HttpOnly SameSite=Strict cookie (managed by Django). |
+| Auth session | Access token: JS memory (`client.ts` module variable). Refresh token: HttpOnly SameSite=Lax cookie (managed by Django). Changed from Strict — Strict blocked cross-origin cookie sends between `localhost:3000` and `localhost:8000`. |
 | UI state (dialogs, tabs, timers) | Local `useState` in the component or subcomponent that owns it |
 | Global toasts | Sonner — call `toast()` directly, no context needed |
 | Error state | `PortalErrorBoundary` catches render errors; `try/catch` + `handleApiError()` for async errors |

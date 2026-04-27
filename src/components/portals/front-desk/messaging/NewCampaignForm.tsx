@@ -70,12 +70,16 @@ interface NewCampaignFormProps {
   isSending?: boolean
   sendResult?: 'success' | 'error' | 'timeout' | null
   sentCount?: number
+  isScheduled: boolean
+  scheduledFor: string
   onNameChange: (v: string) => void
   onMessageChange: (v: string) => void
   onTemplateSelect: (id: string) => void
   onToggleRecipient: (phone: string) => void
   onSelectAllFiltered: () => void
   onSearchChange: (v: string) => void
+  onIsScheduledChange: (v: boolean) => void
+  onScheduledForChange: (v: string) => void
   onSend: () => void
   onCancel: () => void
 }
@@ -83,9 +87,10 @@ interface NewCampaignFormProps {
 export function NewCampaignForm({
   campaignName, campaignMessage, selectedTemplate, selectedRecipients,
   uniqueCustomers, filteredCustomers, recipientSearch, messageTemplates, isSending,
-  sendResult, sentCount,
+  sendResult, sentCount, isScheduled, scheduledFor,
   onNameChange, onMessageChange, onTemplateSelect,
-  onToggleRecipient, onSelectAllFiltered, onSearchChange, onSend, onCancel,
+  onToggleRecipient, onSelectAllFiltered, onSearchChange, 
+  onIsScheduledChange, onScheduledForChange, onSend, onCancel,
 }: NewCampaignFormProps) {
   const canSend = !!campaignName && !!campaignMessage && selectedRecipients.length > 0 && !isSending
 
@@ -153,6 +158,36 @@ export function NewCampaignForm({
               <p className="text-xs text-muted-foreground">
                 Variables: {TEMPLATE_VARIABLES.map(v => v.key).join(' · ')}
               </p>
+            </div>
+            <div className="space-y-4 rounded-xl border border-dashed p-4 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="isScheduled"
+                  checked={isScheduled}
+                  onCheckedChange={(checked) => onIsScheduledChange(!!checked)}
+                />
+                <Label htmlFor="isScheduled" className="text-sm font-medium cursor-pointer">
+                  Schedule for later
+                </Label>
+              </div>
+
+              {isScheduled && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <Label htmlFor="scheduledFor" className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Dispatch Time
+                  </Label>
+                  <Input
+                    id="scheduledFor"
+                    type="datetime-local"
+                    value={scheduledFor}
+                    onChange={(e) => onScheduledForChange(e.target.value)}
+                    className="h-9"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Campaign will be sent automatically after this time.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

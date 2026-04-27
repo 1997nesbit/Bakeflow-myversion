@@ -198,6 +198,9 @@ Sending real SMS requires wiring `NotificationService._send_via_gateway()` in `b
 
 Until `BRIQ_API_KEY` is configured, all campaign sends will succeed in the DB (`NotificationLog` rows created with `status='sent'`) but **no actual SMS is dispatched**.
 
+> [!NOTE]
+> **In-process campaign scheduler** — Bakeflow uses an in-process daemon thread (`apps/notifications/campaign_scheduler.py`) instead of Celery to dispatch scheduled campaigns. This runs automatically when Django starts — no separate process or worker is needed. For high-volume production, consider migrating to Celery + Redis Beat for better fault tolerance and retry handling.
+
 ---
 
 ## Deployment checklist
@@ -214,4 +217,5 @@ Until `BRIQ_API_KEY` is configured, all campaign sends will succeed in the DB (`
 - [ ] `BRIQ_API_KEY` set to your Briq.tz API key (required for live SMS sending)
 - [ ] `BRIQ_SENDER_ID` set to your registered sender name (e.g. `BakeflowTZ`)
 - [ ] `python manage.py seed_notification_templates` run after first deploy to seed default SMS templates
+- [ ] Refresh cookie `SameSite` policy — currently `Lax` for development compatibility. For production on the same domain, change back to `Strict` in `accounts/views.py` for stronger CSRF protection.
 
