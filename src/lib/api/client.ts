@@ -98,6 +98,16 @@ export async function initAuth(): Promise<boolean> {
   return silentRefresh()
 }
 
+// ── waitForAuth ───────────────────────────────────────────────────────────────
+// Use this before making authenticated API calls on mount to avoid racing with
+// initAuth(). Resolves immediately if a token is already in memory; otherwise
+// waits for the in-flight refresh to finish (or kicks one off if none is running).
+
+export async function waitForAuth(): Promise<void> {
+  if (accessToken) return              // already authenticated
+  await silentRefresh()                // share the same in-flight promise if running
+}
+
 // ── clearAuth ────────────────────────────────────────────────────────────────
 // Call after logout. The backend also blacklists the token and clears the cookie.
 

@@ -92,10 +92,10 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
                 </div>
                 <div className="text-right">
                   <p className="font-medium text-foreground text-sm">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    TZS {(Number(item.price) * item.quantity).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {item.quantity} x ${item.price.toFixed(2)}
+                    {item.quantity} x TZS {Number(item.price).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -109,11 +109,11 @@ export function OrderDetail({ order, onClose, onPostToBaker, onMessage }: OrderD
           <div className="rounded-lg bg-accent p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Total</span>
-              <span className="font-bold text-foreground">TZS {order.totalPrice.toLocaleString()}</span>
+              <span className="font-bold text-foreground">TZS {Number(order.totalPrice).toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Paid</span>
-              <span className="font-bold text-green-600">TZS {order.amountPaid.toLocaleString()}</span>
+              <span className="font-bold text-green-600">TZS {Number(order.amountPaid).toLocaleString()}</span>
             </div>
             {balanceDue > 0 && (
               <div className="flex justify-between border-t border-border pt-2">

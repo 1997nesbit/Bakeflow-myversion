@@ -75,7 +75,7 @@ export function OrderTracking({ initialOrder, trackingId }: Props) {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">Customer</p>
-              <p className="font-medium text-foreground">{order.customer.name}</p>
+              <p className="font-medium text-foreground">{order.customer?.name ?? 'Unknown Customer'}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">{order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}</p>

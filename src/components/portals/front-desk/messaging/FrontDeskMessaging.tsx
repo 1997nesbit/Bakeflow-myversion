@@ -253,7 +253,7 @@ export function FrontDeskMessaging() {
                   <p className="text-muted-foreground text-sm">No campaigns sent yet.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                   {campaigns.map(c => (
                     <div key={c.id} className="flex items-start justify-between rounded-lg border p-3 gap-3">
                       <div className="flex-1 min-w-0">

@@ -57,7 +57,7 @@ export function ActionCenterTab({
             <p className="text-sm text-muted-foreground">No orders waiting</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
             {paidOrders.map(order => (
               <Card key={order.id} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-3 space-y-2">
@@ -114,7 +114,7 @@ export function ActionCenterTab({
             <p className="text-sm text-muted-foreground">No delivery orders ready</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
             {readyDeliveryOrders.map(order => (
               <Card key={order.id} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-3 space-y-2">
@@ -194,7 +194,7 @@ export function ActionCenterTab({
             <p className="text-sm text-muted-foreground">No pickup orders ready</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
             {readyPickupOrders.map(order => (
               <Card key={order.id} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-3 space-y-2">

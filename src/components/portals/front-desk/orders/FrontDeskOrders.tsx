@@ -17,6 +17,7 @@ import { DispatchDriverDialog } from '@/components/portals/front-desk/orders/Dis
 import type { Order, OrderStatus, OverdueAlert } from '@/types/order'
 import { ordersService } from '@/lib/api/services/orders'
 import { handleApiError } from '@/lib/utils/handle-error'
+import { waitForAuth } from '@/lib/api/client'
 import { daysUntilDue, minutesSincePosted } from '@/lib/utils/date'
 import { Plus, Cake, Clock, Timer, Banknote } from 'lucide-react'
 
@@ -46,16 +47,18 @@ export function FrontDeskOrders() {
 
   useEffect(() => {
     const controller = new AbortController()
-    ordersService.getAll({ signal: controller.signal })
-      .then(res => setOrders(res.results))
-      .catch(handleApiError)
+    waitForAuth().then(() => {
+      ordersService.getAll({ signal: controller.signal })
+        .then(res => setOrders(res.results))
+        .catch(handleApiError)
+    })
     return () => controller.abort()
   }, [])
 
   const getTrackingUrl = useCallback((trackingId: string) => {
     return typeof globalThis.window !== 'undefined'
-      ? `${globalThis.window.location.origin}/track/${trackingId}`
-      : `/track/${trackingId}`
+      ? `${globalThis.window.location.origin}/track?id=${trackingId}`
+      : `/track?id=${trackingId}`
   }, [])
 
   const copyTrackingLink = useCallback((trackingId: string) => {
