@@ -85,22 +85,7 @@ export function FrontDeskOrders() {
     return () => clearInterval(interval)
   }, [orders, dismissedAlerts])
 
-  // Simulate driver accepting
-  useEffect(() => {
-    const pendingAcceptance = orders.filter(o => o.status === 'dispatched' && o.driverAccepted === false)
-    if (pendingAcceptance.length === 0) return
-    const timer = setTimeout(() => {
-      setOrders(prev =>
-        prev.map(o =>
-          o.status === 'dispatched' && o.driverAccepted === false
-            ? { ...o, driverAccepted: true, assignedTo: 'Tom Martinez' }
-            : o
-        )
-      )
-      toast.success('Driver Tom Martinez accepted the delivery!')
-    }, 8000)
-    return () => clearTimeout(timer)
-  }, [orders])
+  // Driver acceptance is handled in real-time via the Driver Portal (/driver/login)
 
   // Advance order reminders
   const advanceReminders = orders.filter(o => {

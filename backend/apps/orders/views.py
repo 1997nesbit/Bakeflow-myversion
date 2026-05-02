@@ -195,14 +195,47 @@ class OrderViewSet(viewsets.GenericViewSet):
 
     @action(detail=True, methods=['post'], url_path='accept_delivery')
     def accept_delivery(self, request, pk=None):
-        """Driver confirms they are accepting and heading out for delivery.
-        Persists driver_accepted=True and sends the ORDER_DISPATCHED SMS to the customer.
+        """Driver accepts a delivery.
+
+        Two flows are supported:
+          1. Self-accept (ready → dispatched): driver claims an unassigned ready order.
+             The order status transitions to dispatched, the driver is assigned, and
+             driver_accepted is set to True in one atomic operation.
+          2. Confirm-accept (dispatched): front-desk already assigned this driver.
+             We simply set driver_accepted=True and confirm the assignment.
         """
+        from .models import OrderStatusHistory
         order = get_object_or_404(self.get_queryset(), pk=pk)
-        order.driver = request.user          # needed so notification context resolves driver_name/phone
-        order.driver_accepted = True
-        order.save(update_fields=['driver', 'driver_accepted', 'updated_at'])
-        _trigger_notification(order, TriggerEvent.ORDER_DISPATCHED)
+
+        if order.status == 'ready':
+            # Self-accept: driver claims the unassigned order
+            from_status = order.status
+            order.status = 'dispatched'
+            order.driver = request.user
+            order.driver_accepted = True
+            order.dispatched_at = timezone.now()
+            order.save(update_fields=['status', 'driver', 'driver_accepted', 'dispatched_at', 'updated_at'])
+            OrderStatusHistory.objects.create(
+                order=order,
+                from_status=from_status,
+                to_status='dispatched',
+                changed_by=request.user,
+                note='Driver self-accepted from ready queue',
+            )
+            # First time the customer is informed — driver details are now set.
+            _trigger_notification(order, TriggerEvent.ORDER_DISPATCHED)
+        elif order.status == 'dispatched':
+            # Confirm-accept: front-desk already dispatched to this driver.
+            # The ORDER_DISPATCHED SMS was sent at dispatch time — do NOT re-send it.
+            order.driver = request.user
+            order.driver_accepted = True
+            order.save(update_fields=['driver', 'driver_accepted', 'updated_at'])
+        else:
+            return Response(
+                {'detail': f'Order cannot be accepted — current status is \'{order.status}\'.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return Response(OrderDetailSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='quality_check')

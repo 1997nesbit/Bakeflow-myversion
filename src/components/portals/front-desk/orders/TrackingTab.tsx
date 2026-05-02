@@ -74,7 +74,7 @@ export function TrackingTab({
                   {order.driverAccepted && order.assignedTo && (
                     <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-2 text-sm">
                       <User className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-green-800">{order.assignedTo} is delivering</span>
+                      <span className="font-medium text-green-800">{order.assignedTo.name} is delivering</span>
                     </div>
                   )}
                   <button

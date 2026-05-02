@@ -1,5 +1,5 @@
-import { DriverDashboard } from '@/components/portals/driver/DriverDashboard'
+import { NewDriverDashboard } from '@/components/portals/driver/NewDriverDashboard'
 
 export default function Page() {
-  return <DriverDashboard />
+  return <NewDriverDashboard />
 }

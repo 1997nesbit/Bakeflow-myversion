@@ -26,6 +26,13 @@ export interface OrderCustomer {
   isGold: boolean
 }
 
+/** Nested staff user returned as assigned_to / driver on order responses. */
+export interface AssignedUser {
+  id: string
+  name: string
+  role: string
+}
+
 export interface MenuItem {
   id: string
   name: string
@@ -89,7 +96,8 @@ export interface Order {
   estimatedMinutes: number
   createdAt: string
   postedToBakerAt?: string
-  assignedTo?: string
+  assignedTo?: AssignedUser | null
+  driver?: AssignedUser | null
   dispatchedAt?: string
   driverAccepted?: boolean
   driverDelivered?: boolean

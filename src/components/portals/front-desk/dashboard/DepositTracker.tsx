@@ -87,7 +87,7 @@ export function DepositTracker({ depositOrders, dispatchedOrders }: DepositTrack
                     )}
                   </div>
                   {order.assignedTo && (
-                    <p className="text-[10px] text-muted-foreground mt-1">Driver: {order.assignedTo}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Driver: {order.assignedTo.name}</p>
                   )}
                 </div>
               ))}
